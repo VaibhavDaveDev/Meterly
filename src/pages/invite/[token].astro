@@ -1,0 +1,17 @@
+---
+import '../../styles/globals.css';
+import { InviteAcceptForm } from '../../components/auth/InviteAcceptForm';
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+
+const { token } = Astro.params;
+
+if (!token) {
+  return Astro.redirect('/dashboard');
+}
+---
+
+<DashboardLayout title="Invitation - Meterly">
+  <div class="flex items-center justify-center min-h-[60vh]">
+    <InviteAcceptForm client:load token={token} />
+  </div>
+</DashboardLayout>

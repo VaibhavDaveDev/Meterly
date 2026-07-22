@@ -1,0 +1,14 @@
+---
+import '../../../../styles/globals.css';
+import DashboardLayout from '../../../../layouts/DashboardLayout.astro';
+import { NewEditRequestPage } from '../../../../components/tenancies/NewEditRequestPage';
+
+const { id } = Astro.params;
+const periodId = Astro.url.searchParams.get('periodId');
+---
+
+<DashboardLayout title="Request Edit - Meterly">
+  <div class="max-w-2xl mx-auto space-y-6">
+    <NewEditRequestPage client:only="react" tenancyId={id as string} periodId={periodId} />
+  </div>
+</DashboardLayout>

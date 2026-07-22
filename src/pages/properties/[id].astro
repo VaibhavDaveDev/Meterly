@@ -1,0 +1,70 @@
+---
+import '../../styles/globals.css';
+import type { D1Database } from '@cloudflare/workers-types';
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { PropertyDetails } from '../../components/properties/PropertyDetails';
+import { getDb } from '../../db';
+import { properties, tenancies } from '../../db/schema';
+import { authClient } from '../../lib/auth-client';
+import { count, eq, and } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
+
+const { id } = Astro.params;
+
+let property, isOwner = false, isTenant = false, tenantCount = 0;
+
+if (id) {
+  const db = getDb((env as { DB: D1Database }).DB);
+  const session = await authClient.getSession({ fetchOptions: { headers: Astro.request.headers } });
+
+  if (!session?.data?.user) {
+    return Astro.redirect('/login');
+  }
+
+  if (session?.data?.user) {
+    // Fetch property and tenancy details in parallel
+    const [propData, tenancyData] = await Promise.all([
+      db.select().from(properties).where(eq(properties.id, id)).limit(1),
+      db.select().from(tenancies).where(and(
+        eq(tenancies.propertyId, id),
+        eq(tenancies.tenantId, session.data.user.id),
+        eq(tenancies.status, 'active')
+      )).limit(1)
+    ]);
+
+    property = propData[0];
+    const tenancy = tenancyData[0];
+
+    isOwner = property?.ownerId === session.data.user.id;
+    isTenant = !!tenancy;
+
+    if (!isOwner && !isTenant) {
+      return Astro.redirect('/dashboard');
+    }
+    
+    if (property) {
+      const [{ count: c }] = await db.select({ count: count() }).from(tenancies).where(and(eq(tenancies.propertyId, property.id), eq(tenancies.status, 'active')));
+      tenantCount = c;
+    }
+  }
+}
+
+---
+
+<DashboardLayout>
+  {property ? (
+    <PropertyDetails
+      client:load
+      property={property}
+      tenantCount={tenantCount}
+      isOwner={isOwner}
+      isTenant={isTenant}
+    />
+  ) : (
+    <div class="text-center py-16">
+      <h2 class="text-2xl font-bold">Property Not Found</h2>
+      <p class="text-muted-foreground">The property you are looking for does not exist or you do not have access.</p>
+      <a href="/dashboard" class="mt-4 inline-block underline">Return to Dashboard</a>
+    </div>
+  )}
+</DashboardLayout>

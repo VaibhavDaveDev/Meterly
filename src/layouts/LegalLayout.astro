@@ -1,0 +1,132 @@
+---
+import '../styles/globals.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} — Meterly</title>
+    <meta name="description" content={description} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600&family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script is:inline>
+      (function () {
+        const saved = localStorage.getItem('meterly-theme') || 'dark';
+        const isDark = saved === 'dark' || (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="legal-shell">
+      <a href="/" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to home
+      </a>
+
+      <header class="legal-header">
+        <h1>{title}</h1>
+        <p class="legal-tagline">{description}</p>
+      </header>
+
+      <div class="legal-content">
+        <slot />
+      </div>
+    </div>
+  </body>
+</html>
+
+<style>
+  body { margin: 0; }
+
+  .legal-shell {
+    max-width: 680px;
+    margin-inline: auto;
+    padding: 48px 24px 96px;
+  }
+
+  @media (min-width: 768px) {
+    .legal-shell { padding: 80px 48px 120px; }
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    margin-bottom: 48px;
+    transition: color 200ms;
+  }
+
+  .back-link:hover { color: var(--color-text); }
+
+  .legal-header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .legal-header h1 {
+    margin: 0 0 12px;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+  }
+
+  .legal-tagline {
+    font-size: 1.0625rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .legal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  /* Sections inside content slot */
+  .legal-content :global(section) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .legal-content :global(h2) {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text);
+  }
+
+  .legal-content :global(p) {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+    line-height: 1.7;
+  }
+
+  .legal-content :global(a.email-link) {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .legal-content :global(a.email-link:hover) {
+    color: #5558E3;
+  }
+</style>

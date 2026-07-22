@@ -1,0 +1,9 @@
+---
+import '../styles/globals.css';
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { NotificationsPage } from '../components/dashboard/NotificationsPage';
+---
+
+<DashboardLayout title="Notifications">
+  <NotificationsPage client:load />
+</DashboardLayout>

@@ -1,0 +1,9 @@
+---
+import '../../styles/globals.css';
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { AddPropertyForm } from '../../components/properties/AddPropertyForm';
+---
+
+<DashboardLayout>
+  <AddPropertyForm client:load />
+</DashboardLayout>

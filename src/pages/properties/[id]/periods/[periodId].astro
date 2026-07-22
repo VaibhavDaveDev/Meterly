@@ -1,0 +1,17 @@
+---
+import '../../../../styles/globals.css';
+import DashboardLayout from '../../../../layouts/DashboardLayout.astro';
+import { SubmitReadingPage } from '../../../../components/meter/SubmitReadingPage';
+
+const { id, periodId } = Astro.params;
+---
+
+<DashboardLayout title="Submit Readings - Meterly">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <SubmitReadingPage 
+      client:only="react" 
+      propertyId={id as string} 
+      periodId={periodId as string} 
+    />
+  </div>
+</DashboardLayout>

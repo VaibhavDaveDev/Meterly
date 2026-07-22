@@ -1,0 +1,40 @@
+---
+import '../styles/globals.css';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Meterly" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="viewport" content="width=device-width" />
+    <title>404: Not Found - Meterly</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600&family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen bg-background text-on-background">
+    <div class="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+      <div class="space-y-6">
+        <h1 class="text-8xl font-headline-xl text-primary">404</h1>
+        <h2 class="text-3xl font-headline-lg">Page not found</h2>
+        <p class="font-body-md text-on-surface-variant max-w-md mx-auto">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+      </div>
+      
+      <div class="mt-12 flex gap-4">
+        <a href="/" class="px-6 py-3 bg-primary hover:bg-primary-container hover:text-on-primary-container text-on-primary font-label-caps text-label-caps rounded-lg transition-all duration-200 shadow-sm">
+          Back to home
+        </a>
+        <a href="/dashboard" class="px-6 py-3 bg-surface border border-outline-variant hover:border-primary text-on-surface font-label-caps text-label-caps rounded-lg transition-all duration-200">
+          Dashboard
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

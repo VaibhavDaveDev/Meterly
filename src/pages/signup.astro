@@ -1,0 +1,11 @@
+---
+import AuthLayout from '../layouts/AuthLayout.astro';
+import { SignupForm } from '../components/auth/SignupForm';
+
+// In dev mode, don't pass turnstile key so it skips validation
+const turnstileKey = import.meta.env.PROD ? import.meta.env.PUBLIC_TURNSTILE_SITE_KEY : undefined;
+---
+
+<AuthLayout title="Sign Up" description="Create a new Meterly account">
+  <SignupForm client:load turnstileSiteKey={turnstileKey} />
+</AuthLayout>

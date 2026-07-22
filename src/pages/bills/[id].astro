@@ -1,0 +1,144 @@
+---
+import '../../styles/globals.css';
+import type { D1Database } from '@cloudflare/workers-types';
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import { BillDetail } from '../../components/bills/BillDetail';
+import { getDb } from '../../db';
+import { bills, billingPeriods, properties, meterReadings, tenancies, user, meterReadingEdits } from '../../db/schema';
+import { authClient } from '../../lib/auth-client';
+import { eq, desc } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
+
+const { id } = Astro.params;
+let billData = null;
+
+if (id) {
+  const db = getDb((env as { DB: D1Database }).DB);
+  const session = await authClient.getSession({ fetchOptions: { headers: Astro.request.headers } });
+  const userId = session?.data?.user?.id;
+
+  if (!userId) {
+    return Astro.redirect('/login');
+  }
+
+  if (userId) {
+    // 1. Fetch the core bill
+    const [bill] = await db.select().from(bills).where(eq(bills.id, id)).limit(1);
+    
+    if (bill) {
+      // 2. Fetch related contextual data
+      const [period] = await db.select().from(billingPeriods).where(eq(billingPeriods.id, bill.billingPeriodId)).limit(1);
+      const [property] = await db.select().from(properties).where(eq(properties.id, period.propertyId)).limit(1);
+      const [reading] = await db.select().from(meterReadings).where(eq(meterReadings.billingPeriodId, period.id)).limit(1);
+      const [tenancy] = await db.select().from(tenancies).where(eq(tenancies.id, bill.tenancyId)).limit(1);
+      
+      // 3. Authorization Check
+      const isOwner = property.ownerId === userId;
+      const isTenant = tenancy.tenantId === userId;
+      
+      if (isOwner || isTenant) {
+        // 4. Get submitter name for human-readable display
+        let submitterName: string | null = null;
+        let editHistory: Record<string, unknown>[] = [];
+        
+        if (reading) {
+          if (reading.submittedBy) {
+            const [submitter] = await db.select({ name: user.name, email: user.email })
+              .from(user)
+              .where(eq(user.id, reading.submittedBy))
+              .limit(1);
+            submitterName = submitter?.name ?? submitter?.email ?? null;
+          }
+
+          // Fetch edit history if any
+          const edits = await db.select({
+            id: meterReadingEdits.id,
+            reason: meterReadingEdits.reason,
+            oldValues: meterReadingEdits.oldValues,
+            newValues: meterReadingEdits.newValues,
+            versionAfter: meterReadingEdits.versionAfter,
+            editedAt: meterReadingEdits.editedAt,
+            editorName: user.name,
+            editorEmail: user.email,
+          })
+          .from(meterReadingEdits)
+          .leftJoin(user, eq(meterReadingEdits.editedBy, user.id))
+          .where(eq(meterReadingEdits.meterReadingId, reading.id))
+          .orderBy(desc(meterReadingEdits.editedAt));
+
+          editHistory = edits.map(e => ({
+            ...e,
+            editedAt: e.editedAt ? e.editedAt.toISOString() : new Date().toISOString(),
+            editorName: e.editorName ?? e.editorEmail ?? 'Unknown'
+          }));
+        }
+
+        billData = {
+          bill: {
+            ...bill,
+            totalDue: bill.totalDue ?? 0,
+            splitPercentage: bill.splitPercentage ?? 0,
+            consumptionRate: bill.consumptionRate ?? 0,
+            exportRate: bill.exportRate ?? 0,
+            tenantConsumption: bill.tenantConsumption ?? 0,
+            totalConsumption: bill.totalConsumption ?? 0,
+            gridExported: bill.gridExported ?? 0,
+            gridImported: bill.gridImported ?? 0,
+            solarSelfConsumed: bill.solarSelfConsumed ?? 0,
+            solarGenerated: bill.solarGenerated ?? 0,
+            exportRefund: bill.exportRefund ?? 0,
+            consumptionCost: bill.consumptionCost ?? 0,
+            customChargesJson: bill.customChargesJson ?? '[]',
+            customChargesTotal: bill.customChargesTotal ?? 0,
+          },
+          period,
+          property: {
+            ...property,
+            address: property.address ?? undefined,
+          },
+          reading: reading ? {
+            ...reading,
+            solarGenerationStart: reading.solarGenerationStart ?? 0,
+            exportStart: reading.exportStart ?? 0,
+            importStart: reading.importStart ?? 0,
+            createdAt: reading.createdAt ? reading.createdAt.toISOString() : new Date().toISOString(),
+            version: reading.version ?? 1,
+            history: editHistory
+          } : {
+            importStart: 0,
+            importEnd: 0,
+            solarGenerationStart: 0,
+            solarGenerationEnd: 0,
+            exportStart: 0,
+            exportEnd: 0,
+            submittedBy: '',
+            createdAt: new Date().toISOString(),
+            version: 1,
+            history: []
+          },
+          tenancy: {
+            ...tenancy,
+            inviteEmail: tenancy.inviteEmail ?? '',
+          },
+          isOwner,
+          isTenant,
+          submitterName,
+        };
+      }
+    }
+  }
+}
+---
+
+<DashboardLayout title="Bill Details">
+  {billData ? (
+    <BillDetail client:load data={billData} />
+  ) : (
+    <div class="text-center py-16">
+      <h2 class="text-2xl font-bold">Bill Not Found</h2>
+      <p class="text-muted-foreground">The bill you are looking for does not exist or you do not have access.</p>
+      <a href="/dashboard" class="mt-4 inline-block underline">Return to Dashboard</a>
+    </div>
+  )}
+</DashboardLayout>
+

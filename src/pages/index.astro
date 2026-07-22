@@ -1,0 +1,690 @@
+---
+import '../styles/globals.css';
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Meterly" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Meterly calculates solar-adjusted electricity bills transparently to replace manual spreadsheets." />
+    <title>Meterly: Transparent electricity bills</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600&family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <!-- Theme: read preference before render to prevent flash -->
+    <script is:inline>
+      (function () {
+        const saved = localStorage.getItem('meterly-theme') || 'system';
+        const isDark = saved === 'dark' || (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+  </head>
+
+  <body class="bg-background text-on-background font-body-md antialiased overflow-x-hidden selection:bg-primary-container selection:text-primary-fixed">
+    <!-- TopNavBar -->
+    <header class="bg-surface/80 backdrop-blur-md w-full top-0 sticky z-50 border-b border-outline-variant/30 shadow-sm transition-all duration-300">
+      <div class="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+        <a class="text-2xl font-headline-lg text-primary tracking-tight flex items-center gap-2 hover:opacity-80 transition-opacity" href="/">
+          <div class="flex items-center justify-center flex-shrink-0">
+            <img src="/favicon.svg" alt="Meterly Logo" class="w-8 h-8 rounded-lg" />
+          </div>
+          <span class="font-headline-lg font-bold">Meterly</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-gutter">
+          <a class="text-label-caps font-label-caps text-on-surface-variant hover:text-primary-container transition-colors duration-200" href="#how-it-works">How it Works</a>
+          <a class="text-label-caps font-label-caps text-on-surface-variant hover:text-primary-container transition-colors duration-200" href="#features">Features</a>
+          <a class="text-label-caps font-label-caps text-on-surface-variant hover:text-primary-container transition-colors duration-200" href="#testimonials">Testimonials</a>
+        </nav>
+        <div class="flex items-center gap-3">
+          <button id="theme-toggle" aria-label="Toggle theme" class="p-2 rounded-full hover:bg-surface-container transition-colors text-on-surface-variant">
+            <span class="material-symbols-outlined dark:hidden">light_mode</span>
+            <span class="material-symbols-outlined hidden dark:block">dark_mode</span>
+          </button>
+          <a class="hidden md:inline-flex font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-200 px-4 py-3" href="/login">
+            Sign in
+          </a>
+          <a class="bg-primary hover:bg-primary-container hover:text-on-primary-container text-on-primary font-label-caps text-label-caps px-6 py-3 rounded-full transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg" href="/signup">
+            Sign up
+          </a>
+        </div>
+      </div>
+      <!-- Mobile drawer (suppressed signup since it is now always visible) -->
+      <div id="mobile-menu" class="hidden px-margin-mobile pb-4 pt-2 bg-surface border-t border-outline-variant/30 md:hidden">
+        <a href="/login" class="block py-2 text-label-caps font-label-caps text-on-surface-variant hover:text-primary-container transition-colors duration-200 text-center">Sign in</a>
+      </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="relative pt-stack-lg pb-stack-lg md:pt-[120px] md:pb-[160px] overflow-hidden">
+            <div class="absolute inset-0 z-0">
+                <img alt="Modern eco-friendly house with integrated solar panels" class="w-full h-full object-cover" src="/house.png">
+                <div class="absolute inset-0 bg-background/90 md:bg-gradient-to-r md:from-background md:via-background/80 md:to-transparent z-10">
+                </div>
+                <!-- Mobile dark mode gradient to ensure white text is readable against the bright sky -->
+                <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent hidden dark:block md:hidden z-10"></div>
+            </div>
+            <div class="relative z-10 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
+                <div class="lg:col-span-6 flex flex-col gap-stack-md">
+                    <div class="inline-flex items-center gap-2 bg-surface-container-high px-4 py-2 rounded-full w-fit border border-outline-variant/30">
+                        <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+                        <span class="font-label-caps text-label-caps text-primary">Intelligent Utility Management</span>
+                    </div>
+                    <h1 class="font-headline-xl text-headline-xl text-on-background tracking-tight dark:drop-shadow-lg">
+                        <span class="text-[#0a3a2a] dark:text-white">Solar Billing,</span> <br> <span class="text-[#4edea3] dark:text-primary italic">Simplified.</span>
+                    </h1>
+                    <p class="font-body-md text-body-md text-on-surface-variant max-w-lg">
+                        Stop struggling with Excel. Meterly automates complex solar calculations for landlords and tenants with 100% transparency and precision.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                        <a href="/signup" class="bg-primary text-on-primary font-label-caps text-label-caps px-8 py-4 rounded-full shadow-[0_8px_30px_rgb(0,53,39,0.15)] hover:shadow-[0_8px_30px_rgb(0,53,39,0.25)] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2">
+                            Start Tracking
+                            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+                        </a>
+                        <a href="#how-it-works" class="bg-surface border-2 border-primary text-primary font-label-caps text-label-caps px-8 py-4 rounded-full hover:bg-surface-container transition-colors duration-200 flex items-center justify-center gap-2">
+                            View Sample Bill
+                            <span class="material-symbols-outlined text-[18px]">receipt_long</span>
+                        </a>
+                    </div>
+                    <div class="flex items-center gap-4 mt-8 opacity-80">
+                        <div class="flex -space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-primary-container border-2 border-surface flex items-center justify-center">
+                                <span class="material-symbols-outlined text-on-primary text-xs">person</span>
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-secondary-container border-2 border-surface flex items-center justify-center">
+                                <span class="material-symbols-outlined text-on-secondary-container text-xs">person</span>
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-tertiary-container border-2 border-surface flex items-center justify-center">
+                                <span class="material-symbols-outlined text-on-tertiary-container text-xs">person</span>
+                            </div>
+                        </div>
+                        <span class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-wider">Trusted by 500+ Properties</span>
+                    </div>
+                </div>
+                <div class="lg:col-span-6 relative mt-12 lg:mt-0">
+                    <!-- Abstract Data Visualization / Glass Card -->
+                    <div class="relative w-full aspect-square max-w-[500px] ml-auto">
+                        <div class="absolute inset-0 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="py-stack-lg bg-surface-container-lowest" id="how-it-works">
+            <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+                <div class="text-center max-w-2xl mx-auto mb-16">
+                    <h2 class="font-headline-xl text-headline-xl text-on-background mb-4">Effortless Workflow</h2>
+                    <p class="font-body-md text-body-md text-on-surface-variant">From setup to settlement, Meterly streamlines the entire process, eliminating manual errors and disputes.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Step 1 -->
+                    <div class="group relative bg-surface border border-surface-variant rounded-xl p-8 hover:shadow-[0_8px_30px_rgb(0,53,39,0.08)] transition-all duration-300 hover:-translate-y-1">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <span class="font-data-point text-6xl text-primary font-bold">01</span>
+                        </div>
+                        <div class="w-12 h-12 bg-primary-container/10 rounded-full flex items-center justify-center mb-6 text-primary">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home_work</span>
+                        </div>
+                        <h3 class="font-headline-lg text-xl mb-3 text-on-background">Create your property</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Setup your home details and solar meter specifications in minutes. Simple, secure, and fast.</p>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="group relative bg-surface border border-surface-variant rounded-xl p-8 hover:shadow-[0_8px_30px_rgb(0,53,39,0.08)] transition-all duration-300 hover:-translate-y-1">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <span class="font-data-point text-6xl text-primary font-bold">02</span>
+                        </div>
+                        <div class="w-12 h-12 bg-primary-container/10 rounded-full flex items-center justify-center mb-6 text-primary">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person_add</span>
+                        </div>
+                        <h3 class="font-headline-lg text-xl mb-3 text-on-background">Invite your tenant</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Add your tenant's contact information and establish the energy split percentage upfront.</p>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="group relative bg-surface border border-surface-variant rounded-xl p-8 hover:shadow-[0_8px_30px_rgb(0,53,39,0.08)] transition-all duration-300 hover:-translate-y-1">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <span class="font-data-point text-6xl text-primary font-bold">03</span>
+                        </div>
+                        <div class="w-12 h-12 bg-primary-container/10 rounded-full flex items-center justify-center mb-6 text-primary">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">input</span>
+                        </div>
+                        <h3 class="font-headline-lg text-xl mb-3 text-on-background">Submit readings</h3>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Input three simple numbers monthly: Total Solar Generation, Grid Export, and Grid Import.</p>
+                    </div>
+                    <!-- Step 4 -->
+                    <div class="group relative bg-primary-container border border-primary rounded-xl p-8 shadow-md transform scale-105 z-10">
+                        <div class="absolute top-0 right-0 p-4 opacity-20">
+                            <span class="font-data-point text-6xl text-[#4edea3] dark:text-primary font-bold">04</span>
+                        </div>
+                        <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-6 text-primary">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+                        </div>
+                        <h3 class="font-headline-lg text-xl mb-3 text-on-primary-container">Bills are ready</h3>
+                        <p class="font-body-sm text-body-sm text-on-primary-container opacity-80">Everyone receives a clear, math-verified bill instantly. Complete transparency, zero disputes.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature: The Transparent Bill -->
+        <section class="py-stack-lg bg-surface overflow-hidden" id="features">
+            <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <!-- Content -->
+                    <div>
+                        <div class="inline-flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full mb-6 border border-outline-variant/30">
+                            <span class="material-symbols-outlined text-primary text-[16px]">visibility</span>
+                            <span class="font-label-caps text-[10px] text-primary uppercase tracking-widest">The Transparent Bill</span>
+                        </div>
+                        <h2 class="font-headline-xl text-headline-xl text-on-background mb-6">Clarity in every calculation.</h2>
+                        <p class="font-body-md text-body-md text-on-surface-variant mb-8">
+                            We've redesigned the utility bill from the ground up. No hidden fees, no confusing jargon—just straightforward math that both landlords and tenants can trust.
+                        </p>
+                        <ul class="space-y-6">
+                            <li class="flex gap-4">
+                                <div class="mt-1 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                                    <span class="material-symbols-outlined text-[16px]">check</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-label-caps text-label-caps text-on-background mb-1">Clear Solar Breakdown</h4>
+                                    <p class="font-body-sm text-body-sm text-on-surface-variant">Instantly see the exact calculation: Solar Generated minus Export equals Self-Consumed energy.</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-4">
+                                <div class="mt-1 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                                    <span class="material-symbols-outlined text-[16px]">check</span>
+                                </div>
+                                <div>
+                                    <h4 class="font-label-caps text-label-caps text-on-background mb-1">Real-time Status Tracking</h4>
+                                    <p class="font-body-sm text-body-sm text-on-surface-variant">Visual indicators let you know exactly what's paid and what's pending, keeping everyone aligned.</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <!-- Bill Mockup -->
+                    <div class="relative">
+                        <!-- Decorative background elements -->
+                        <div class="absolute -inset-4 bg-gradient-to-tr from-surface-container to-surface-container-high rounded-2xl transform rotate-3 z-0">
+                        </div>
+                        <!-- The Bill Card -->
+                        <div class="relative bg-surface-container-lowest border border-surface-variant rounded-xl shadow-[0_20px_50px_rgb(0,53,39,0.1)] p-8 z-10">
+                            <!-- Header -->
+                            <div class="flex justify-between items-start mb-6 pb-4 border-b border-surface-variant">
+                                <div>
+                                    <h3 class="font-headline-lg text-xl text-on-background">Utility Statement</h3>
+                                    <p class="font-label-caps text-[10px] text-on-surface-variant mt-1">JUNE 2025 • APARTMENT 4B</p>
+                                </div>
+                                <div class="bg-[#dcfce7] text-[#166534] px-3 py-1 rounded-sm font-label-caps text-[10px] border border-[#bbf7d0] tracking-widest font-bold">
+                                    PAID
+                                </div>
+                            </div>
+                            <!-- Meter Readings Table -->
+                            <div class="mb-6">
+                                <h4 class="font-label-caps text-[10px] text-on-surface-variant mb-3 uppercase tracking-widest">Meter Readings (kWh)</h4>
+                                <div class="grid grid-cols-4 gap-2 text-[10px] font-label-caps text-on-surface-variant border-b border-surface-variant pb-1 mb-2">
+                                    <span class="">Category</span>
+                                    <span class="text-right">Start</span>
+                                    <span class="text-right">End</span>
+                                    <span class="text-right">Change</span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="grid grid-cols-4 gap-2 text-xs">
+                                        <span class="text-on-background">Solar Gen</span>
+                                        <span class="text-right opacity-60">3,005</span>
+                                        <span class="text-right opacity-60">3,469</span>
+                                        <span class="text-right font-bold">464</span>
+                                    </div>
+                                    <div class="grid grid-cols-4 gap-2 text-xs">
+                                        <span class="text-on-background">Export</span>
+                                        <span class="text-right opacity-60">2,690</span>
+                                        <span class="text-right opacity-60">3,110</span>
+                                        <span class="text-right font-bold">420</span>
+                                    </div>
+                                    <div class="grid grid-cols-4 gap-2 text-xs">
+                                        <span class="text-on-background">Import</span>
+                                        <span class="text-right opacity-60">605</span>
+                                        <span class="text-right opacity-60">709</span>
+                                        <span class="text-right font-bold">104</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Solar Breakdown -->
+                            <div class="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/10">
+                                <h4 class="font-label-caps text-[10px] text-primary mb-3 uppercase tracking-widest">Energy Math</h4>
+                                <div class="space-y-1 text-xs">
+                                    <div class="flex justify-between"><span class="">Solar Generated</span><span class="">464 units</span></div>
+                                    <div class="flex justify-between text-secondary"><span class="">(-) Exported to Grid</span><span class="">420 units</span></div>
+                                    <div class="flex justify-between font-bold border-t border-primary/10 pt-1 mt-1">
+                                        <span class="">Solar Self-Consumed</span><span class="">44 units</span>
+                                    </div>
+                                    <div class="flex justify-between"><span class="">(+) Imported from Grid</span><span class="">104 units</span></div>
+                                    <div class="flex justify-between font-bold text-primary text-sm pt-1"><span class="">Total Consumption</span><span class="">148 units</span></div>
+                                </div>
+                            </div>
+                            <!-- Tenant Bill -->
+                            <div class="bg-surface-container p-5 rounded-lg border border-surface-variant/50 mb-4">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest">Tenant's Share (50%)</h4>
+                                    <span class="text-[10px] font-bold text-primary">74 units</span>
+                                </div>
+                                <div class="space-y-1 text-xs mb-3">
+                                    <div class="flex justify-between"><span class="">Consumption (74 × ₹7.50)</span><span class="">₹555.00</span></div>
+                                    <div class="flex justify-between"><span class="">Water Fixed Charge</span><span class="">₹200.00</span></div>
+                                </div>
+                                <div class="flex justify-between items-center pt-2 border-t border-surface-variant">
+                                    <span class="font-body-md text-on-background font-bold">Total Due</span>
+                                    <span class="font-data-point text-2xl text-primary">₹755.00</span>
+                                </div>
+                            </div>
+                            <!-- Owner Credit -->
+                            <div class="px-2">
+                                <div class="flex justify-between items-center text-[10px] font-label-caps text-on-surface-variant">
+                                    <span class="">Owner's Export Credit</span>
+                                    <span class="italic">(420 × ₹2.50) - ₹15 = ₹1,035.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Visual Insights Section -->
+        <section class="py-stack-lg bg-surface-container-low overflow-hidden" id="visual-insights">
+            <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+                <div class="text-center max-w-2xl mx-auto mb-16">
+                    <div class="inline-flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-full mb-4 border border-primary/10">
+                        <span class="material-symbols-outlined text-primary text-[16px]">analytics</span>
+                        <span class="font-label-caps text-[10px] text-primary uppercase tracking-widest">Dashboard Preview</span>
+                    </div>
+                    <h2 class="font-headline-xl text-headline-xl text-on-background mb-4">Visual Insights for Everyone</h2>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Real-time data visualization that makes sense of your energy production and consumption patterns.</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+                    <div class="lg:col-span-8 bg-surface-container-lowest border border-surface-variant/50 rounded-2xl p-8 shadow-sm">
+                        <div class="flex justify-between items-center mb-8">
+                            <h3 class="font-headline-lg text-xl text-on-background">Consumption Trends</h3>
+                            <div class="flex gap-4">
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-primary"></span><span class="text-xs font-label-caps text-on-surface-variant">Solar</span></div>
+                                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-secondary-container"></span><span class="text-xs font-label-caps text-on-surface-variant">Grid</span></div>
+                            </div>
+                        </div>
+                        <div class="h-[240px] flex items-end justify-between gap-4 mb-12">
+                            <div class="flex flex-col justify-between h-40 mb-6 text-[10px] font-label-caps text-on-surface-variant text-right">
+                                <span>600<span class="hidden sm:inline"> units</span></span>
+                                <span>300<span class="hidden sm:inline"> units</span></span>
+                                <span>0<span class="hidden sm:inline"> units</span></span>
+                            </div>
+                            <div class="flex-1 flex flex-col gap-2">
+                                <div class="flex items-end gap-1 h-40">
+                                    <div class="bg-primary w-full rounded-t-sm" style="height: 45%"></div>
+                                    <div class="bg-secondary-container w-full rounded-t-sm" style="height: 25%"></div>
+                                </div><span class="text-[10px] font-label-caps text-center">JAN</span>
+                            </div>
+                            <div class="flex-1 flex flex-col gap-2">
+                                <div class="flex items-end gap-1 h-40">
+                                    <div class="bg-primary w-full rounded-t-sm" style="height: 55%"></div>
+                                    <div class="bg-secondary-container w-full rounded-t-sm" style="height: 35%"></div>
+                                </div><span class="text-[10px] font-label-caps text-center">FEB</span>
+                            </div>
+                            <div class="flex-1 flex flex-col gap-2">
+                                <div class="flex items-end gap-1 h-40">
+                                    <div class="bg-primary w-full rounded-t-sm" style="height: 40%"></div>
+                                    <div class="bg-secondary-container w-full rounded-t-sm" style="height: 45%"></div>
+                                </div><span class="text-[10px] font-label-caps text-center">MAR</span>
+                            </div>
+                            <div class="flex-1 flex flex-col gap-2">
+                                <div class="flex items-end gap-1 h-40">
+                                    <div class="bg-primary w-full rounded-t-sm" style="height: 65%"></div>
+                                    <div class="bg-secondary-container w-full rounded-t-sm" style="height: 20%"></div>
+                                </div><span class="text-[10px] font-label-caps text-center">APR</span>
+                            </div>
+                            <div class="flex-1 flex flex-col gap-2">
+                                <div class="flex items-end gap-1 h-40">
+                                    <div class="bg-primary w-full rounded-t-sm" style="height: 80%"></div>
+                                    <div class="bg-secondary-container w-full rounded-t-sm" style="height: 15%"></div>
+                                </div><span class="text-[10px] font-label-caps text-center">MAY</span>
+                            </div>
+                            <div class="flex-1 flex flex-col gap-2">
+                                <div class="flex items-end gap-1 h-40">
+                                    <div class="bg-primary w-full rounded-t-sm" style="height: 75%"></div>
+                                    <div class="bg-secondary-container w-full rounded-t-sm" style="height: 10%"></div>
+                                </div><span class="text-[10px] font-label-caps text-center">JUN</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-surface-variant/30">
+                            <div class="flex flex-col gap-1"><span class="text-[10px] font-label-caps text-on-surface-variant uppercase tracking-widest">Peak Solar Hours</span><span class="font-data-point text-lg text-on-background">11 AM - 3 PM</span></div>
+                            <div class="flex flex-col gap-1"><span class="text-[10px] font-label-caps text-on-surface-variant uppercase tracking-widest">Self-Sufficiency Score</span><span class="font-data-point text-lg text-on-background">84%</span></div>
+                            <div class="flex flex-col gap-1"><span class="text-[10px] font-label-caps text-on-surface-variant uppercase tracking-widest">Grid Independence</span><span class="font-data-point text-lg text-on-background">+12% <span class="text-[10px] font-body-sm text-on-surface-variant">vs last month</span></span></div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-4 flex flex-col gap-6">
+                        <div class="bg-primary text-on-primary rounded-2xl p-8 flex flex-col justify-between h-1/2 shadow-lg">
+                            <div class="flex justify-between items-start mb-6">
+                                <h4 class="font-label-caps text-xs uppercase tracking-widest opacity-80">Billing Cycle</h4>
+                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold tracking-widest">LIVE</span>
+                            </div>
+                            <div class="mb-6">
+                                <p class="text-3xl font-data-point mb-1">12 Days Left</p>
+                                <p class="text-xs opacity-60">Current Period: June 2025</p>
+                            </div>
+                            <div class="space-y-2 mb-6">
+                                <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-white h-full w-[60%]"></div>
+                                </div>
+                                <div class="flex justify-between text-[10px] font-label-caps opacity-60"><span class="">JUNE 1</span><span class="">JUNE 30</span></div>
+                            </div>
+                            <p class="text-[10px] italic opacity-60">Next bill automatically generates on July 1st</p>
+                        </div>
+                        <div class="bg-secondary-container rounded-2xl p-8 flex flex-col justify-between h-1/2 border border-secondary/10">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-secondary">
+                                    <span class="material-symbols-outlined">savings</span>
+                                </div>
+                                <h3 class="font-headline-lg text-lg text-on-secondary-container">Solar Savings</h3>
+                            </div>
+                            <div class="mb-6">
+                                <p class="text-4xl font-data-point text-secondary">₹24,500</p>
+                                <p class="text-xs font-label-caps text-on-secondary-container/70 uppercase mt-1">Total Savings YTD (vs Grid)</p>
+                            </div>
+                            <div class="flex items-center gap-2 text-secondary">
+                                <span class="material-symbols-outlined text-sm">trending_up</span>
+                                <span class="text-xs font-body-sm">12% increase from last month</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Smart Bill Scanning Section -->
+        <section class="py-stack-lg bg-surface-container-low" id="smart-scanning">
+            <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <!-- Left: copy -->
+                    <div class="flex flex-col gap-stack-md">
+                        <div class="inline-flex items-center gap-2 bg-primary/5 px-3 py-1.5 rounded-full w-fit border border-primary/10">
+                            <span class="material-symbols-outlined text-primary text-[16px]">document_scanner</span>
+                            <span class="font-label-caps text-[10px] text-primary uppercase tracking-widest">Smart Scanning</span>
+                        </div>
+                        <h2 class="font-headline-xl text-headline-xl text-on-background">
+                            Scan your bill.<br>Skip the typing.
+                        </h2>
+                        <p class="font-body-md text-body-md text-on-surface-variant max-w-md">
+                            Upload a photo of your meter or a PDF of your electricity bill. Meterly reads the numbers automatically using text extraction and OCR — then pre-fills your reading form.
+                        </p>
+                        <ul class="space-y-4 mt-2">
+                            <li class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">picture_as_pdf</span>
+                                </div>
+                                <div>
+                                    <p class="font-body-md font-semibold text-on-background text-sm">Native PDF extraction</p>
+                                    <p class="font-body-sm text-on-surface-variant text-xs mt-0.5">Computer-generated bills (MGVCL and similar) are parsed directly — no image conversion needed.</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">photo_camera</span>
+                                </div>
+                                <div>
+                                    <p class="font-body-md font-semibold text-on-background text-sm">Meter photo OCR</p>
+                                    <p class="font-body-sm text-on-surface-variant text-xs mt-0.5">Point your camera at the meter display. Tesseract reads the digits in your browser — nothing leaves your device until you confirm.</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+                                </div>
+                                <div>
+                                    <p class="font-body-md font-semibold text-on-background text-sm">You always stay in control</p>
+                                    <p class="font-body-sm text-on-surface-variant text-xs mt-0.5">If OCR finds numbers that differ from what you typed, a conflict dialog lets you pick which to keep — field by field.</p>
+                                </div>
+                            </li>
+                        </ul>
+                        <p class="text-xs text-on-surface-variant/60 mt-2 italic">OCR figures may contain errors. Always verify against your physical meter before submitting.</p>
+                    </div>
+                    <!-- Right: Bento Grid Illustration -->
+                    <div class="grid grid-cols-2 grid-rows-2 gap-4 h-[400px] mt-8 lg:mt-0">
+                        <!-- Top Left: Photo OCR -->
+                        <div class="bg-surface border border-surface-variant rounded-2xl p-5 shadow-sm flex flex-col relative overflow-hidden">
+                            <!-- Camera brackets -->
+                            <div class="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-primary/40 rounded-tl-sm"></div>
+                            <div class="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-primary/40 rounded-tr-sm"></div>
+                            <div class="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-primary/40 rounded-bl-sm"></div>
+                            <div class="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-primary/40 rounded-br-sm"></div>
+                            
+                            <div class="flex-1 flex items-center justify-center mt-1">
+                                <!-- Digital meter display -->
+                                <div class="bg-[#0f172a] text-[#4ade80] font-mono text-2xl px-4 py-2 rounded-md tracking-[0.2em] shadow-inner border border-[#1e293b]">
+                                    09920
+                                </div>
+                            </div>
+                            <div class="mt-auto flex items-center gap-2 text-on-surface-variant justify-center pb-1">
+                                <span class="material-symbols-outlined text-[14px]">photo_camera</span>
+                                <span class="text-[9px] font-label-caps uppercase tracking-widest font-semibold">Live OCR</span>
+                            </div>
+                        </div>
+
+                        <!-- Right Tall: Conflict Resolution -->
+                        <div class="row-span-2 bg-surface-container-lowest border border-surface-variant rounded-2xl p-6 shadow-xl flex flex-col">
+                            <div class="mb-5 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[9px] text-on-surface-variant font-label-caps uppercase tracking-widest">Verification</span>
+                                    <h4 class="font-semibold text-on-background text-sm mt-0.5">Review Extraction</h4>
+                                </div>
+                                <div class="w-6 h-6 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-[14px]">priority_high</span>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-4 flex-1">
+                                <!-- Field 1 (Match) -->
+                                <div class="p-3.5 rounded-xl bg-surface border border-surface-variant/60 shadow-sm">
+                                    <p class="text-[9px] font-label-caps text-on-surface-variant uppercase mb-1.5 tracking-wider">Import Reading</p>
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-data-point text-on-background text-lg">9,920</span>
+                                        <span class="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full font-semibold">Match</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Field 2 (Conflict) -->
+                                <div class="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/30 relative overflow-hidden shadow-sm">
+                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
+                                    <p class="text-[9px] font-label-caps text-amber-700 dark:text-amber-500 uppercase mb-3 pl-2 tracking-wider">Export Reading (Mismatch)</p>
+                                    <div class="grid grid-cols-2 gap-3 pl-2">
+                                        <div>
+                                            <p class="text-[9px] text-on-surface-variant uppercase tracking-wider mb-0.5">OCR Found</p>
+                                            <p class="font-data-point text-on-background line-through opacity-40 text-sm">4,210</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-[9px] text-on-surface-variant uppercase tracking-wider mb-0.5">You Typed</p>
+                                            <p class="font-data-point text-amber-600 dark:text-amber-400 font-semibold text-lg leading-none">4,218</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Action buttons -->
+                            <div class="mt-5 pt-5 border-t border-surface-variant flex gap-3">
+                                <div class="flex-1 h-9 rounded-lg bg-surface-variant/30 hover:bg-surface-variant/50 transition-colors border border-surface-variant flex items-center justify-center cursor-pointer">
+                                    <span class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">Edit</span>
+                                </div>
+                                <div class="flex-[1.5] h-9 rounded-lg bg-primary hover:bg-primary/90 transition-colors text-on-primary flex items-center justify-center shadow-md cursor-pointer">
+                                    <span class="text-[11px] font-semibold uppercase tracking-wider">Keep Typed</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bottom Left: PDF parsing -->
+                        <div class="bg-primary/5 border border-primary/10 rounded-2xl p-5 shadow-sm flex flex-col justify-center">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-primary flex-shrink-0">
+                                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">picture_as_pdf</span>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-on-background truncate">MGVCL_July.pdf</p>
+                                    <p class="text-[11px] text-primary flex items-center gap-1 mt-1 font-medium">
+                                        <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                                        Parsed instantly
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-stack-lg bg-surface-container-lowest" id="testimonials">
+            <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+                <div class="text-center max-w-2xl mx-auto mb-16">
+                    <h2 class="font-headline-xl text-headline-xl text-on-background mb-4">Trusted by the community</h2>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Hear from landlords and tenants who have transformed their utility management.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Testimonial 1 -->
+                    <div class="bg-surface border border-surface-variant rounded-xl p-8 flex flex-col justify-between">
+                        <div class="mb-6">
+                            <span class="material-symbols-outlined text-primary/40 text-4xl mb-4" style="font-variation-settings: 'FILL' 1;">format_quote</span>
+                            <p class="font-body-md text-on-background italic">"Meterly completely eliminated the monthly argument over the electricity bill. The math is right there, transparent for everyone. It saves me hours every month."</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-headline-lg text-sm">A</div>
+                            <div>
+                                <h5 class="font-label-caps text-sm text-on-background">Aman</h5>
+                                <p class="font-label-caps text-[10px] text-on-surface-variant">LANDLORD, BANGALORE</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Testimonial 2 -->
+                    <div class="bg-surface border border-surface-variant rounded-xl p-8 flex flex-col justify-between shadow-[0_8px_30px_rgb(0,53,39,0.05)] transform md:-translate-y-4">
+                        <div class="mb-6">
+                            <span class="material-symbols-outlined text-primary/40 text-4xl mb-4" style="font-variation-settings: 'FILL' 1;">format_quote</span>
+                            <p class="font-body-md text-on-background italic">"As a tenant, I love the clarity. I used to just pay whatever number was sent to me, but now I understand exactly how my solar usage affects my bill. Highly recommend."</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary font-headline-lg text-sm">P</div>
+                            <div>
+                                <h5 class="font-label-caps text-sm text-on-background">Priya</h5>
+                                <p class="font-label-caps text-[10px] text-on-surface-variant">TENANT, DELHI</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Testimonial 3 -->
+                    <div class="bg-surface border border-surface-variant rounded-xl p-8 flex flex-col justify-between">
+                        <div class="mb-6">
+                            <span class="material-symbols-outlined text-primary/40 text-4xl mb-4" style="font-variation-settings: 'FILL' 1;">format_quote</span>
+                            <p class="font-body-md text-on-background italic">"The setup took less than 5 minutes. I invited my tenants, set the split, and we were up and running. The automated calculations are flawless."</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-headline-lg text-sm">S</div>
+                            <div>
+                                <h5 class="font-label-caps text-sm text-on-background">Shivani</h5>
+                                <p class="font-label-caps text-[10px] text-on-surface-variant">PROPERTY Owner, Gujarat</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section class="py-stack-lg relative overflow-hidden bg-primary-container">
+            <!-- Background Texture -->
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 32px 32px;"></div>
+            <div class="relative z-10 max-w-3xl mx-auto px-margin-mobile text-center">
+                <h2 class="font-headline-xl text-headline-xl text-on-primary-container mb-6">Ready to save hours every month?</h2>
+                <p class="font-body-md text-lg text-on-primary-container opacity-80 mb-10">Join 500+ properties using Meterly for transparent, automated solar billing.</p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="/signup" class="bg-primary text-on-primary font-label-caps text-label-caps px-8 py-4 rounded-full shadow-lg hover:brightness-110 transition-colors duration-200">
+                        Get Started Free
+                    </a>
+                    <a href="mailto:meterly.support@protonmail.com" class="bg-transparent border border-on-primary-container/30 text-on-primary-container font-label-caps text-label-caps px-8 py-4 rounded-full hover:bg-on-primary-container/10 transition-colors duration-200">
+                        Contact Support
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-surface-container-lowest full-width py-stack-lg border-t border-outline-variant/30">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto text-left">
+            <div class="col-span-1 md:col-span-2">
+                <div class="mb-4 flex items-center gap-2">
+                    <div class="flex items-center justify-center flex-shrink-0">
+                        <img src="/favicon.svg" alt="Meterly Logo" class="w-8 h-8 rounded-lg" />
+                    </div>
+                    <span class="font-headline-lg font-bold text-on-surface">Meterly</span>
+                </div>
+                <p class="text-body-sm font-body-sm text-on-surface-variant max-w-sm mb-6">
+                    Simplifying solar billing for a sustainable future. Transparent, automated, and dispute-free.
+                </p>
+                <p class="text-body-sm font-body-sm text-outline">
+                    © {new Date().getFullYear()} Meterly Technologies. All rights reserved.
+                </p>
+            </div>
+            <div>
+                <h4 class="text-primary font-bold font-label-caps text-sm mb-4">Legal</h4>
+                <ul class="space-y-3">
+                    <li><a class="text-body-sm font-body-sm text-on-surface-variant hover:text-primary transition-colors block" href="/privacy">Privacy Policy</a></li>
+                    <li><a class="text-body-sm font-body-sm text-on-surface-variant hover:text-primary transition-colors block" href="/terms">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-primary font-bold font-label-caps text-sm mb-4">Connect</h4>
+                <ul class="space-y-3">
+                    <li><a class="text-body-sm font-body-sm text-on-surface-variant hover:text-primary transition-colors block" href="mailto:meterly.support@protonmail.com">Contact Support</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+      // Theme toggle functionality
+      const themeToggle = document.getElementById('theme-toggle');
+      const html = document.documentElement;
+
+      themeToggle?.addEventListener('click', () => {
+        const isDark = html.classList.contains('dark');
+        if (isDark) {
+          html.classList.remove('dark');
+          html.setAttribute('data-theme', 'light');
+          localStorage.setItem('meterly-theme', 'light');
+        } else {
+          html.classList.add('dark');
+          html.setAttribute('data-theme', 'dark');
+          localStorage.setItem('meterly-theme', 'dark');
+        }
+      });
+
+      // Mobile menu toggle
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const mobileMenu = document.getElementById('mobile-menu');
+
+      mobileMenuBtn?.addEventListener('click', () => {
+        if (mobileMenu) {
+          mobileMenu.classList.toggle('hidden');
+        }
+      });
+    </script>
+  </body>
+</html>

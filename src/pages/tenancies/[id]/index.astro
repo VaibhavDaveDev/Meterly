@@ -1,0 +1,16 @@
+---
+import '../../../styles/globals.css';
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import { TenancyOverview } from '../../../components/tenancies/TenancyOverview';
+
+const { id } = Astro.params;
+---
+
+<DashboardLayout title="Tenancy Overview - Meterly">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <TenancyOverview 
+      client:only="react" 
+      tenancyId={id as string} 
+    />
+  </div>
+</DashboardLayout>

@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'eslint.config.mjs'
+      - 'vitest.config.ts'
+      - 'astro.config.mjs'
+      - 'wrangler.jsonc'
+      - 'drizzle.config.ts'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'eslint.config.mjs'
+      - 'vitest.config.ts'
+      - 'astro.config.mjs'
+      - 'wrangler.jsonc'
+      - 'drizzle.config.ts'
+
+jobs:
+  ci:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # version is read from packageManager field in package.json — no explicit version here
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test --run
+        env:
+          # Vitest needs this to stay in test mode
+          NODE_ENV: test
+
+  security:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    # Only run security audit on pushes to main (not every PR)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # version is read from packageManager field in package.json — no explicit version here
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies only
+        # --prod skips devDependencies (miniflare, vitest, etc.)
+        # This avoids false positives from undici/ws in miniflare
+        run: pnpm audit --prod
+        # Allow the job to continue even if there are moderate vulns
+        # (change to 'continue-on-error: false' when you want hard failures)
+        continue-on-error: false

@@ -1,0 +1,34 @@
+---
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { RequestsManager } from '../components/properties/RequestsManager';
+import { getDb } from '../db';
+import '../styles/globals.css';
+import type { D1Database } from '@cloudflare/workers-types';
+import { properties } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { authClient } from '../lib/auth-client';
+import { env } from 'cloudflare:workers';
+
+const session = await authClient.getSession({ fetchOptions: { headers: Astro.request.headers } });
+if (!session?.data?.user?.id) {
+  return Astro.redirect('/login');
+}
+
+const userId = session.data.user.id;
+const db = getDb((env as { DB: D1Database }).DB);
+
+// Only owners can see edit requests - fetch their properties
+const ownerProperties = await db
+  .select({ id: properties.id, name: properties.name })
+  .from(properties)
+  .where(eq(properties.ownerId, userId));
+
+// If user has no properties (pure tenant), redirect to dashboard
+if (ownerProperties.length === 0) {
+  return Astro.redirect('/dashboard');
+}
+---
+
+<DashboardLayout title="Edit Requests">
+  <RequestsManager client:load />
+</DashboardLayout>

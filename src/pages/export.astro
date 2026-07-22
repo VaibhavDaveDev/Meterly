@@ -1,0 +1,31 @@
+---
+import '../styles/globals.css';
+import type { D1Database } from '@cloudflare/workers-types';
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { ExportPage } from '../components/export/ExportPage';
+import { getAuth } from '../api/lib/auth';
+import { getDb } from '../db';
+import { user as userTable } from '../db/schema/auth';
+import { eq } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
+
+const auth = getAuth((env as unknown as Parameters<typeof getAuth>[0]) || (process.env as unknown as Parameters<typeof getAuth>[0]));
+const session = await auth.api.getSession({ headers: Astro.request.headers });
+
+if (!session) {
+  return Astro.redirect('/login');
+}
+
+if (session?.user) {
+  const db = getDb((env as { DB: D1Database }).DB || (process.env.DB as unknown as D1Database));
+  const [fullUser] = await db.select().from(userTable).where(eq(userTable.id, session.user.id));
+  
+  if (fullUser && !fullUser.onboardingCompletedAt) {
+    return Astro.redirect('/onboarding');
+  }
+}
+---
+
+<DashboardLayout>
+  <ExportPage client:load />
+</DashboardLayout>

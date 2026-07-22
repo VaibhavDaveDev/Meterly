@@ -1,0 +1,725 @@
+---
+import '../styles/globals.css';
+import { NotificationBell } from '../components/common/NotificationBell';
+import { UserNav } from '../components/common/UserNav';
+import { TopLoader } from '../components/common/TopLoader';
+import { Toaster } from '../components/ui/toaster';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { HelpSlideOver } from '../components/common/HelpSlideOver';
+import { getAuth } from '../api/lib/auth';
+import { getDb } from '../db';
+import { user as userTable } from '../db/schema/auth';
+import { eq } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'Dashboard' } = Astro.props;
+const p = Astro.url.pathname;
+
+// Check if user is owner
+const currentEnv = (env || process.env) as unknown as Parameters<typeof getAuth>[0];
+const auth = getAuth(currentEnv);
+const session = await auth.api.getSession({ headers: Astro.request.headers });
+let isOwner = false;
+let isTenant = false;
+if (session?.user && currentEnv?.DB) {
+  const db = getDb(currentEnv.DB);
+  const [fullUser] = await db.select().from(userTable).where(eq(userTable.id, session.user.id));
+  if (fullUser) {
+    if (fullUser.primaryRole === 'owner' || fullUser.primaryRole === 'both') isOwner = true;
+    if (fullUser.primaryRole === 'tenant' || fullUser.primaryRole === 'both') isTenant = true;
+  }
+}
+
+// nav item helper — returns 'active' string when path matches
+const active = (href: string, exact = false) =>
+  exact ? p === href : p === href || p.startsWith(href + '/');
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} — Meterly</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600&family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <!-- Apply saved theme before first paint -->
+    <script is:inline>
+      (function () {
+        const t = localStorage.getItem('meterly-theme') || 'dark';
+        const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      })();
+    </script>
+  </head>
+
+  <body class="overflow-x-hidden">
+    <TopLoader client:load />
+    <Toaster client:load />
+    <HelpSlideOver client:load isOwner={isOwner} />
+    <!-- ═══════════════════════════════════════════════════════════
+         APP SHELL
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="shell">
+
+      <!-- ── Sidebar ────────────────────────────────────────────── -->
+      <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+
+        <!-- Wordmark -->
+        <div class="sb-wordmark">
+          <a href="/dashboard" class="wordmark-link" aria-label="Go to dashboard">
+            <span class="wordmark-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                   stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </span>
+            <span class="wordmark-text">Meterly</span>
+          </a>
+          <!-- Desktop: collapse toggle -->
+          <button id="sb-toggle" class="sb-toggle" aria-label="Collapse sidebar" aria-expanded="true">
+            <PanelLeftClose className="icon-collapse" size={16} strokeWidth={2} />
+            <PanelLeftOpen className="icon-expand" size={16} strokeWidth={2} />
+          </button>
+          <!-- Mobile: close button -->
+          <button id="sb-close-mobile" class="sb-close-mobile" aria-label="Close navigation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Primary nav -->
+        <div class="sb-nav">
+          <a href="/dashboard"
+             title="Overview"
+             class={`sb-link ${active('/dashboard', true) ? 'sb-link--active' : ''}`}
+             aria-current={active('/dashboard', true) ? 'page' : undefined}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            <span class="sb-link-label">Overview</span>
+          </a>
+
+          {isOwner && (
+            <div class="sb-group">
+              <p class="sb-group-label">Owner</p>
+              <a href="/properties"
+                 title="Properties"
+                 class={`sb-link ${active('/properties') ? 'sb-link--active' : ''}`}
+                 aria-current={active('/properties') ? 'page' : undefined}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                <span class="sb-link-label">Properties</span>
+              </a>
+              <a href="/requests"
+                 title="Edit Requests"
+                 class={`sb-link ${active('/requests') ? 'sb-link--active' : ''}`}
+                 aria-current={active('/requests') ? 'page' : undefined}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">
+                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+                  <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                </svg>
+                <span class="sb-link-label">Edit Requests</span>
+              </a>
+            </div>
+          )}
+
+          {isTenant && (
+            <div class="sb-group">
+              <p class="sb-group-label">Tenant</p>
+              <a href="/bills"
+                 title="My Bills"
+                 class={`sb-link ${active('/bills') ? 'sb-link--active' : ''}`}
+                 aria-current={active('/bills') ? 'page' : undefined}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <span class="sb-link-label">My Bills</span>
+              </a>
+            </div>
+          )}
+        </div>
+
+        <!-- Footer links -->
+        <div class="sb-footer">
+          <a href="/export"
+             title="Export"
+             class={`sb-link ${active('/export', true) ? 'sb-link--active' : ''}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span class="sb-link-label">Export</span>
+          </a>
+          <a href="/settings"
+             title="Settings"
+             class={`sb-link ${active('/settings', true) ? 'sb-link--active' : ''}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span class="sb-link-label">Settings</span>
+          </a>
+        </div>
+      </nav>
+      <script is:inline>
+        (function() {
+          if (window.innerWidth >= 768 && localStorage.getItem('meterly-sidebar') === 'collapsed') {
+            document.getElementById('sidebar').classList.add('sidebar--collapsed');
+          }
+        })();
+      </script>
+
+      <!-- ── Backdrop (mobile) ──────────────────────────────────── -->
+      <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+
+      <!-- ── Main column ───────────────────────────────────────── -->
+      <div class="main-col">
+
+        <!-- Topbar -->
+        <header class="topbar">
+          <!-- Mobile: hamburger -->
+          <button
+            class="hamburger"
+            id="hamburger"
+            aria-label="Open navigation"
+            aria-expanded="false"
+            aria-controls="sidebar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+
+          <!-- Mobile / Collapsed Desktop: wordmark -->
+          <a href="/dashboard" class="topbar-wordmark" aria-label="Go to dashboard">
+            <span class="topbar-wordmark-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                   stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </span>
+            <span class="topbar-wordmark-text">Meterly</span>
+          </a>
+
+          <!-- Spacer (desktop: page title could go here) -->
+          <div class="topbar-spacer" aria-hidden="true"></div>
+
+          <!-- Right actions: notification bell + user nav -->
+          <div class="topbar-actions">
+            <NotificationBell client:load />
+            <UserNav client:load />
+          </div>
+        </header>
+
+        <!-- Page content -->
+        <main class="page-main" id="main-content" tabindex="-1">
+          <div class="page-body">
+            <slot />
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      const sidebar = document.getElementById('sidebar')!;
+      const sbToggle = document.getElementById('sb-toggle')!;
+      const sbCloseMobile = document.getElementById('sb-close-mobile')!;
+      const ham = document.getElementById('hamburger')!;
+      const bd = document.getElementById('backdrop')!;
+      const SIDEBAR_KEY = 'meterly-sidebar';
+
+      // === Desktop collapse/expand ===
+      function applyCollapsed(collapsed: boolean) {
+        if (collapsed) {
+          sidebar.classList.add('sidebar--collapsed');
+          sbToggle.setAttribute('aria-expanded', 'false');
+          sbToggle.setAttribute('aria-label', 'Expand sidebar');
+        } else {
+          sidebar.classList.remove('sidebar--collapsed');
+          sbToggle.setAttribute('aria-expanded', 'true');
+          sbToggle.setAttribute('aria-label', 'Collapse sidebar');
+        }
+      }
+
+      // Restore from localStorage on load (already mostly handled by inline script for pre-paint, but we update aria state here)
+      applyCollapsed(localStorage.getItem(SIDEBAR_KEY) === 'collapsed');
+
+      sbToggle.addEventListener('click', () => {
+        const next = !sidebar.classList.contains('sidebar--collapsed');
+        applyCollapsed(next);
+        localStorage.setItem(SIDEBAR_KEY, next ? 'collapsed' : 'expanded');
+      });
+
+      // === Mobile open/close ===
+      function mobileOpen() {
+        sidebar.classList.add('sidebar--open');
+        bd.classList.add('backdrop--visible');
+        ham.setAttribute('aria-expanded', 'true');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function mobileClose() {
+        sidebar.classList.remove('sidebar--open');
+        bd.classList.remove('backdrop--visible');
+        ham.setAttribute('aria-expanded', 'false');
+        document.body.style.overflow = '';
+      }
+
+      ham.addEventListener('click', () =>
+        sidebar.classList.contains('sidebar--open') ? mobileClose() : mobileOpen()
+      );
+      bd.addEventListener('click', mobileClose);
+      sbCloseMobile.addEventListener('click', mobileClose);
+      document.addEventListener('keydown', (e) => e.key === 'Escape' && mobileClose());
+
+      // Close on nav link tap (mobile)
+      sidebar.querySelectorAll('.sb-link').forEach(link => {
+        link.addEventListener('click', () => {
+          if (window.innerWidth < 768) mobileClose();
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<style>
+  /* ─────────────────────────────────────────────────
+     RESET
+  ───────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; min-height: 100dvh; }
+
+  /* ─────────────────────────────────────────────────
+     SHELL — full-height flex row
+  ───────────────────────────────────────────────── */
+  .shell {
+    display: flex;
+    min-height: 100dvh;
+    background-color: var(--color-bg);
+  }
+
+  /* ─────────────────────────────────────────────────
+     SIDEBAR
+  ───────────────────────────────────────────────── */
+  .sidebar {
+    /* hidden off-screen on mobile, shown on md+ */
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 280px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    /* slide-in transition */
+    transform: translateX(-100%);
+    transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1), width 280ms cubic-bezier(0.4, 0, 0.2, 1);
+    /* allow scroll if content overflows */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Desktop: always visible, not fixed */
+  @media (min-width: 768px) {
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100dvh;
+      width: 220px;
+      transform: none;
+      flex-shrink: 0;
+      overflow-x: hidden;
+    }
+  }
+
+  .sidebar--open { transform: translateX(0); }
+
+  /* Desktop collapsed state */
+  @media (min-width: 768px) {
+    .sidebar--collapsed { width: 56px; }
+    
+    .sidebar--collapsed .wordmark-text,
+    .sidebar--collapsed .sb-group-label,
+    .sidebar--collapsed .sb-link-label {
+      opacity: 0;
+      visibility: hidden;
+      display: none;
+    }
+
+    .sidebar--collapsed .sb-wordmark {
+      padding: 0 10px;
+      justify-content: center;
+    }
+
+    .sidebar--collapsed .wordmark-link {
+      display: none;
+    }
+
+    .sidebar--collapsed .sb-toggle {
+      display: flex;
+      width: 100%;
+    }
+
+    .sidebar--collapsed .sb-nav,
+    .sidebar--collapsed .sb-footer {
+      align-items: center;
+    }
+
+    .sidebar--collapsed .sb-link {
+      padding: 10px;
+      justify-content: center;
+    }
+  }
+
+  /* ── Wordmark ──────────────────────────────────── */
+  .sb-wordmark {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+    justify-content: space-between;
+    transition: padding 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .wordmark-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--color-text);
+  }
+
+  .wordmark-icon {
+    width: 26px;
+    height: 26px;
+    background-color: #064E3B;
+    color: #fff;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .wordmark-text {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+    transition: opacity 280ms;
+  }
+
+  /* Toggle button (Desktop) */
+  .sb-toggle {
+    display: none; /* hidden on mobile */
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 150ms, color 150ms;
+  }
+
+  .sb-toggle:hover {
+    background-color: var(--color-surface-raised);
+    color: var(--color-text);
+  }
+
+  .sidebar:not(.sidebar--collapsed) .icon-expand { display: none; }
+  .sidebar.sidebar--collapsed .icon-collapse { display: none; }
+
+  @media (min-width: 768px) {
+    .sb-toggle { display: flex; }
+  }
+
+  /* Close button (Mobile) */
+  .sb-close-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+  }
+
+  .sb-close-mobile:hover {
+    background-color: var(--color-surface-raised);
+    color: var(--color-text);
+  }
+
+  @media (min-width: 768px) {
+    .sb-close-mobile { display: none; }
+  }
+
+  /* ── Nav area ──────────────────────────────────── */
+  .sb-nav {
+    flex: 1;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .sb-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+  }
+
+  .sb-group-label {
+    margin: 0 0 4px 10px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text-muted);
+    opacity: 0.7;
+    transition: opacity 280ms;
+    white-space: nowrap;
+  }
+
+  /* ── Nav link ──────────────────────────────────── */
+  .sb-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: background-color 150ms, color 150ms, padding 280ms;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  .sb-link svg {
+    flex-shrink: 0;
+  }
+
+  .sb-link-label {
+    transition: opacity 280ms;
+  }
+
+  .sb-link:hover {
+    background-color: var(--color-surface-raised);
+    color: var(--color-text);
+  }
+
+  .sb-link--active {
+    background-color: rgba(99, 102, 241, 0.12);
+    color: var(--color-accent);
+  }
+
+  .sb-link--active:hover {
+    background-color: rgba(99, 102, 241, 0.18);
+    color: var(--color-accent);
+  }
+
+  /* ── Footer ────────────────────────────────────── */
+  .sb-footer {
+    padding: 10px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+
+  /* ─────────────────────────────────────────────────
+     BACKDROP (mobile only)
+  ───────────────────────────────────────────────── */
+  .backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 40;
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 280ms;
+  }
+
+  .backdrop--visible {
+    display: block;
+    opacity: 1;
+  }
+
+  @media (min-width: 768px) {
+    .backdrop { display: none !important; }
+  }
+
+  /* ─────────────────────────────────────────────────
+     MAIN COLUMN
+  ───────────────────────────────────────────────── */
+  .main-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─────────────────────────────────────────────────
+     TOPBAR
+  ───────────────────────────────────────────────── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+  }
+
+  @media (min-width: 768px) {
+    .topbar { padding: 0 24px; }
+  }
+
+  /* Hamburger — hidden on desktop */
+  .hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: 6px;
+    flex-shrink: 0;
+    transition: background-color 150ms, color 150ms;
+  }
+
+  .hamburger:hover {
+    background-color: var(--color-surface-raised);
+    color: var(--color-text);
+  }
+
+  @media (min-width: 768px) {
+    .hamburger { display: none; }
+  }
+
+  /* Topbar wordmark — hidden by default, shown when sidebar is collapsed */
+  .topbar-wordmark {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+
+  .topbar-wordmark-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #064E3B;
+    color: white;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  /* When sidebar is collapsed on desktop — show topbar wordmark */
+  .sidebar--collapsed ~ .main-col .topbar .topbar-wordmark {
+    display: flex;
+    opacity: 1;
+  }
+
+  /* Hide the topbar wordmark on mobile (sidebar is always full-width overlay on mobile) */
+  @media (max-width: 767px) {
+    .topbar-wordmark {
+      display: flex !important;
+      opacity: 1 !important;
+    }
+  }
+
+  .topbar-spacer {
+    flex: 1;
+  }
+
+  /* Right actions */
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ─────────────────────────────────────────────────
+     PAGE CONTENT
+  ───────────────────────────────────────────────── */
+  .page-main {
+    flex: 1;
+    outline: none; /* tabindex=-1 for skip-to-main */
+  }
+
+  .page-body {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 28px 16px 64px;
+  }
+
+  @media (min-width: 640px) {
+    .page-body { padding: 32px 28px 64px; }
+  }
+
+  @media (min-width: 1024px) {
+    .page-body { padding: 40px 40px 80px; }
+  }
+</style>

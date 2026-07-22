@@ -1,0 +1,51 @@
+---
+import type { D1Database } from '@cloudflare/workers-types';
+import { getAuth } from '../../api/lib/auth';
+import { getDb } from '../../db';
+import { tenancies } from '../../db/schema';
+import { eq, and } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+
+const auth = getAuth((env as unknown as Parameters<typeof getAuth>[0]) || (process.env as unknown as Parameters<typeof getAuth>[0]));
+const session = await auth.api.getSession({ headers: Astro.request.headers });
+
+if (!session?.user) {
+  return Astro.redirect('/login');
+}
+
+const db = getDb((env as { DB: D1Database }).DB || (process.env.DB as unknown as D1Database));
+
+// Find the user's most recent active tenancy
+const [activeTenancy] = await db
+  .select({ id: tenancies.id })
+  .from(tenancies)
+  .where(and(eq(tenancies.tenantId, session.user.id), eq(tenancies.status, 'active')))
+  .limit(1);
+
+if (activeTenancy) {
+  return Astro.redirect(`/tenancies/${activeTenancy.id}/bills`);
+}
+
+// No active tenancy found — show a friendly message
+---
+
+<DashboardLayout title="My Bills — Meterly">
+  <div style="max-width: 480px; margin: 80px auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+         stroke-linecap="round" stroke-linejoin="round" width="48" height="48"
+         style="color: var(--color-text-muted); opacity: 0.5;">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700;">No active tenancy</h2>
+    <p style="margin: 0; color: var(--color-text-muted); font-size: 0.9375rem; max-width: 320px; line-height: 1.6;">
+      You don't have an active tenancy linked to your account. Bills appear here once a property owner adds you as a tenant.
+    </p>
+    <a href="/dashboard" style="margin-top: 8px; color: var(--color-accent); font-weight: 500; font-size: 0.9375rem; text-decoration: none;">
+      Back to dashboard
+    </a>
+  </div>
+</DashboardLayout>

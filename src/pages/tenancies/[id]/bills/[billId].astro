@@ -1,0 +1,17 @@
+---
+import '../../../../styles/globals.css';
+import DashboardLayout from '../../../../layouts/DashboardLayout.astro';
+import { BillDetailPage } from '../../../../components/bills/BillDetailPage';
+
+const { id, billId } = Astro.params;
+---
+
+<DashboardLayout title="Bill Details - Meterly">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <BillDetailPage 
+      client:only="react" 
+      tenancyId={id as string}
+      billId={billId as string} 
+    />
+  </div>
+</DashboardLayout>

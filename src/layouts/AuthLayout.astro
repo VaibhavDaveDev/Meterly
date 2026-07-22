@@ -1,0 +1,147 @@
+---
+import '../styles/globals.css';
+import { TopLoader } from '../components/common/TopLoader';
+import { Toaster } from '../components/ui/toaster';
+import { ThemeToggle } from '../components/common/ThemeToggle';
+
+interface Props {
+  title: string;
+  description?: string;
+  type?: 'login' | 'signup' | 'forgot';
+}
+
+const { title, description, type = 'signup' } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Meterly" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title} — Meterly</title>
+    {description && <meta name="description" content={description} />}
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600&family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <!-- Prevent theme flash -->
+    <script is:inline>
+      (function () {
+        const saved = localStorage.getItem('meterly-theme') || 'dark';
+        const isDark = saved === 'dark' || (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+
+    <!-- Turnstile (loaded only in prod — devs skip validation) -->
+    <script is:inline>
+      window.onloadTurnstileCallback = function() {};
+    </script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback" async defer is:inline></script>
+  </head>
+
+  <body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased overflow-x-hidden selection:bg-primary-container selection:text-primary-fixed">
+    <TopLoader client:load />
+    <Toaster client:load />
+
+    <main class="flex-grow flex w-full min-h-screen">
+      {type === 'signup' && (
+      <div class="hidden md:flex relative w-1/2 lg:w-[55%] flex-col justify-end p-margin-desktop bg-surface-container-highest overflow-hidden">
+        <!-- Background Image -->
+        <div class="absolute inset-0 w-full h-full">
+          <img alt="Modern solar home" class="absolute inset-0 w-full h-full object-cover" src="/house.png">
+          <!-- Tonal Glass Overlay to ensure text readability while maintaining image visibility -->
+          <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/40 to-transparent">
+          </div>
+        </div>
+        
+        <!-- Value Proposition Content -->
+        <div class="relative z-10 max-w-xl text-on-primary">
+          <!-- Decorative Brand Mark -->
+          <div class="mb-stack-lg flex items-center gap-2">
+            <a href="/" class="flex items-center gap-2 text-on-primary hover:opacity-80 transition-opacity">
+              <img src="/favicon.svg" alt="Meterly Logo" class="w-10 h-10 rounded-lg">
+              <span class="font-headline-lg text-headline-lg tracking-tight">Meterly</span>
+            </a>
+          </div>
+          
+          <h1 class="font-headline-xl text-headline-xl mb-stack-sm text-surface-container-lowest dark:text-white drop-shadow-md">
+            Join 500+ properties managing solar billing with 100% transparency.
+          </h1>
+          <p class="font-body-md text-body-md text-surface-container-low max-w-md opacity-90">
+            Experience the future of utility management. Accurate data, equitable distribution, and zero guesswork for both landlords and tenants.
+          </p>
+          
+          <!-- Subtle Trust Indicator -->
+          <div class="mt-stack-md flex items-center gap-4 bg-surface-container-lowest/10 backdrop-blur-md rounded-lg p-4 border border-surface-container-lowest/20 w-max">
+            <div class="flex -space-x-3">
+              <div class="w-10 h-10 rounded-full border-2 border-primary-container bg-surface-container flex items-center justify-center text-primary-container overflow-hidden">
+                 <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_TQXZ5utvGe-Yco6oRcjrgbnVhCPnwTM9mwaEQwbk0i_T1-UvLOEn4lH4D5VndagJzyq8PpGXbLYG-PaddRvYOuQ_pcffVXvSY_L2oCWTs8ue1x70yJCOkjJYlTJNDEKbvY3KlDfwEnJsmNJUqge8TeWM7F6LM20hjusU1W8Z0goC3ClZWI507LN7_MqUBNA9B2yHfbAU8zJ2f4qFlL0W-6XWRWMzuiJCTJdEtQHpvitJ9NvS2sQD" alt="User Avatar 1" class="w-full h-full object-cover">
+              </div>
+              <div class="w-10 h-10 rounded-full border-2 border-primary-container bg-surface-container flex items-center justify-center text-primary-container overflow-hidden">
+                 <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2CLKLfn6VdpUIcREZcksN7NYfT-Tn3O2-n_ZYgvMN8BH6Yu20U4W7QZkt9Jn-CusAr6fWS1Fe3mHDIdS2nZAEjUd7-y9lI-tjfpti9MJLHm42WKeVRa2qPU2fBTlRpj8wwMI_OTvUKbXwXzqVEl_bx8TD6uJhfLt4EUDRZM9eWHNZgYC2G1gif9CQ7Su7EJYoSsOqTkMS32i4uGc29a0h57746WCTF0AilSISjvJA61O64WbF96k5" alt="User Avatar 2" class="w-full h-full object-cover">
+              </div>
+              <div class="w-10 h-10 rounded-full border-2 border-primary-container bg-surface-container flex items-center justify-center text-primary-container overflow-hidden">
+                 <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5NMz9gnctohIL-PM5QCZu7Qh6KGfr_xEB8SaQ42_6If57FT0-3je54J5wBfIPdmPAGzEJlZnYwt9BkkRX5LMRbEaxw1xbelrkcH67RbpwF0BLDZW9iBxHAu9HbGzvcOE2Kv00l_Ix0ECO3vNIVLvrQ8YiltChm3gFF2mAMce66f77cu6UagLdO6fV5XXHNdpt_l6RH1Jwcsfs_ZXoFMFFq-yr1fmXyrXYEk7bVPwViX9RhNCNRPxL" alt="User Avatar 3" class="w-full h-full object-cover">
+              </div>
+            </div>
+            <div class="text-sm">
+              <p class="font-label-caps text-label-caps text-surface-container-low">Trusted by</p>
+              <p class="font-body-sm text-body-sm font-semibold text-surface-container-lowest">Top Property Managers</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
+      
+      <!-- Right Side: Signup/Login Form Canvas -->
+      <div class={`relative flex flex-col justify-center px-margin-mobile md:px-margin-desktop py-12 md:py-0 bg-surface-container-lowest overflow-y-auto ${type === 'signup' ? 'w-full md:w-1/2 lg:w-[45%]' : 'w-full items-center'}`}>
+        <!-- Back Button -->
+        <div class="absolute top-6 left-6 md:top-8 md:left-8 z-50">
+          <a href="/" class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-caps text-sm">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            Back to Home
+          </a>
+        </div>
+        
+        <!-- Theme Toggle -->
+        <div class="absolute top-6 right-6 md:top-8 md:right-8 z-50">
+          <ThemeToggle client:load />
+        </div>
+
+        <div class="w-full max-w-md mx-auto">
+          <!-- Mobile Brand Header -->
+          <div class="md:hidden flex items-center gap-2 mb-stack-md text-primary">
+            <a href="/" class="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
+              <img src="/favicon.svg" alt="Meterly Logo" class="w-8 h-8 rounded-lg">
+              <span class="font-headline-lg-mobile text-headline-lg-mobile tracking-tight">Meterly</span>
+            </a>
+          </div>
+          
+          <slot />
+          
+          <!-- Footer Links (Minimal) -->
+          <div class="mt-12 text-center flex justify-center gap-4">
+            <a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/privacy">Privacy Policy</a>
+            <span class="text-on-surface-variant">•</span>
+            <a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/terms">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

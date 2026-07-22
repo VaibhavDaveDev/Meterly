@@ -1,0 +1,16 @@
+---
+import '../../../styles/globals.css';
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import { EditRequestsPage } from '../../../components/properties/EditRequestsPage';
+
+const { id } = Astro.params;
+---
+
+<DashboardLayout title="Edit Requests - Meterly">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <EditRequestsPage 
+      client:only="react" 
+      propertyId={id as string} 
+    />
+  </div>
+</DashboardLayout>

@@ -1,0 +1,21 @@
+---
+import '../../styles/globals.css';
+import { OnboardingWizard } from '../../components/onboarding/OnboardingWizard';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Welcome to Meterly</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600&family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen bg-background text-foreground antialiased flex flex-col justify-center items-center p-4" style="font-family: var(--font-body);">
+    <div class="w-full max-w-2xl">
+      <OnboardingWizard client:load />
+    </div>
+  </body>
+</html>
