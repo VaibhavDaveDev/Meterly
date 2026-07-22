@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:ci": "astro build && node -e \"require('fs').rmSync('dist/server/wrangler.json',{force:true})\"",
     "deploy": "astro build && node -e \"require('fs').rmSync('dist/server/wrangler.json',{force:true}); require('fs').rmSync('.wrangler/deploy/config.json',{force:true})\" && wrangler pages deploy --project-name meterly",
     "lint": "eslint .",
     "test": "vitest",
