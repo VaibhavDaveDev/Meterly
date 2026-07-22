@@ -109,7 +109,7 @@ const { title, description, type = 'signup' } = Astro.props;
       )}
       
       <!-- Right Side: Signup/Login Form Canvas -->
-      <div class={`relative flex flex-col justify-center px-margin-mobile md:px-margin-desktop py-12 md:py-0 bg-surface-container-lowest overflow-y-auto ${type === 'signup' ? 'w-full md:w-1/2 lg:w-[45%]' : 'w-full items-center'}`}>
+      <div class={`relative flex flex-col px-margin-mobile md:px-margin-desktop py-24 bg-surface-container-lowest overflow-y-auto ${type === 'signup' ? 'w-full md:w-1/2 lg:w-[45%]' : 'w-full items-center'}`}>
         <!-- Back Button -->
         <div class="absolute top-6 left-6 md:top-8 md:left-8 z-50">
           <a href="/" class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-caps text-sm">
@@ -123,7 +123,7 @@ const { title, description, type = 'signup' } = Astro.props;
           <ThemeToggle client:load />
         </div>
 
-        <div class="w-full max-w-md mx-auto">
+        <div class="w-full max-w-md mx-auto my-auto">
           <!-- Mobile Brand Header -->
           <div class="md:hidden flex items-center gap-2 mb-stack-md text-primary">
             <a href="/" class="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
