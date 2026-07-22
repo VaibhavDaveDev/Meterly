@@ -89,8 +89,8 @@ jobs:
 
       - name: Audit production dependencies only
         # --prod skips devDependencies (miniflare, vitest, etc.)
-        # This avoids false positives from undici/ws in miniflare
+        # Transitive Astro 6.x CVEs that require Astro 7 to fix are
+        # suppressed via pnpm.auditConfig.ignoreCves in package.json.
+        # Update the ignore list when upgrading to Astro 7 + Tailwind v4.
         run: pnpm audit --prod
-        # Allow the job to continue even if there are moderate vulns
-        # (change to 'continue-on-error: false' when you want hard failures)
         continue-on-error: false
