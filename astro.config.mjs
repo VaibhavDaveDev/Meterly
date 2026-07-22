@@ -10,6 +10,7 @@ export default defineConfig({
     platformProxy: {
       enabled: true,
     },
+    imageService: 'passthrough',
   }),
   integrations: [react(), tailwind()],
   vite: {
