@@ -94,6 +94,3 @@ otel-collector-config-local.yaml
 # Personal deployment guide
 DEPLOY.md
 Plan.md
-
-# Wrangler File
-wrangler.jsonc

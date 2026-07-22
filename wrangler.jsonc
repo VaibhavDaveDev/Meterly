@@ -1,0 +1,24 @@
+{
+	"pages_build_output_dir": "dist",
+	"name": "meterly",
+	"compatibility_date": "2024-09-23",
+	"compatibility_flags": [
+		"nodejs_compat_v2"
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "meterly-db",
+			"database_id": "7c2bfbe5-af1f-4105-9651-6b5f77c8eb01",
+			"preview_database_id": "local",
+			"migrations_dir": "src/db/migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "BILL_PHOTOS",
+			"bucket_name": "meterly-bills",
+			"preview_bucket_name": "meterly-bills"
+		}
+	]
+}
