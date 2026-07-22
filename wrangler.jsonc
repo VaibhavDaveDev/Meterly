@@ -1,5 +1,5 @@
 {
-	"pages_build_output_dir": "dist",
+	"pages_build_output_dir": "dist/client",
 	"name": "meterly",
 	"compatibility_date": "2024-09-23",
 	"compatibility_flags": [
