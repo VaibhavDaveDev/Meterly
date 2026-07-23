@@ -463,9 +463,9 @@ import '../styles/globals.css';
                         <p class="text-xs text-on-surface-variant/60 mt-2 italic">OCR figures may contain errors. Always verify against your physical meter before submitting.</p>
                     </div>
                     <!-- Right: Bento Grid Illustration -->
-                    <div class="grid grid-cols-2 grid-rows-2 gap-4 h-[400px] mt-8 lg:mt-0">
+                    <div class="flex flex-col sm:grid sm:grid-cols-2 sm:grid-rows-2 gap-4 sm:h-[400px] mt-8 lg:mt-0">
                         <!-- Top Left: Photo OCR -->
-                        <div class="bg-surface border border-surface-variant rounded-2xl p-5 shadow-sm flex flex-col relative overflow-hidden">
+                        <div class="bg-surface border border-surface-variant rounded-2xl p-5 shadow-sm flex flex-col relative overflow-hidden min-h-[180px] sm:min-h-0">
                             <!-- Camera brackets -->
                             <div class="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-primary/40 rounded-tl-sm"></div>
                             <div class="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-primary/40 rounded-tr-sm"></div>
@@ -485,7 +485,7 @@ import '../styles/globals.css';
                         </div>
 
                         <!-- Right Tall: Conflict Resolution -->
-                        <div class="row-span-2 bg-surface-container-lowest border border-surface-variant rounded-2xl p-6 shadow-xl flex flex-col">
+                        <div class="sm:row-span-2 bg-surface-container-lowest border border-surface-variant rounded-2xl p-6 shadow-xl flex flex-col">
                             <div class="mb-5 flex items-center justify-between">
                                 <div>
                                     <span class="text-[9px] text-on-surface-variant font-label-caps uppercase tracking-widest">Verification</span>
