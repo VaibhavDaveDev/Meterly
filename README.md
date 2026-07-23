@@ -213,8 +213,8 @@ This project strictly adheres to the DOX framework. Each domain directory contai
 
 1. **Clone and Install**
    ```bash
-   git clone <your-repo-url>
-   cd Meterly2
+   git clone https://github.com/VaibhavDaveDev/Meterly.git
+   cd Meterly
    pnpm install
    ```
 
