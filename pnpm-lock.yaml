@@ -13,9 +13,6 @@ importers:
       "@hono/zod-openapi":
         specifier: ^1.5.1
         version: 1.5.1(hono@4.12.31)(zod@4.4.3)
-      "@hono/zod-validator":
-        specifier: ^0.4.3
-        version: 0.4.3(hono@4.12.31)(zod@4.4.3)
       "@microlabs/otel-cf-workers":
         specifier: 1.0.0-rc.52
         version: 1.0.0-rc.52(@opentelemetry/api@1.9.1)
@@ -2102,15 +2099,6 @@ packages:
     peerDependencies:
       hono: ">=4.10.0"
       zod: ^4.0.0
-
-  "@hono/zod-validator@0.4.3":
-    resolution:
-      {
-        integrity: sha512-xIgMYXDyJ4Hj6ekm9T9Y27s080Nl9NXHcJkOvkXPhubOLj8hZkOL8pDnnXfvCf5xEE8Q4oMFenQUZZREUY2gqQ==,
-      }
-    peerDependencies:
-      hono: ">=3.9.0"
-      zod: ^3.19.1
 
   "@hono/zod-validator@0.9.0":
     resolution:
@@ -10427,11 +10415,6 @@ snapshots:
       "@hono/zod-validator": 0.9.0(hono@4.12.31)(zod@4.4.3)
       hono: 4.12.31
       openapi3-ts: 4.6.0
-      zod: 4.4.3
-
-  "@hono/zod-validator@0.4.3(hono@4.12.31)(zod@4.4.3)":
-    dependencies:
-      hono: 4.12.31
       zod: 4.4.3
 
   "@hono/zod-validator@0.9.0(hono@4.12.31)(zod@4.4.3)":

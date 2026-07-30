@@ -11,46 +11,54 @@ import {
   billingPeriods,
 } from "../../db/schema";
 import { validateUploadedFile } from "../lib/file-validation";
-import { SuccessResponse, SimpleSuccessResponse, ErrorResponse, IdParam } from "../lib/openapi-schemas";
+import {
+  SuccessResponse,
+  SimpleSuccessResponse,
+  ErrorResponse,
+  IdParam,
+} from "../lib/openapi-schemas";
 
-const uploadsRouter = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>();
+const uploadsRouter = new OpenAPIHono<{
+  Bindings: Bindings;
+  Variables: Variables;
+}>();
 
-uploadsRouter.use('*', authMiddleware);
+uploadsRouter.use("*", authMiddleware);
 
 const uploadPhotoRoute = createRoute({
-  method: 'post',
-  path: '/bill-photo',
-  tags: ['Uploads'],
-  summary: 'Upload a bill photo',
+  method: "post",
+  path: "/bill-photo",
+  tags: ["Uploads"],
+  summary: "Upload a bill photo",
   security: [{ cookieAuth: [] }],
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Photo uploaded successfully',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Photo uploaded successfully",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Bad request',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Bad request",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Not found",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Conflict',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Conflict",
     },
     429: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Rate limit exceeded',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Rate limit exceeded",
     },
     500: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Internal server error',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Internal server error",
     },
   },
 });
@@ -251,42 +259,45 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
 
   // --- Increment rate limit counter is handled automatically since we write to DB ---
 
-  return c.json({
-    success: true as const,
-    data: {
-      objectKey,
-      sizeKb: Math.round(photo.size / 1024),
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        objectKey,
+        sizeKb: Math.round(photo.size / 1024),
+      },
     },
-  }, 200);
+    200
+  );
 });
 
 const listPhotosRoute = createRoute({
-  method: 'get',
-  path: '/bill-photos',
-  tags: ['Uploads'],
-  summary: 'List bill photos for a period',
+  method: "get",
+  path: "/bill-photos",
+  tags: ["Uploads"],
+  summary: "List bill photos for a period",
   security: [{ cookieAuth: [] }],
   request: {
     query: z.object({
-      periodId: z.string().openapi({ example: 'uuid-1234' }),
+      periodId: z.string().openapi({ example: "uuid-1234" }),
     }),
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Photos listed successfully',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Photos listed successfully",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Bad request',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Bad request",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period not found",
     },
   },
 });
@@ -294,7 +305,7 @@ const listPhotosRoute = createRoute({
 uploadsRouter.openapi(listPhotosRoute, async (c) => {
   const user = c.get("user");
   const db = getDb(c.env.DB);
-  const { periodId } = c.req.valid('query');
+  const { periodId } = c.req.valid("query");
 
   // Get period and check access
   const [period] = await db
@@ -305,7 +316,10 @@ uploadsRouter.openapi(listPhotosRoute, async (c) => {
 
   if (!period) {
     return c.json(
-      { success: false as const, error: { code: 'NOT_FOUND', message: "Period not found" } },
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Period not found" },
+      },
       404
     );
   }
@@ -329,7 +343,13 @@ uploadsRouter.openapi(listPhotosRoute, async (c) => {
     .limit(1);
 
   if (!isOwner && !tenancy) {
-    return c.json({ success: false as const, error: { code: 'UNAUTHORIZED', message: "Access denied" } }, 403);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "UNAUTHORIZED", message: "Access denied" },
+      },
+      403
+    );
   }
 
   // Get all photos for this period
@@ -347,44 +367,9 @@ uploadsRouter.openapi(listPhotosRoute, async (c) => {
   return c.json({ success: true as const, data: photos }, 200);
 });
 
-// Since the path contains a wildcard, OpenAPIHono might have issues with openapi() method for `*`. 
+// Since the path contains a wildcard, OpenAPIHono might have issues with openapi() method for `*`.
 // We can define it as a generic route if possible, or use `{objectKey}` param but wildcard `*` is not standard OpenAPI.
 // So we use `{objectKey}` with a custom path parameter and use standard OpenAPI spec.
-
-export const getPhotoRoute = createRoute({
-  method: 'get',
-  path: '/bill-photo/{objectKey}',
-  tags: ['Uploads'],
-  summary: 'Get a bill photo',
-  security: [{ cookieAuth: [] }],
-  request: {
-    params: z.object({
-      objectKey: z.string().openapi({ example: 'propertyId/periodId/userId/timestamp.webp' }),
-    }),
-  },
-  responses: {
-    200: {
-      description: 'Photo streamed successfully',
-      content: { 'image/*': { schema: { type: 'string', format: 'binary' } } },
-    },
-    400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Bad request',
-    },
-    403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
-    },
-    404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Not found',
-    },
-    500: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Internal server error',
-    },
-  },
-});
 
 // Use hono router fallback for `*` because of OpenAPI spec path matching with forward slashes in params
 uploadsRouter.get("/bill-photo/*", async (c) => {
@@ -483,37 +468,37 @@ uploadsRouter.get("/bill-photo/*", async (c) => {
 });
 
 const deletePhotoRoute = createRoute({
-  method: 'delete',
-  path: '/bill-photo/{id}',
-  tags: ['Uploads'],
-  summary: 'Delete a bill photo',
+  method: "delete",
+  path: "/bill-photo/{id}",
+  tags: ["Uploads"],
+  summary: "Delete a bill photo",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SimpleSuccessResponse } },
-      description: 'Photo deleted successfully',
+      content: { "application/json": { schema: SimpleSuccessResponse } },
+      description: "Photo deleted successfully",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Not found",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Conflict',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Conflict",
     },
     500: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Internal server error',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Internal server error",
     },
   },
 });
 
 uploadsRouter.openapi(deletePhotoRoute, async (c) => {
   const user = c.get("user");
-  const { id: photoId } = c.req.valid('param');
+  const { id: photoId } = c.req.valid("param");
   const db = getDb(c.env.DB);
   const r2 = c.env.BILL_PHOTOS;
 
@@ -533,12 +518,7 @@ uploadsRouter.openapi(deletePhotoRoute, async (c) => {
   const [photo] = await db
     .select()
     .from(billPhotos)
-    .where(
-      and(
-        eq(billPhotos.id, photoId),
-        eq(billPhotos.uploadedBy, user.id)
-      )
-    )
+    .where(and(eq(billPhotos.id, photoId), eq(billPhotos.uploadedBy, user.id)))
     .limit(1);
 
   if (!photo) {

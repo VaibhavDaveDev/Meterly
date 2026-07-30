@@ -2,7 +2,13 @@
   <img src="public/web-app-manifest-192x192.png" alt="Meterly" width="80" height="80" />
 </p>
 
-<h1 align="center">Meterly</h1>
+<h1 align="center"><a href="https://meterly.pages.dev">Meterly</a></h1>
+
+<p align="center">
+  <a href="https://meterly.pages.dev">
+    <img src="https://img.shields.io/badge/Live_Demo-meterly.pages.dev-064E3B?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Live Demo" />
+  </a>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
@@ -10,6 +16,11 @@
   <img src="https://img.shields.io/badge/Astro-FF5D01?style=for-the-badge&logo=astro&logoColor=white" alt="Astro" />
   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
   <img src="https://img.shields.io/badge/Hono-E36002?style=for-the-badge&logo=hono&logoColor=white" alt="Hono" />
+</p>
+
+<p align="center">
+  <script src="https://liberapay.com/VaibhavDaveDev/widgets/button.js"></script>
+  <noscript><a href="https://liberapay.com/VaibhavDaveDev/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a></noscript>
 </p>
 
 Meterly is a transparent, multi-tenant utility billing platform designed to eliminate disputes between property owners and tenants. It specializes in handling complex utility scenarios, specifically properties equipped with grid-tied solar installations.
@@ -30,10 +41,11 @@ Traditional sub-metering often leads to friction due to opaque calculations. Met
 ## Session Management
 
 Meterly limits concurrent sessions per user to prevent token accumulation and enhance security.
+
 - **Max sessions per user:** 3 (configurable via `MAX_SESSIONS_PER_USER`)
 - **Cleanup strategy:** FIFO (First In, First Out)
 - **When triggered:** On every login
-When a user logs in from a 4th device, the oldest active session is automatically deleted.
+  When a user logs in from a 4th device, the oldest active session is automatically deleted.
 
 ## Tech Stack
 
@@ -61,20 +73,20 @@ graph TD
 
     subgraph Edge [Cloudflare Edge Network]
         direction TB
-        
+
         subgraph UI [Astro Frontend]
             Pages[SSR Pages]
             Islands[React Islands / Tailwind]
             Forms[React Hook Form + Zod]
         end
-        
+
         subgraph API [Hono Backend]
             Router[API Routes / Middleware]
             AuthHandler[Better Auth Handlers]
             Engine[Billing Calculation Engine]
             UploadHandler[Upload Handler]
         end
-        
+
         UI -. JSON over HTTP .-> API
     end
 
@@ -88,9 +100,9 @@ graph TD
 
     User == HTTP Request ==> Pages
     User == Interactivity ==> Islands
-    
+
     Pages -. SSR Data Fetch .-> API
-    
+
     Router --> D1
     AuthHandler --> D1
     Engine --> D1
@@ -184,6 +196,7 @@ sequenceDiagram
 ```
 
 **Key design decisions:**
+
 - Compression happens entirely in the browser — zero server CPU cost.
 - OCR (Tesseract.js) runs in a Web Worker so it never blocks the UI thread. It is **opt-in and off by default** — users toggle it per upload. This avoids the 2–5 second WASM load for users who just want to store a photo.
 - R2 object keys are prefixed with `{userId}/` — the API enforces this prefix on every read, so cross-user access returns 403.
@@ -212,6 +225,7 @@ This project strictly adheres to the DOX framework. Each domain directory contai
 ### Quick Start
 
 1. **Clone and Install**
+
    ```bash
    git clone <your-repo-url>
    cd Meterly2
@@ -219,8 +233,9 @@ This project strictly adheres to the DOX framework. Each domain directory contai
    ```
 
 2. **Set Up Environment Variables**
-   
+
    Copy `.env.example` to `.dev.vars`:
+
    ```bash
    cp .env.example .dev.vars
    ```
@@ -233,27 +248,30 @@ This project strictly adheres to the DOX framework. Each domain directory contai
 
 3. **Create Cloudflare Resources**
 
-    You need to create a D1 database and update `wrangler.jsonc`:
+   You need to create a D1 database and update `wrangler.jsonc`:
 
-    ```bash
-    # Create D1 database
-    pnpm exec wrangler d1 create meterly-db
-    # Copy the 'database_id' from the output
-    ```
+   ```bash
+   # Create D1 database
+   pnpm exec wrangler d1 create meterly-db
+   # Copy the 'database_id' from the output
+   ```
 
-    Open `wrangler.jsonc` and replace the placeholder D1 ID:
-    ```jsonc
-    {
-      "d1_databases": [{
-        "database_id": "paste-your-d1-id-here"  // ← Replace this
-      }]
-    }
-    ```
+   Open `wrangler.jsonc` and replace the placeholder D1 ID:
+
+   ```jsonc
+   {
+     "d1_databases": [
+       {
+         "database_id": "paste-your-d1-id-here", // ← Replace this
+       },
+     ],
+   }
+   ```
 
 4. **Initialize Database Schema**
 
    **Important:** Apply the schema to your **local** D1 database:
-   
+
    ```bash
    pnpm exec wrangler d1 execute meterly-db --local --file=./src/db/migrations/0000_init.sql
    ```
@@ -261,6 +279,7 @@ This project strictly adheres to the DOX framework. Each domain directory contai
    This creates all tables (users, properties, bills, etc.) in your local SQLite database.
 
 5. **Start Development Server**
+
    ```bash
    pnpm run dev
    ```
@@ -287,12 +306,13 @@ This project strictly adheres to the DOX framework. Each domain directory contai
    - 6 months of billing periods (Jan–Jun 2026) with meter readings and bills
    - 2 demo accounts:
 
-   | Role | Email | Password |
-   |------|-------|----------|
-   | Owner | `owner@demo.meterly.app` | `DemoOwner123` |
+   | Role   | Email                     | Password        |
+   | ------ | ------------------------- | --------------- |
+   | Owner  | `owner@demo.meterly.app`  | `DemoOwner123`  |
    | Tenant | `tenant@demo.meterly.app` | `DemoTenant123` |
 
    To reseed without deleting `.wrangler/` entirely:
+
    ```bash
    pnpm seed
    ```
@@ -306,6 +326,7 @@ A: Check that `PUBLIC_TURNSTILE_SITE_KEY="1x00000000000000000000AA"` is uncommen
 
 **Q: Database errors or "table does not exist"?**  
 A: Make sure you ran the migration with the `--local` flag and that your `database_id` in `wrangler.jsonc` matches the one from `wrangler d1 create`:
+
 ```bash
 pnpm exec wrangler d1 execute meterly-db --local --file=./src/db/migrations/0000_init.sql
 ```
@@ -324,6 +345,7 @@ Meterly uses **Cloudflare D1** (SQLite) as its database. Here's how it works in 
 When you run `pnpm run dev`, **Wrangler automatically creates a local SQLite database** in the `.wrangler/state/v3/d1` directory. This is a real SQLite database file that persists between dev server restarts.
 
 **Key points:**
+
 - **No separate setup needed** — Wrangler handles it automatically
 - **Database location:** `.wrangler/state/v3/d1/miniflare-D1DatabaseObject/`
 - **Persistence:** Data survives dev server restarts (unless you delete `.wrangler/`)
@@ -331,12 +353,12 @@ When you run `pnpm run dev`, **Wrangler automatically creates a local SQLite dat
 
 ### Local vs Remote D1
 
-| Aspect | Local (`--local` flag) | Remote (production) |
-|--------|----------------------|---------------------|
-| **Database** | SQLite file in `.wrangler/` | Cloudflare's distributed D1 |
-| **Data persistence** | Survives restarts | Permanent |
+| Aspect               | Local (`--local` flag)        | Remote (production)            |
+| -------------------- | ----------------------------- | ------------------------------ |
+| **Database**         | SQLite file in `.wrangler/`   | Cloudflare's distributed D1    |
+| **Data persistence** | Survives restarts             | Permanent                      |
 | **Apply migrations** | `wrangler d1 execute --local` | `wrangler d1 execute --remote` |
-| **When to use** | Development & testing | Production deployment |
+| **When to use**      | Development & testing         | Production deployment          |
 
 ### Why You See `preview_database_id: "local"` in wrangler.jsonc
 
@@ -351,6 +373,7 @@ Meterly uses **Cloudflare R2** for storing meter bill photos.
 When you run `pnpm run dev`, **Wrangler automatically creates a local R2 bucket** in the `.wrangler/state/v3/r2` directory. You do not need to create a real bucket on Cloudflare for local development.
 
 **Key points:**
+
 - **No separate setup needed** — Wrangler handles it automatically via the `r2_buckets` configuration in `wrangler.jsonc`.
 - **Database location:** `.wrangler/state/v3/r2/`
 - **Persistence:** Files survive dev server restarts (unless you delete `.wrangler/`).
@@ -359,6 +382,7 @@ When you run `pnpm run dev`, **Wrangler automatically creates a local R2 bucket*
 ---
 
 ## Database Migrations
+
 ### What Are Migrations?
 
 Migrations are **version-controlled SQL files** that describe every change made to the database schema over time. Meterly has a single squashed baseline:
@@ -369,13 +393,13 @@ Every change you make to `src/db/schema/` after this point becomes a new numbere
 
 ### Why Use Migrations Instead of `drizzle-kit push`?
 
-| Approach | Migrations (Recommended) | Direct Push (Avoid) |
-|----------|--------------------------|---------------------|
-| **Version control** | Every change is tracked in Git | No history — impossible to audit |
-| **Rollback** | Revert by reversing the migration | Very difficult — manual SQL required |
+| Approach               | Migrations (Recommended)           | Direct Push (Avoid)                    |
+| ---------------------- | ---------------------------------- | -------------------------------------- |
+| **Version control**    | Every change is tracked in Git     | No history — impossible to audit       |
+| **Rollback**           | Revert by reversing the migration  | Very difficult — manual SQL required   |
 | **Team collaboration** | Everyone sees exactly what changed | Silent divergence between environments |
-| **Production safety** | Review SQL before applying | Can break production mid-push |
-| **Multi-environment** | Apply same file to dev and prod | Hard to keep environments consistent |
+| **Production safety**  | Review SQL before applying         | Can break production mid-push          |
+| **Multi-environment**  | Apply same file to dev and prod    | Hard to keep environments consistent   |
 
 ### When to Create a New Migration
 
@@ -397,7 +421,7 @@ pnpm exec wrangler d1 execute meterly-db --remote --file=./src/db/migrations/000
 pnpm run deploy
 ```
 
-**The rule:** migrations go to production *before* the code that depends on them. Never the other way around.
+**The rule:** migrations go to production _before_ the code that depends on them. Never the other way around.
 
 ### Never Edit an Applied Migration
 
@@ -406,6 +430,7 @@ Once a migration file has been applied to any environment (local or remote), tre
 ### Can You Use `drizzle-kit push` Instead?
 
 Yes, but you should not:
+
 1. No audit trail — you will not know what changed or when
 2. No rollback — `push` is destructive and unrecoverable
 3. Dangerous in production — a failed push leaves the database in an inconsistent state
@@ -434,11 +459,11 @@ Meterly uses email OTPs for sign-up verification and password reset.
 
 **Three dev-mode behaviors depending on your `.dev.vars` configuration:**
 
-| Configuration | Behavior |
-|---|---|
-| No `EMAIL_PROVIDER` set | OTP prints to terminal only. No network call. Zero setup needed. |
-| `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` set | OTP prints to terminal **and** a test email is sent to `delivered@resend.dev`. Check the [Resend dashboard](https://resend.com/emails) to preview the template. |
-| `EMAIL_PROVIDER=atlas` + `ATLAS_MAILER_URL` set | OTP prints to terminal **and** a real email is sent via [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git). |
+| Configuration                                   | Behavior                                                                                                                                                        |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No `EMAIL_PROVIDER` set                         | OTP prints to terminal only. No network call. Zero setup needed.                                                                                                |
+| `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` set  | OTP prints to terminal **and** a test email is sent to `delivered@resend.dev`. Check the [Resend dashboard](https://resend.com/emails) to preview the template. |
+| `EMAIL_PROVIDER=atlas` + `ATLAS_MAILER_URL` set | OTP prints to terminal **and** a real email is sent via [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git).                                     |
 
 **Recommended for first-time setup:** Leave `EMAIL_PROVIDER` unset. Just use the terminal OTP.
 
@@ -451,10 +476,10 @@ no real email sent, but the Resend dashboard shows you the exact template that p
 Turnstile bot protection is applied to login, sign-up, and forgot-password forms.
 
 **Two modes:**
+
 1. **With Turnstile widget** (set `PUBLIC_TURNSTILE_SITE_KEY` in `.dev.vars`):
    - Use test keys: `1x00000000000000000000AA` (always passes)
    - Widget appears and works for UI testing
-   
 2. **Without Turnstile widget** (comment out `PUBLIC_TURNSTILE_SITE_KEY`):
    - Widget doesn't render
    - Forms still work (backend auto-mocks validation)
@@ -463,17 +488,20 @@ Turnstile bot protection is applied to login, sign-up, and forgot-password forms
 ### Tenant Invite Flow
 
 When you invite a tenant:
+
 1. `POST /api/properties/:id/tenancies/invite` creates a tenancy with `status='invited'` and a 7-day expiry
 2. Email sent with link to `/invite/[token]`
 3. **In dev, the invite URL is also printed to the terminal**
 
 The tenant visits `/invite/[token]` and either:
+
 - **Accepts** via `POST /api/invites/:token/accept` — links tenancy to their account
 - **Declines** via `POST /api/invites/:token/decline` — sets status to `'declined'`
 
 The owner can cancel via `DELETE /api/invites/:token/cancel`.
 
 **Key invite API routes:**
+
 ```
 GET    /api/invites/pending          — tenant: list pending invites for their email
 GET    /api/invites/:token           — public: resolve invite token
@@ -481,6 +509,7 @@ POST   /api/invites/:token/accept    — tenant: accept invite
 POST   /api/invites/:token/decline   — tenant: decline invite
 DELETE /api/invites/:token/cancel    — owner: cancel invite
 ```
+
 ---
 
 ## Deployment
@@ -488,12 +517,14 @@ DELETE /api/invites/:token/cancel    — owner: cancel invite
 Meterly is optimized for Cloudflare Pages & Workers.
 
 1. **Create production D1 database:**
+
    ```bash
    # Apply the single baseline migration to production:
    pnpm exec wrangler d1 execute meterly-db --remote --file=./src/db/migrations/0000_init.sql
    ```
 
 2. **Set production secrets:**
+
    ```bash
    pnpm exec wrangler secret put BETTER_AUTH_SECRET
    pnpm exec wrangler secret put TURNSTILE_SECRET_KEY
@@ -502,6 +533,7 @@ Meterly is optimized for Cloudflare Pages & Workers.
    ```
 
    **Email provider secrets** (set the one matching your `EMAIL_PROVIDER`):
+
    ```bash
    # If EMAIL_PROVIDER=resend (recommended):
    pnpm exec wrangler secret put RESEND_API_KEY
@@ -511,6 +543,7 @@ Meterly is optimized for Cloudflare Pages & Workers.
    ```
 
    Also set these plain vars in `wrangler.jsonc` (not secrets — they're not sensitive):
+
    ```jsonc
    "vars": {
      "EMAIL_PROVIDER": "resend",
@@ -525,13 +558,14 @@ Meterly is optimized for Cloudflare Pages & Workers.
    > Without this secret set in production, the cron endpoint will return 401 for any caller.
 
 3. **Set production environment variables in `wrangler.jsonc`:**
+
    ```jsonc
    {
      "vars": {
        "ENVIRONMENT": "production",
        "BETTER_AUTH_URL": "https://your-domain.pages.dev",
-       "PUBLIC_BETTER_AUTH_URL": "https://your-domain.pages.dev"
-     }
+       "PUBLIC_BETTER_AUTH_URL": "https://your-domain.pages.dev",
+     },
    }
    ```
 
@@ -545,17 +579,21 @@ Meterly is optimized for Cloudflare Pages & Workers.
 ## Code Quality
 
 ### Linting
+
 ```bash
 pnpm run lint
 ```
 
 ### Type Checking
+
 ```bash
 pnpm run typecheck
 ```
 
 ### Testing
+
 This project uses [Vitest](https://vitest.dev/) with in-memory SQLite (`better-sqlite3`) for fast, isolated tests:
+
 ```bash
 pnpm test
 ```
@@ -568,11 +606,11 @@ Meterly uses `@microlabs/otel-cf-workers` for edge-native observability — trac
 
 ### Signal overview
 
-| Signal | Captured by | Backend |
-|--------|------------|---------|
-| Traces | @microlabs auto-instrumentation | Tempo |
-| Logs | @microlabs console.log intercept | Loki |
-| Metrics | @microlabs | Prometheus |
+| Signal  | Captured by                      | Backend    |
+| ------- | -------------------------------- | ---------- |
+| Traces  | @microlabs auto-instrumentation  | Tempo      |
+| Logs    | @microlabs console.log intercept | Loki       |
+| Metrics | @microlabs                       | Prometheus |
 
 ```mermaid
 graph TD
@@ -580,7 +618,7 @@ graph TD
         Logger[logger.ts]
         Fetch[Incoming HTTP Requests]
         OTel["@microlabs/otel-cf-workers"]
-        
+
         Logger -. intercepts .-> OTel
         Fetch -. auto-instruments .-> OTel
     end
@@ -591,7 +629,7 @@ graph TD
         Collector --> Loki[(Loki - Logs)]
         Collector --> Tempo[(Tempo - Traces)]
         Collector --> Prom[(Prometheus - Metrics)]
-        
+
         Loki --> Grafana[Grafana UI]
         Tempo --> Grafana
         Prom --> Grafana
@@ -601,11 +639,13 @@ graph TD
 ### Local setup (Docker required)
 
 Start the observability stack in the background:
+
 ```bash
 docker compose -f docker-compose.observability.yml up -d
 ```
 
 **Helpful Docker commands:**
+
 ```bash
 # View collector logs to debug telemetry flow
 docker compose -f docker-compose.observability.yml logs -f otel-collector
@@ -618,6 +658,7 @@ docker compose -f docker-compose.observability.yml down -v
 ```
 
 Add to `.dev.vars`:
+
 ```
 OBSERVABILITY_ENABLED=true
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
@@ -630,6 +671,7 @@ Loki, Tempo, and Prometheus datasources are pre-provisioned.
 ### Production (Grafana Cloud)
 
 Set in Cloudflare Workers → Settings → Variables:
+
 ```
 OBSERVABILITY_ENABLED=true
 OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-central-0.grafana.net/otlp
@@ -668,14 +710,15 @@ is usable.
 oldest session.
 
 **If migrating away from Cloudflare:** You MUST implement a trusted-IP middleware:
+
 1. Configure your reverse proxy (nginx/caddy) to set `X-Real-IP` from the actual client IP.
 2. In the Hono middleware, read ONLY `X-Real-IP` (never `X-Forwarded-For` from clients).
 3. At session creation, store the client IP.
 4. On each request, compare `X-Real-IP` against the stored session IP.
 5. On mismatch, revoke the session and return 401.
-Note: This will cause false positives for mobile users switching between WiFi and cellular.
-Consider subnet-level matching (`/24`) as a compromise, accepting that residential proxy
-attacks from the same subnet can still succeed.
+   Note: This will cause false positives for mobile users switching between WiFi and cellular.
+   Consider subnet-level matching (`/24`) as a compromise, accepting that residential proxy
+   attacks from the same subnet can still succeed.
 
 ---
 
