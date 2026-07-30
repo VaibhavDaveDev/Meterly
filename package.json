@@ -55,7 +55,7 @@
     "@astrojs/cloudflare": "^14.1.7",
     "@astrojs/react": "^6.0.2",
     "@cloudflare/workers-types": "^4.20260617.1",
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.0.0",
     "picomatch": "^4.0.5",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^6.9.1",

@@ -40,9 +40,6 @@ importers:
       "@radix-ui/react-tooltip":
         specifier: ^1.2.10
         version: 1.2.10(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      "@tailwindcss/vite":
-        specifier: ^4.3.3
-        version: 4.3.3(vite@8.2.0(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
       astro:
         specifier: ^7.1.6
         version: 7.1.6(@emnapi/core@2.0.0-alpha.3)(@emnapi/runtime@2.0.0-alpha.3)(@types/node@25.9.3)(idb-keyval@6.2.6)(jiti@2.7.0)(rollup@4.62.0)(tsx@4.23.0)(yaml@2.9.0)
@@ -108,11 +105,14 @@ importers:
         specifier: ^4.20260617.1
         version: 4.20260617.1
       "@eslint/js":
-        specifier: ^10.0.1
-        version: 10.0.1(eslint@9.39.4(jiti@2.7.0))
+        specifier: ^9.0.0
+        version: 9.39.4
       "@tailwindcss/postcss":
         specifier: ^4.3.3
         version: 4.3.3
+      "@tailwindcss/vite":
+        specifier: ^4.3.3
+        version: 4.3.3(vite@8.2.0(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
       "@testing-library/jest-dom":
         specifier: ^6.9.1
         version: 6.9.1
@@ -1973,18 +1973,6 @@ packages:
         integrity: sha512-4IlJx0X0qftVsN5E+/vGujTRIFtwuLbNsVUe7TO6zYPDR1O6nFwvwhIKEKSrl6dZchmYBITazxKoUYOjdtjlRg==,
       }
     engines: { node: ^18.18.0 || ^20.9.0 || >=21.1.0 }
-
-  "@eslint/js@10.0.1":
-    resolution:
-      {
-        integrity: sha512-zeR9k5pd4gxjZ0abRoIaxdc7I3nDktoXZk2qOv9gCNWx3mVwEn32VRhyLaRsDiJjTs0xq/T8mfPtyuXu7GWBcA==,
-      }
-    engines: { node: ^20.19.0 || ^22.13.0 || >=24 }
-    peerDependencies:
-      eslint: ^10.0.0
-    peerDependenciesMeta:
-      eslint:
-        optional: true
 
   "@eslint/js@9.39.4":
     resolution:
@@ -10346,10 +10334,6 @@ snapshots:
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
       - supports-color
-
-  "@eslint/js@10.0.1(eslint@9.39.4(jiti@2.7.0))":
-    optionalDependencies:
-      eslint: 9.39.4(jiti@2.7.0)
 
   "@eslint/js@9.39.4": {}
 
