@@ -64,25 +64,25 @@ const { title, description, type = 'signup' } = Astro.props;
         <!-- Background Image -->
         <div class="absolute inset-0 w-full h-full">
           <img alt="Modern solar home" class="absolute inset-0 w-full h-full object-cover" src="/house.png">
-          <!-- Tonal Glass Overlay to ensure text readability while maintaining image visibility -->
-          <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/40 to-transparent">
+          <!-- Subtle dark mode overlay for text readability, no green gradient -->
+          <div class="absolute inset-0 hidden dark:block bg-gradient-to-t from-black/20 via-black/10 to-transparent">
           </div>
         </div>
         
         <!-- Value Proposition Content -->
-        <div class="relative z-10 max-w-xl text-on-primary">
+        <div class="relative z-10 max-w-xl text-white">
           <!-- Decorative Brand Mark -->
-          <div class="mb-stack-lg flex items-center gap-2">
-            <a href="/" class="flex items-center gap-2 text-on-primary hover:opacity-80 transition-opacity">
-              <img src="/favicon.svg" alt="Meterly Logo" class="w-10 h-10 rounded-lg">
-              <span class="font-headline-lg text-headline-lg tracking-tight">Meterly</span>
+          <div class="mb-stack-lg flex items-center gap-3">
+            <a href="/" class="flex items-center gap-3 text-white hover:opacity-80 transition-opacity drop-shadow-md">
+              <img src="/favicon.svg" alt="Meterly Logo" class="w-12 h-12 rounded-lg">
+              <span class="text-4xl font-bold tracking-tight">Meterly</span>
             </a>
           </div>
           
-          <h1 class="font-headline-xl text-headline-xl mb-stack-sm text-surface-container-lowest dark:text-white drop-shadow-md">
+          <h1 class="font-headline-xl text-headline-xl mb-stack-sm text-white drop-shadow-md">
             Join 500+ properties managing solar billing with 100% transparency.
           </h1>
-          <p class="font-body-md text-body-md text-surface-container-low max-w-md opacity-90">
+          <p class="font-body-md text-body-md text-white/90 max-w-md drop-shadow-sm">
             Experience the future of utility management. Accurate data, equitable distribution, and zero guesswork for both landlords and tenants.
           </p>
           
@@ -99,9 +99,9 @@ const { title, description, type = 'signup' } = Astro.props;
                  <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5NMz9gnctohIL-PM5QCZu7Qh6KGfr_xEB8SaQ42_6If57FT0-3je54J5wBfIPdmPAGzEJlZnYwt9BkkRX5LMRbEaxw1xbelrkcH67RbpwF0BLDZW9iBxHAu9HbGzvcOE2Kv00l_Ix0ECO3vNIVLvrQ8YiltChm3gFF2mAMce66f77cu6UagLdO6fV5XXHNdpt_l6RH1Jwcsfs_ZXoFMFFq-yr1fmXyrXYEk7bVPwViX9RhNCNRPxL" alt="User Avatar 3" class="w-full h-full object-cover">
               </div>
             </div>
-            <div class="text-sm">
-              <p class="font-label-caps text-label-caps text-surface-container-low">Trusted by</p>
-              <p class="font-body-sm text-body-sm font-semibold text-surface-container-lowest">Top Property Managers</p>
+            <div class="text-sm drop-shadow-sm">
+              <p class="font-label-caps text-label-caps text-white/80">Trusted by</p>
+              <p class="font-body-sm text-body-sm font-semibold text-white">Top Property Managers</p>
             </div>
           </div>
         </div>
@@ -125,10 +125,10 @@ const { title, description, type = 'signup' } = Astro.props;
 
         <div class="w-full max-w-md mx-auto my-auto">
           <!-- Mobile Brand Header -->
-          <div class="md:hidden flex items-center gap-2 mb-stack-md text-primary">
-            <a href="/" class="flex items-center gap-2 text-primary hover:opacity-80 transition-opacity">
-              <img src="/favicon.svg" alt="Meterly Logo" class="w-8 h-8 rounded-lg">
-              <span class="font-headline-lg-mobile text-headline-lg-mobile tracking-tight">Meterly</span>
+          <div class="md:hidden flex items-center gap-2 mb-stack-md text-on-surface">
+            <a href="/" class="flex items-center gap-2 text-on-surface hover:opacity-80 transition-opacity">
+              <img src="/favicon.svg" alt="Meterly Logo" class="w-10 h-10 rounded-lg">
+              <span class="text-3xl font-bold tracking-tight">Meterly</span>
             </a>
           </div>
           
@@ -145,3 +145,4 @@ const { title, description, type = 'signup' } = Astro.props;
     </main>
   </body>
 </html>
+

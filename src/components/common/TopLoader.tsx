@@ -1,6 +1,6 @@
-import * as Progress from '@radix-ui/react-progress';
-import { useEffect, useState } from 'react';
-import { useProgressState } from '@/lib/progress-state';
+import * as Progress from "@radix-ui/react-progress";
+import { useEffect, useState } from "react";
+import { useProgressState } from "@/lib/progress-state";
 
 export function TopLoader() {
   const loading = useProgressState();

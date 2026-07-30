@@ -6,8 +6,8 @@ import { Checkbox } from "../ui/checkbox";
 interface ArchivePropertyModalProps {
   isOpen: boolean;
   propertyName: string;
-  isPropertyDeleted: boolean;  // true → data may be permanently deleted
-  allPaid: boolean;            // false → show unpaid bills warning
+  isPropertyDeleted: boolean; // true → data may be permanently deleted
+  allPaid: boolean; // false → show unpaid bills warning
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -34,8 +34,8 @@ export function ArchivePropertyModal({
   const needsUnpaidCheck = !allPaid;
   const needsDeletionCheck = isPropertyDeleted;
 
-  const isConfirmDisabled = 
-    (needsUnpaidCheck && !unpaidChecked) || 
+  const isConfirmDisabled =
+    (needsUnpaidCheck && !unpaidChecked) ||
     (needsDeletionCheck && !deletionChecked);
 
   let title = "";
@@ -63,12 +63,19 @@ export function ArchivePropertyModal({
               <div className="text-sm text-muted-foreground space-y-4">
                 {needsUnpaidCheck && (
                   <p className="m-0">
-                    You have unpaid bill(s) at {propertyName}. Hiding this property does not cancel the bills — your landlord can still contact you about them.
+                    You have unpaid bill(s) at {propertyName}. Hiding this
+                    property does not cancel the bills — your landlord can still
+                    contact you about them.
                   </p>
                 )}
                 {needsDeletionCheck && (
                   <p className="m-0">
-                    The owner has closed this property. When you hide it, all your bills, meter readings, and uploaded photos for {propertyName} will be permanently deleted from our servers. <strong className="text-foreground">This cannot be undone.</strong>
+                    The owner has closed this property. When you hide it, all
+                    your bills, meter readings, and uploaded photos for{" "}
+                    {propertyName} will be permanently deleted from our servers.{" "}
+                    <strong className="text-foreground">
+                      This cannot be undone.
+                    </strong>
                   </p>
                 )}
               </div>
@@ -81,7 +88,9 @@ export function ArchivePropertyModal({
                 <Checkbox
                   id="unpaid-check"
                   checked={unpaidChecked}
-                  onCheckedChange={(checked: boolean) => setUnpaidChecked(checked)}
+                  onCheckedChange={(checked: boolean) =>
+                    setUnpaidChecked(checked)
+                  }
                 />
                 <label
                   htmlFor="unpaid-check"
@@ -91,13 +100,15 @@ export function ArchivePropertyModal({
                 </label>
               </div>
             )}
-            
+
             {needsDeletionCheck && (
               <div className="flex items-center space-x-3 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
                 <Checkbox
                   id="deletion-check"
                   checked={deletionChecked}
-                  onCheckedChange={(checked: boolean) => setDeletionChecked(checked)}
+                  onCheckedChange={(checked: boolean) =>
+                    setDeletionChecked(checked)
+                  }
                 />
                 <label
                   htmlFor="deletion-check"
@@ -120,17 +131,17 @@ export function ArchivePropertyModal({
               onClick={onConfirm}
               disabled={isConfirmDisabled}
               className={`inline-flex items-center justify-center rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring px-4 py-2 shadow-sm ${
-                needsDeletionCheck 
-                  ? "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:bg-red-600" 
+                needsDeletionCheck
+                  ? "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:bg-red-600"
                   : "bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50 disabled:bg-foreground"
               }`}
             >
               {confirmText}
             </button>
           </div>
-          
+
           <Dialog.Close asChild>
-            <button className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <button className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </button>

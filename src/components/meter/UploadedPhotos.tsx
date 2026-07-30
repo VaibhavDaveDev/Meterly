@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { X, Eye, Loader2 } from 'lucide-react';
-import { Button } from '../ui/button';
-import { ConfirmDialog } from '../common/ConfirmDialog';
-import { useToast } from '../../hooks/use-toast';
+import { useEffect, useState } from "react";
+import { X, Eye, Loader2 } from "lucide-react";
+import { Button } from "../ui/button";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import { useToast } from "../../hooks/use-toast";
 
 interface Photo {
   id: string;
@@ -17,7 +17,11 @@ interface UploadedPhotosProps {
   canDelete?: boolean;
 }
 
-export function UploadedPhotos({ periodId, onDelete, canDelete = false }: UploadedPhotosProps) {
+export function UploadedPhotos({
+  periodId,
+  onDelete,
+  canDelete = false,
+}: UploadedPhotosProps) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -27,7 +31,7 @@ export function UploadedPhotos({ periodId, onDelete, canDelete = false }: Upload
 
   useEffect(() => {
     fetch(`/api/uploads/bill-photos?periodId=${periodId}`)
-      .then(res => res.json() as Promise<{ success: boolean; data: Photo[] }>)
+      .then((res) => res.json() as Promise<{ success: boolean; data: Photo[] }>)
       .then((data) => {
         if (data.success) {
           setPhotos(data.data);
@@ -46,28 +50,33 @@ export function UploadedPhotos({ periodId, onDelete, canDelete = false }: Upload
     if (!photoToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/uploads/bill-photo/${photoToDelete}`, { method: 'DELETE' });
-      const json = (await res.json()) as { success: boolean; error?: { message: string } };
-      
+      const res = await fetch(`/api/uploads/bill-photo/${photoToDelete}`, {
+        method: "DELETE",
+      });
+      const json = (await res.json()) as {
+        success: boolean;
+        error?: { message: string };
+      };
+
       if (json.success) {
-        setPhotos(photos.filter(p => p.id !== photoToDelete));
+        setPhotos(photos.filter((p) => p.id !== photoToDelete));
         onDelete?.(photoToDelete);
         toast({
-          title: 'Photo deleted',
-          description: 'The photo has been removed successfully.',
+          title: "Photo deleted",
+          description: "The photo has been removed successfully.",
         });
       } else {
         toast({
-          title: 'Failed to delete photo',
-          description: json.error?.message || 'Please try again.',
-          variant: 'destructive',
+          title: "Failed to delete photo",
+          description: json.error?.message || "Please try again.",
+          variant: "destructive",
         });
       }
     } catch {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-        variant: 'destructive',
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
@@ -87,9 +96,11 @@ export function UploadedPhotos({ periodId, onDelete, canDelete = false }: Upload
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium text-muted-foreground">Uploaded Photos</p>
+      <p className="text-sm font-medium text-muted-foreground">
+        Uploaded Photos
+      </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {photos.map(photo => (
+        {photos.map((photo) => (
           <div key={photo.id} className="relative group">
             <div className="aspect-square rounded-lg border border-border overflow-hidden bg-muted/20">
               <img
@@ -154,7 +165,7 @@ export function UploadedPhotos({ periodId, onDelete, canDelete = false }: Upload
         }}
         title="Delete Photo"
         description="Are you sure you want to delete this photo? This action cannot be undone."
-        confirmLabel={isDeleting ? 'Deleting...' : 'Delete'}
+        confirmLabel={isDeleting ? "Deleting..." : "Delete"}
         cancelLabel="Cancel"
         onConfirm={confirmDelete}
         variant="destructive"

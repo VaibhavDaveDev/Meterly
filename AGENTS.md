@@ -93,6 +93,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Node memory increased to 4GB via .npmrc for build process (prevents heap out of memory)
 - React unescaped entities warning disabled (use &apos; for apostrophes in JSX)
 - No explicit `any` types — use proper TypeScript types
+- **Tailwind v4 CSS architecture:** `tailwind.config.mjs` was removed during the v4 migration. All design tokens (colors, spacing, typography) live in `src/styles/globals.css` as an `@theme inline { }` block. The file starts with `@import "tailwindcss"` (NOT `@tailwind base/components/utilities` — those are v3 syntax). Dark mode uses `@variant dark (&:where(.dark, .dark *))` so the `dark:` prefix targets the `.dark` CSS class set by the theme toggle JS. Do NOT remove or revert these — removing `@theme inline` makes every custom utility class (bg-surface-container, text-on-background, font-headline-xl, py-stack-lg, etc.) produce nothing.
 
 ### Code Quality — Fallow
 

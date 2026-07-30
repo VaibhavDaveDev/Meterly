@@ -42,27 +42,35 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
   } | null>(null);
 
   const [pastTenancies, setPastTenancies] = useState(stats.pastTenancies || []);
-  const [archivedTenancies, setArchivedTenancies] = useState(stats.archivedTenancies || []);
+  const [archivedTenancies, setArchivedTenancies] = useState(
+    stats.archivedTenancies || []
+  );
 
   const handleAction = async (
     tenancyId: string,
     action: "archive" | "unarchive"
   ) => {
     // Find tenancy for optimistic update and toast message
-    const tenancy = pastTenancies.find(t => t.tenancyId === tenancyId) || archivedTenancies.find(t => t.tenancyId === tenancyId);
-    
+    const tenancy =
+      pastTenancies.find((t) => t.tenancyId === tenancyId) ||
+      archivedTenancies.find((t) => t.tenancyId === tenancyId);
+
     // Optimistic UI Update
     if (action === "archive") {
-      const t = pastTenancies.find(t => t.tenancyId === tenancyId);
+      const t = pastTenancies.find((t) => t.tenancyId === tenancyId);
       if (t) {
-        setPastTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-        setArchivedTenancies(prev => [...prev, t]);
+        setPastTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
+        setArchivedTenancies((prev) => [...prev, t]);
       }
     } else {
-      const t = archivedTenancies.find(t => t.tenancyId === tenancyId);
+      const t = archivedTenancies.find((t) => t.tenancyId === tenancyId);
       if (t) {
-        setArchivedTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-        setPastTenancies(prev => [...prev, t]);
+        setArchivedTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
+        setPastTenancies((prev) => [...prev, t]);
       }
     }
 
@@ -73,16 +81,16 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = (await res.json()) as any;
       if (!res.ok) throw new Error(data.error?.message || "Failed to update");
-      
+
       let description = "Action successful.";
       if (action === "archive") {
-        description = tenancy?.isPropertyDeleted 
-          ? "Records deleted and property hidden." 
+        description = tenancy?.isPropertyDeleted
+          ? "Records deleted and property hidden."
           : "Property hidden. Restore it anytime from 'Hidden Properties'.";
       } else {
         description = "Property restored to your history.";
       }
-      
+
       toast({
         title: "Success",
         description,
@@ -91,28 +99,42 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
       const err = e as Error;
       // Revert optimistic update
       if (action === "archive") {
-        const t = archivedTenancies.find(t => t.tenancyId === tenancyId) || tenancy;
+        const t =
+          archivedTenancies.find((t) => t.tenancyId === tenancyId) || tenancy;
         if (t) {
-          setArchivedTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-          setPastTenancies(prev => [...prev, t]);
+          setArchivedTenancies((prev) =>
+            prev.filter((p) => p.tenancyId !== tenancyId)
+          );
+          setPastTenancies((prev) => [...prev, t]);
         }
       } else {
-        const t = pastTenancies.find(t => t.tenancyId === tenancyId) || tenancy;
+        const t =
+          pastTenancies.find((t) => t.tenancyId === tenancyId) || tenancy;
         if (t) {
-          setPastTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-          setArchivedTenancies(prev => [...prev, t]);
+          setPastTenancies((prev) =>
+            prev.filter((p) => p.tenancyId !== tenancyId)
+          );
+          setArchivedTenancies((prev) => [...prev, t]);
         }
       }
 
-      if (err.message === "Not Found" || err.message.includes("permanently removed")) {
+      if (
+        err.message === "Not Found" ||
+        err.message.includes("permanently removed")
+      ) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "This record has been permanently removed and cannot be restored.",
+          description:
+            "This record has been permanently removed and cannot be restored.",
         });
         // Remove from UI completely
-        setArchivedTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-        setPastTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
+        setArchivedTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
+        setPastTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
       } else {
         toast({
           variant: "destructive",
@@ -584,7 +606,12 @@ function PastTenanciesAccordion({
   showPastTenancies: boolean;
   setShowPastTenancies: (val: boolean) => void;
   onAction: (tenancyId: string, action: "archive" | "unarchive") => void;
-  onRequestModal: (tenancy: { tenancyId: string; propertyName: string; isPropertyDeleted: boolean; allPaid: boolean }) => void;
+  onRequestModal: (tenancy: {
+    tenancyId: string;
+    propertyName: string;
+    isPropertyDeleted: boolean;
+    allPaid: boolean;
+  }) => void;
 }) {
   const [inlineConfirmId, setInlineConfirmId] = useState<string | null>(null);
 
@@ -632,7 +659,9 @@ function PastTenanciesAccordion({
               </div>
               {inlineConfirmId === pt.tenancyId ? (
                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline-block">Hide this property from your history?</span>
+                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline-block">
+                    Hide this property from your history?
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setInlineConfirmId(null)}
@@ -684,7 +713,10 @@ function PastTenanciesAccordion({
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Hidden Properties
                 </div>
-                <Badge variant="muted" className="text-[10px] font-numbers leading-none px-1.5 py-0.5">
+                <Badge
+                  variant="muted"
+                  className="text-[10px] font-numbers leading-none px-1.5 py-0.5"
+                >
                   {archivedTenancies.length}
                 </Badge>
               </div>
