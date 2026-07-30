@@ -16,11 +16,9 @@
   <img src="https://img.shields.io/badge/Astro-FF5D01?style=for-the-badge&logo=astro&logoColor=white" alt="Astro" />
   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
   <img src="https://img.shields.io/badge/Hono-E36002?style=for-the-badge&logo=hono&logoColor=white" alt="Hono" />
-</p>
-
-<p align="center">
-  <script src="https://liberapay.com/VaibhavDaveDev/widgets/button.js"></script>
-  <noscript><a href="https://liberapay.com/VaibhavDaveDev/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a></noscript>
+  <a href="https://liberapay.com/VaibhavDaveDev/donate">
+    <img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" />
+  </a>
 </p>
 
 Meterly is a transparent, multi-tenant utility billing platform designed to eliminate disputes between property owners and tenants. It specializes in handling complex utility scenarios, specifically properties equipped with grid-tied solar installations.
