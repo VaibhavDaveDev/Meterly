@@ -54,10 +54,13 @@ import '../styles/globals.css';
           <a class="text-label-caps font-label-caps text-on-surface-variant hover:text-primary transition-colors duration-200" href="#testimonials">Testimonials</a>
         </nav>
         <div class="flex items-center gap-3">
-          <button id="theme-toggle" aria-label="Toggle theme" class="p-2 rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface">
-            <span id="icon-light" class="material-symbols-outlined dark:hidden block">light_mode</span>
-            <span id="icon-dark" class="material-symbols-outlined hidden dark:block">dark_mode</span>
+          <button id="theme-toggle" aria-label="Toggle theme" class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface">
+            <span id="theme-icon" class="material-symbols-outlined text-[20px]">dark_mode</span>
           </button>
+          <script is:inline>
+            /* ponytail: one icon, avoid FOUC */
+            document.getElementById('theme-icon').textContent = document.documentElement.classList.contains('dark') ? 'light_mode' : 'dark_mode';
+          </script>
           <a class="hidden md:inline-flex font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-200 px-4 py-3" href="/login">
             Sign in
           </a>
@@ -674,14 +677,18 @@ import '../styles/globals.css';
 
       themeToggle?.addEventListener('click', () => {
         const isDark = html.classList.contains('dark');
+        const icon = document.getElementById('theme-icon');
+        
         if (isDark) {
           html.classList.remove('dark');
           html.setAttribute('data-theme', 'light');
           localStorage.setItem('meterly-theme', 'light');
+          if (icon) icon.textContent = 'dark_mode';
         } else {
           html.classList.add('dark');
           html.setAttribute('data-theme', 'dark');
           localStorage.setItem('meterly-theme', 'dark');
+          if (icon) icon.textContent = 'light_mode';
         }
       });
 

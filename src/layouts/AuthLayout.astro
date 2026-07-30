@@ -2,7 +2,6 @@
 import '../styles/globals.css';
 import { TopLoader } from '../components/common/TopLoader';
 import { Toaster } from '../components/ui/toaster';
-import { ThemeToggle } from '../components/common/ThemeToggle';
 
 interface Props {
   title: string;
@@ -120,7 +119,13 @@ const { title, description, type = 'signup' } = Astro.props;
         
         <!-- Theme Toggle -->
         <div class="absolute top-6 right-6 md:top-8 md:right-8 z-50">
-          <ThemeToggle client:load />
+          <button id="theme-toggle" aria-label="Toggle theme" class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface">
+            <span id="theme-icon" class="material-symbols-outlined text-[20px]">dark_mode</span>
+          </button>
+          <script is:inline>
+            /* ponytail: one icon, avoid FOUC */
+            document.getElementById('theme-icon').textContent = document.documentElement.classList.contains('dark') ? 'light_mode' : 'dark_mode';
+          </script>
         </div>
 
         <div class="w-full max-w-md mx-auto my-auto">
@@ -143,6 +148,27 @@ const { title, description, type = 'signup' } = Astro.props;
         </div>
       </div>
     </main>
+    <script>
+      const themeToggle = document.getElementById('theme-toggle');
+      const html = document.documentElement;
+
+      themeToggle?.addEventListener('click', () => {
+        const isDark = html.classList.contains('dark');
+        const icon = document.getElementById('theme-icon');
+        
+        if (isDark) {
+          html.classList.remove('dark');
+          html.setAttribute('data-theme', 'light');
+          localStorage.setItem('meterly-theme', 'light');
+          if (icon) icon.textContent = 'dark_mode';
+        } else {
+          html.classList.add('dark');
+          html.setAttribute('data-theme', 'dark');
+          localStorage.setItem('meterly-theme', 'dark');
+          if (icon) icon.textContent = 'light_mode';
+        }
+      });
+    </script>
   </body>
 </html>
 
