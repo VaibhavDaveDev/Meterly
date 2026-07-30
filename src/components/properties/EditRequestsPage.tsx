@@ -83,7 +83,7 @@ function ReadingComparison({
           {proposedNum}
         </span>
         <span
-          className={`text-xs font-semibold ${delta > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
+          className={`text-xs font-semibold ${delta > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}
         >
           ({delta > 0 ? "+" : ""}
           {delta})

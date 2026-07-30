@@ -8,6 +8,7 @@ import {
   NotificationIcon,
   iconColorClass,
 } from "../common/NotificationHelpers";
+import { useNotificationActions } from "../../hooks/use-notification-actions";
 
 export function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -34,21 +35,7 @@ export function NotificationsPage() {
     setIsLoading(false);
   };
 
-  const markRead = async (id: string) => {
-    await apiClient.patch(`/notifications/${id}/read`, {});
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, readAt: new Date().toISOString() } : n
-      )
-    );
-  };
-
-  const markAllRead = async () => {
-    await apiClient.post("/notifications/read-all", {});
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, readAt: new Date().toISOString() }))
-    );
-  };
+  const { markRead, markAllRead } = useNotificationActions(setNotifications);
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 

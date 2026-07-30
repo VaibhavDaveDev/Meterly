@@ -85,6 +85,7 @@ export function NewEditRequestPage({
 
   // ponytail: Simple API endpoints used directly instead of complicated abstractions
   useEffect(() => {
+    let ignore = false;
     async function loadConfirmedPeriods() {
       try {
         const res = await fetch(
@@ -94,6 +95,7 @@ export function NewEditRequestPage({
           success: boolean;
           data: ConfirmedPeriod[];
         };
+        if (ignore) return;
         if (json.success) {
           setConfirmedPeriods(json.data);
           if (!selectedPeriodId && json.data.length > 0) {
@@ -101,15 +103,20 @@ export function NewEditRequestPage({
           }
         }
       } catch (err) {
+        if (ignore) return;
         console.error("Error fetching confirmed periods:", err);
       }
     }
     loadConfirmedPeriods();
+    return () => {
+      ignore = true;
+    };
   }, [tenancyId]);
 
   useEffect(() => {
     if (!selectedPeriodId) return;
 
+    let ignore = false;
     async function loadPeriodDetails() {
       setIsLoading(true);
       try {
@@ -126,6 +133,8 @@ export function NewEditRequestPage({
           `/api/tenancies/${tenancyId}/pending-edit-requests`
         );
         const rData = (await rRes.json()) as { data?: EditRequest[] };
+
+        if (ignore) return;
 
         const existing = rData.data?.find(
           (r: EditRequest) => r.billingPeriodId === selectedPeriodId
@@ -165,15 +174,19 @@ export function NewEditRequestPage({
           setReason("");
         }
       } catch (err) {
+        if (ignore) return;
         const msg =
           err instanceof Error ? err.message : "An unknown error occurred";
         toast({ title: "Error", description: msg, variant: "destructive" });
       } finally {
-        setIsLoading(false);
+        if (!ignore) setIsLoading(false);
       }
     }
     loadPeriodDetails();
-  }, [selectedPeriodId, tenancyId]);
+    return () => {
+      ignore = true;
+    };
+  }, [selectedPeriodId, tenancyId, toast]);
 
   // ponytail: compute validation errors on-the-fly during render to prevent state-sync infinite loops
   const getErrors = () => {

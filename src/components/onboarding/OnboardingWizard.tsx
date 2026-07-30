@@ -1,21 +1,11 @@
-import { useState, useEffect, type SubmitEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { Home, User, Sun, Zap, Check } from "lucide-react";
 import { apiClient } from "../../lib/api-client";
 
 type Role = "owner" | "tenant" | "both" | null;
 
 export function OnboardingWizard() {
-  const [step, setStep] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("onboarding_step");
-      return saved ? parseInt(saved, 10) : 1;
-    }
-    return 1;
-  });
-
-  useEffect(() => {
-    localStorage.setItem("onboarding_step", step.toString());
-  }, [step]);
+  const [step, setStep] = useState(1);
 
   const [hasSolar, setHasSolar] = useState<boolean>(false);
   const [propertyName, setPropertyName] = useState("");
@@ -37,14 +27,20 @@ export function OnboardingWizard() {
     tenantCount: number;
   } | null>(null);
 
+  const [isRoleSelecting, setIsRoleSelecting] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+
   const handleRoleSelection = async (selectedRole: Role) => {
+    if (isRoleSelecting) return;
     setError(null);
+    setIsRoleSelecting(true);
     // Save preference
     const res = await apiClient.patch("/users/onboarding", {
       primaryRole: selectedRole,
     });
     if (res.error) {
       setError(res.error.message);
+      setIsRoleSelecting(false);
       return;
     }
 
@@ -56,25 +52,38 @@ export function OnboardingWizard() {
           tenantCount: number;
         }>;
       }>("/properties");
+
+      if (propRes.error) {
+        setError(propRes.error.message || "Failed to load tenant properties.");
+        setIsRoleSelecting(false);
+        return;
+      }
+
       const tenantData = propRes.data?.tenant;
-      if (!propRes.error && tenantData && tenantData.length > 0) {
+      if (tenantData && tenantData.length > 0) {
         setTenantProperty(tenantData[0]);
         setStep(5);
+        setIsRoleSelecting(false);
       } else {
         await completeOnboarding();
+        setIsRoleSelecting(false);
       }
     } else {
       setStep(2);
+      setIsRoleSelecting(false);
     }
   };
 
   const completeOnboarding = async () => {
+    if (isCompleting) return;
     setError(null);
+    setIsCompleting(true);
     const res = await apiClient.patch("/users/onboarding", {
       markCompleted: true,
     });
     if (res.error) {
       setError(res.error.message);
+      setIsCompleting(false);
       return;
     }
     window.location.href = "/dashboard";
@@ -87,26 +96,44 @@ export function OnboardingWizard() {
     setError(null);
     setIsSubmitting(true);
     try {
-      const res = await apiClient.post<{ id: string }>("/properties", {
-        name: propertyName,
-        hasSolar: hasSolar,
-        soloMode: soloMode,
-      });
+      let currentPropertyId = propertyId;
+      if (!currentPropertyId) {
+        const res = await apiClient.post<{ id: string }>("/properties", {
+          name: propertyName,
+          hasSolar: hasSolar,
+          soloMode: soloMode,
+        });
 
-      if (res.error) {
-        setError(res.error.message);
-      } else if (res.data) {
-        setPropertyId(res.data.id);
-
-        // If they provided a reading reminder day != 5, update settings
-        if (readingReminderDay !== 5) {
-          await apiClient.patch(`/properties/${res.data.id}/settings`, {
-            readingReminderDay,
-          });
+        if (res.error) {
+          setError(res.error.message);
+          setIsSubmitting(false);
+          return;
         }
-
-        setStep(3);
+        if (res.data) {
+          currentPropertyId = res.data.id;
+          setPropertyId(currentPropertyId);
+        }
       }
+
+      // If they provided a reading reminder day != 5, update settings
+      if (currentPropertyId && readingReminderDay !== 5) {
+        const settingsRes = await apiClient.patch(
+          `/properties/${currentPropertyId}/settings`,
+          {
+            readingReminderDay,
+          }
+        );
+        if (settingsRes.error) {
+          setError(
+            settingsRes.error.message ||
+              "Failed to save reminder settings. Please try again."
+          );
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      setStep(3);
     } catch (err) {
       console.error(err);
       setError("An unexpected error occurred");
@@ -151,7 +178,7 @@ export function OnboardingWizard() {
               className="flex-1 h-2 rounded-full bg-secondary overflow-hidden"
             >
               <div
-                className={`h-full transition-all duration-500 ${step >= i ? "bg-primary" : "bg-transparent"}`}
+                className={`h-full ${step >= i ? "bg-primary" : "bg-transparent"}`}
               />
             </div>
           ))}
@@ -252,27 +279,27 @@ export function OnboardingWizard() {
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <label
-                    className={`flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${hasSolar ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "hover:bg-muted"}`}
+                    className={`flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background ${hasSolar ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "hover:bg-muted"}`}
                   >
                     <input
                       type="radio"
                       name="solar"
                       checked={hasSolar}
                       onChange={() => setHasSolar(true)}
-                      className="hidden"
+                      className="sr-only"
                     />
                     <Sun className="w-4 h-4" />{" "}
                     <span className="text-sm font-medium">Yes, Solar</span>
                   </label>
                   <label
-                    className={`flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${!hasSolar ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted"}`}
+                    className={`flex items-center justify-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background ${!hasSolar ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted"}`}
                   >
                     <input
                       type="radio"
                       name="solar"
                       checked={!hasSolar}
                       onChange={() => setHasSolar(false)}
-                      className="hidden"
+                      className="sr-only"
                     />
                     <Zap className="w-4 h-4" />{" "}
                     <span className="text-sm font-medium">No, Grid only</span>
@@ -320,7 +347,7 @@ export function OnboardingWizard() {
                 </label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">
-                    Send reminder on the
+                    Send reminder on day
                   </span>
                   <input
                     type="number"
@@ -333,7 +360,7 @@ export function OnboardingWizard() {
                     }
                   />
                   <span className="text-sm text-muted-foreground">
-                    th if readings aren't submitted
+                    of each month if readings aren't submitted
                   </span>
                 </div>
               </div>

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -19,6 +18,8 @@ import { Label } from "../ui/label";
 import { ArrowLeft } from "lucide-react";
 import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
+
+import { useOneOffCharges } from "../../hooks/use-one-off-charges";
 
 interface BillDetailProps {
   data: {
@@ -120,13 +121,21 @@ function CalcStep({
 
 // --- Section Components ---
 
+interface BillHeaderProps {
+  monthString: string;
+  property: BillDetailProps["data"]["property"];
+  tenancy: BillDetailProps["data"]["tenancy"];
+  currentStatus: string;
+  totalDue: number;
+}
+
 function BillHeader({
   monthString,
   property,
   tenancy,
   currentStatus,
   totalDue,
-}: any) {
+}: BillHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 pb-6 border-b">
       <div>
@@ -166,6 +175,51 @@ function BillHeader({
   );
 }
 
+interface BillActionBarProps {
+  isOwner: boolean;
+  isTenant: boolean;
+  billStatus: string;
+  currentStatus: string;
+  handleMarkPaid: () => void;
+  isMarkingPaid: boolean;
+  isModalOpen: boolean;
+  setIsModalOpen: (open: boolean) => void;
+  editReason: string;
+  setEditReason: (reason: string) => void;
+  handleRequestEdit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
+  isRequestingEdit: boolean;
+  ownerEditValues: {
+    importEnd: number;
+    exportEnd: number;
+    solarGenerationEnd: number;
+  };
+  setOwnerEditValues: React.Dispatch<
+    React.SetStateAction<{
+      importEnd: number;
+      exportEnd: number;
+      solarGenerationEnd: number;
+    }>
+  >;
+  ownerEditReason: string;
+  setOwnerEditReason: (reason: string) => void;
+  handleOwnerEdit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
+  isOwnerEditing: boolean;
+  isSolar: boolean;
+  ownerEditCharges: Array<{
+    name: string;
+    amount: number;
+    chargedToTenant: boolean;
+  }>;
+  newChargeName: string;
+  setNewChargeName: (name: string) => void;
+  newChargeAmount: string;
+  setNewChargeAmount: (amount: string) => void;
+  newChargeToTenant: boolean;
+  setNewChargeToTenant: (chargeToTenant: boolean) => void;
+  handleAddCharge: () => void;
+  handleRemoveCharge: (index: number) => void;
+}
+
 function BillActionBar({
   isOwner,
   isTenant,
@@ -187,33 +241,15 @@ function BillActionBar({
   isOwnerEditing,
   isSolar,
   ownerEditCharges,
-  setOwnerEditCharges,
-}: any) {
-  const [newChargeName, setNewChargeName] = useState("");
-  const [newChargeAmount, setNewChargeAmount] = useState("");
-  const [newChargeToTenant, setNewChargeToTenant] = useState(true);
-
-  const handleAddCharge = () => {
-    if (!newChargeName || !newChargeAmount) return;
-    setOwnerEditCharges([
-      ...ownerEditCharges,
-      {
-        name: newChargeName,
-        amount: parseFloat(newChargeAmount),
-        chargedToTenant: newChargeToTenant,
-      },
-    ]);
-    setNewChargeName("");
-    setNewChargeAmount("");
-    setNewChargeToTenant(true);
-  };
-
-  const handleRemoveCharge = (index: number) => {
-    setOwnerEditCharges(
-      ownerEditCharges.filter((_: any, i: number) => i !== index)
-    );
-  };
-
+  newChargeName,
+  setNewChargeName,
+  newChargeAmount,
+  setNewChargeAmount,
+  newChargeToTenant,
+  setNewChargeToTenant,
+  handleAddCharge,
+  handleRemoveCharge,
+}: BillActionBarProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-3">
       {isOwner && (
@@ -237,7 +273,7 @@ function BillActionBar({
                   step="0.01"
                   value={ownerEditValues.importEnd}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setOwnerEditValues((p: Record<string, number>) => ({
+                    setOwnerEditValues((p) => ({
                       ...p,
                       importEnd: parseFloat(e.target.value) || 0,
                     }))
@@ -254,7 +290,7 @@ function BillActionBar({
                       step="0.01"
                       value={ownerEditValues.solarGenerationEnd}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setOwnerEditValues((p: Record<string, number>) => ({
+                        setOwnerEditValues((p) => ({
                           ...p,
                           solarGenerationEnd: parseFloat(e.target.value) || 0,
                         }))
@@ -269,7 +305,7 @@ function BillActionBar({
                       step="0.01"
                       value={ownerEditValues.exportEnd}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setOwnerEditValues((p: Record<string, number>) => ({
+                        setOwnerEditValues((p) => ({
                           ...p,
                           exportEnd: parseFloat(e.target.value) || 0,
                         }))
@@ -282,7 +318,7 @@ function BillActionBar({
               <div className="space-y-2 pt-2 border-t">
                 <Label>One-off Custom Charges</Label>
                 <div className="space-y-2">
-                  {ownerEditCharges.map((c: any, i: number) => (
+                  {ownerEditCharges.map((c, i: number) => (
                     <div
                       key={i}
                       className="flex items-center justify-between bg-muted/50 p-2 rounded-md border text-sm"
@@ -457,6 +493,15 @@ function BillActionBar({
   );
 }
 
+interface MeterReadingsTableProps {
+  reading: BillDetailProps["data"]["reading"];
+  isSolar: boolean;
+  solarGenerated: number;
+  gridExported: number;
+  gridImported: number;
+  submitterName?: string | null;
+}
+
 function MeterReadingsTable({
   reading,
   isSolar,
@@ -464,7 +509,7 @@ function MeterReadingsTable({
   gridExported,
   gridImported,
   submitterName,
-}: any) {
+}: MeterReadingsTableProps) {
   return (
     <section className="rounded-xl border border-border bg-surface p-6 space-y-4 hover:border-accent/40 transition-colors">
       <h2 className="text-lg font-semibold border-b border-border pb-2">
@@ -553,8 +598,15 @@ function MeterReadingsTable({
           (reading.history as unknown[]).length > 0 &&
           (() => {
             const timelineItems: TimelineItem[] = (
-              reading.history as Array<any>
-            ).map((edit: any) => {
+              reading.history as Array<{
+                id: string;
+                oldValues: string;
+                newValues: string;
+                editedAt: string;
+                editorName: string;
+                reason: string | null;
+              }>
+            ).map((edit) => {
               let oldV: Record<string, string> = {};
               let newV: Record<string, string> = {};
               try {
@@ -598,13 +650,21 @@ function MeterReadingsTable({
   );
 }
 
+interface SolarBreakdownSectionProps {
+  reading: BillDetailProps["data"]["reading"];
+  solarGenerated: number;
+  gridExported: number;
+  solarSelfConsumed: number;
+  gridImported: number;
+}
+
 function SolarBreakdownSection({
   reading,
   solarGenerated,
   gridExported,
   solarSelfConsumed,
   gridImported,
-}: any) {
+}: SolarBreakdownSectionProps) {
   return (
     <section className="rounded-xl border border-border bg-surface p-6 space-y-4 hover:border-accent/40 transition-colors">
       <h2 className="text-lg font-semibold border-b border-border pb-2">
@@ -644,6 +704,16 @@ function SolarBreakdownSection({
   );
 }
 
+interface TotalConsumptionSectionProps {
+  isSolar: boolean;
+  reading: BillDetailProps["data"]["reading"];
+  gridImported: number;
+  solarSelfConsumed: number;
+  totalConsumption: number;
+  bill: BillDetailProps["data"]["bill"];
+  tenantShare: number;
+}
+
 function TotalConsumptionSection({
   isSolar,
   reading,
@@ -652,7 +722,7 @@ function TotalConsumptionSection({
   totalConsumption,
   bill,
   tenantShare,
-}: any) {
+}: TotalConsumptionSectionProps) {
   return (
     <section className="rounded-xl border border-border bg-surface p-6 space-y-4 hover:border-accent/40 transition-colors">
       <h2 className="text-lg font-semibold border-b border-border pb-2">
@@ -693,7 +763,21 @@ function TotalConsumptionSection({
   );
 }
 
-function FinalBillSection({ bill, tenantShare, customCharges, isSolar }: any) {
+function FinalBillSection({
+  bill,
+  tenantShare,
+  customCharges,
+  isSolar,
+}: {
+  bill: BillDetailProps["data"]["bill"];
+  tenantShare: number;
+  customCharges: Array<{
+    name: string;
+    amount: number;
+    chargedToTenant: boolean;
+  }>;
+  isSolar: boolean;
+}) {
   return (
     <section className="rounded-xl border border-border bg-surface p-6 space-y-4 hover:border-accent/40 transition-colors">
       <h2 className="text-lg font-semibold border-b border-border pb-2">
@@ -717,7 +801,7 @@ function FinalBillSection({ bill, tenantShare, customCharges, isSolar }: any) {
         {customCharges.length > 0 && (
           <>
             <div className="border-t pt-2 space-y-2">
-              {customCharges.map((charge: any, i: number) => (
+              {customCharges.map((charge, i: number) => (
                 <div
                   key={`${charge.name}-${i}`}
                   className="flex justify-between items-center py-1"
@@ -767,7 +851,13 @@ function FinalBillSection({ bill, tenantShare, customCharges, isSolar }: any) {
   );
 }
 
-function OwnerExportCreditSection({ gridExported, bill }: any) {
+function OwnerExportCreditSection({
+  gridExported,
+  bill,
+}: {
+  gridExported: number;
+  bill: BillDetailProps["data"]["bill"];
+}) {
   return (
     <section className="rounded-xl border border-dashed border-border bg-muted/10 p-6 space-y-3">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -824,15 +914,30 @@ export function BillDetail({ data }: BillDetailProps) {
       return [];
     }
   })();
-  const [ownerEditCharges, setOwnerEditCharges] = useState(
-    existingOneOffCharges
-  );
+  const {
+    oneOffCharges: ownerEditCharges,
+    newChargeName,
+    setNewChargeName,
+    newChargeAmount,
+    setNewChargeAmount,
+    newChargeToTenant,
+    setNewChargeToTenant,
+    handleAddCharge,
+    handleRemoveCharge,
+  } = useOneOffCharges(existingOneOffCharges);
 
-  const customCharges = JSON.parse(bill.customChargesJson || "[]") as Array<{
-    id: string;
-    name: string;
-    amount: number;
-  }>;
+  const customCharges = (() => {
+    try {
+      return JSON.parse(bill.customChargesJson || "[]") as Array<{
+        name: string;
+        amount: number;
+        chargedToTenant: boolean;
+      }>;
+    } catch (e) {
+      console.error("Failed to parse custom charges:", e);
+      return [];
+    }
+  })();
   const monthString = new Date(period.periodMonth).toLocaleString("default", {
     month: "long",
     year: "numeric",
@@ -891,7 +996,7 @@ export function BillDetail({ data }: BillDetailProps) {
     setEditReason("");
   };
 
-  const handleOwnerEdit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleOwnerEdit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsOwnerEditing(true);
     const { error } = await apiClient.patch(
@@ -961,7 +1066,14 @@ export function BillDetail({ data }: BillDetailProps) {
         isOwnerEditing={isOwnerEditing}
         isSolar={isSolar}
         ownerEditCharges={ownerEditCharges}
-        setOwnerEditCharges={setOwnerEditCharges}
+        newChargeName={newChargeName}
+        setNewChargeName={setNewChargeName}
+        newChargeAmount={newChargeAmount}
+        setNewChargeAmount={setNewChargeAmount}
+        newChargeToTenant={newChargeToTenant}
+        setNewChargeToTenant={setNewChargeToTenant}
+        handleAddCharge={handleAddCharge}
+        handleRemoveCharge={handleRemoveCharge}
       />
 
       <MeterReadingsTable

@@ -81,31 +81,40 @@ export function SignupForm({
       return;
     }
 
-    const { error } = await authClient.signUp.email({
-      name,
-      email,
-      password,
-      fetchOptions: {
-        headers: {
-          "x-cf-turnstile-response": turnstileToken,
+    try {
+      const { error } = await authClient.signUp.email({
+        name,
+        email,
+        password,
+        fetchOptions: {
+          headers: {
+            "x-cf-turnstile-response": turnstileToken,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      setMessage(error.message || "Failed to create account. Try again.");
+      if (error) {
+        setMessage(error.message || "Failed to create account. Try again.");
+        setIsError(true);
+        if (window.turnstile && turnstileRef.current) {
+          window.turnstile.reset();
+        }
+      } else {
+        setMessage("Account created! Redirecting to verification...");
+        setIsSuccess(true);
+        setTimeout(() => {
+          window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+        }, 1500);
+      }
+    } catch {
+      setMessage("Network error. Failed to create account.");
       setIsError(true);
       if (window.turnstile && turnstileRef.current) {
         window.turnstile.reset();
       }
-    } else {
-      setMessage("Account created! Redirecting to verification...");
-      setIsSuccess(true);
-      setTimeout(() => {
-        window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
-      }, 1500);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleGoogleSignIn = async () => {

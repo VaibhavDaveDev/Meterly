@@ -55,8 +55,8 @@ import '../styles/globals.css';
         </nav>
         <div class="flex items-center gap-3">
           <button id="theme-toggle" aria-label="Toggle theme" class="p-2 rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface">
-            <span id="icon-light" class="material-symbols-outlined">light_mode</span>
-            <span id="icon-dark" class="material-symbols-outlined">dark_mode</span>
+            <span id="icon-light" class="material-symbols-outlined dark:hidden block">light_mode</span>
+            <span id="icon-dark" class="material-symbols-outlined hidden dark:block">dark_mode</span>
           </button>
           <a class="hidden md:inline-flex font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors duration-200 px-4 py-3" href="/login">
             Sign in
@@ -77,10 +77,10 @@ import '../styles/globals.css';
         <section class="relative pt-stack-lg pb-stack-lg md:pt-[120px] md:pb-[160px] overflow-hidden">
             <div class="absolute inset-0 z-0">
                 <img alt="Modern eco-friendly house with integrated solar panels" class="w-full h-full object-cover" src="/house.png">
-                <div class="absolute inset-0 bg-background/10 md:bg-gradient-to-r md:from-background md:via-background/80 md:to-transparent z-10">
+                <div class="absolute inset-0 bg-background/10 md:bg-linear-to-r md:from-background md:via-background/80 md:to-transparent z-10">
                 </div>
                 <!-- Mobile dark mode gradient to ensure white text is readable against the bright sky -->
-                <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent hidden dark:block md:hidden z-10"></div>
+                <div class="absolute inset-0 bg-linear-to-b from-black/80 via-black/40 to-transparent hidden dark:block md:hidden z-10"></div>
             </div>
             <div class="relative z-10 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
                 <div class="lg:col-span-6 flex flex-col gap-stack-md">
@@ -222,7 +222,7 @@ import '../styles/globals.css';
                     <!-- Bill Mockup -->
                     <div class="relative">
                         <!-- Decorative background elements -->
-                        <div class="absolute -inset-4 bg-gradient-to-tr from-surface-container to-surface-container-high rounded-2xl transform rotate-3 z-0">
+                        <div class="absolute -inset-4 bg-linear-to-tr from-surface-container to-surface-container-high rounded-2xl transform rotate-3 z-0">
                         </div>
                         <!-- The Bill Card -->
                         <div class="relative bg-surface-container-lowest border border-surface-variant rounded-xl shadow-[0_20px_50px_rgb(0,53,39,0.1)] p-8 z-10">
@@ -668,19 +668,9 @@ import '../styles/globals.css';
     </footer>
 
     <script>
-      // Theme toggle — icon visibility managed directly, no Tailwind dark: classes
+      // Theme toggle — icon visibility managed by Tailwind dark: classes
       const themeToggle = document.getElementById('theme-toggle');
       const html = document.documentElement;
-      const iconLight = document.getElementById('icon-light');
-      const iconDark = document.getElementById('icon-dark');
-
-      function syncIcons(isDark: boolean) {
-        if (iconLight) iconLight.style.display = isDark ? 'none' : '';
-        if (iconDark)  iconDark.style.display  = isDark ? '' : 'none';
-      }
-
-      // Set initial state from whatever the is:inline script already applied
-      syncIcons(html.classList.contains('dark'));
 
       themeToggle?.addEventListener('click', () => {
         const isDark = html.classList.contains('dark');
@@ -693,7 +683,6 @@ import '../styles/globals.css';
           html.setAttribute('data-theme', 'dark');
           localStorage.setItem('meterly-theme', 'dark');
         }
-        syncIcons(!isDark);
       });
 
       // Mobile menu toggle

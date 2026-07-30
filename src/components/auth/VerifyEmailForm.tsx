@@ -25,17 +25,23 @@ export function VerifyEmailForm() {
     setMessage("");
     setIsError(false);
 
-    const { error } = await authClient.emailOtp.verifyEmail({ email, otp });
+    try {
+      const { error } = await authClient.emailOtp.verifyEmail({ email, otp });
 
-    if (error) {
-      setMessage(error.message || "Invalid code. Try again.");
+      if (error) {
+        setMessage(error.message || "Invalid code. Try again.");
+        setIsError(true);
+      } else {
+        setMessage("Email verified! Redirecting...");
+        setTimeout(() => {
+          window.location.href = "/login?verified=true";
+        }, 1500);
+      }
+    } catch {
+      setMessage("Network error. Failed to verify email.");
       setIsError(true);
+    } finally {
       setIsLoading(false);
-    } else {
-      setMessage("Email verified! Redirecting...");
-      setTimeout(() => {
-        window.location.href = "/login?verified=true";
-      }, 1500);
     }
   };
 

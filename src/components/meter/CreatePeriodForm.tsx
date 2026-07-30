@@ -6,6 +6,7 @@ import { Label } from "../ui/label";
 import { MeterInput } from "./MeterInput";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
+import { useOneOffCharges } from "../../hooks/use-one-off-charges";
 
 interface CreatePeriodFormProps {
   propertyId: string;
@@ -46,31 +47,17 @@ export function CreatePeriodForm({
   const [exportStart, setExportStart] = useState("");
   const [exportEnd, setExportEnd] = useState("");
 
-  const [oneOffCharges, setOneOffCharges] = useState<
-    Array<{ name: string; amount: number; chargedToTenant: boolean }>
-  >([]);
-  const [newChargeName, setNewChargeName] = useState("");
-  const [newChargeAmount, setNewChargeAmount] = useState("");
-  const [newChargeToTenant, setNewChargeToTenant] = useState(true);
-
-  const handleAddCharge = () => {
-    if (!newChargeName || !newChargeAmount) return;
-    setOneOffCharges([
-      ...oneOffCharges,
-      {
-        name: newChargeName,
-        amount: parseFloat(newChargeAmount),
-        chargedToTenant: newChargeToTenant,
-      },
-    ]);
-    setNewChargeName("");
-    setNewChargeAmount("");
-    setNewChargeToTenant(true);
-  };
-
-  const handleRemoveCharge = (index: number) => {
-    setOneOffCharges(oneOffCharges.filter((_, i) => i !== index));
-  };
+  const {
+    oneOffCharges,
+    newChargeName,
+    setNewChargeName,
+    newChargeAmount,
+    setNewChargeAmount,
+    newChargeToTenant,
+    setNewChargeToTenant,
+    handleAddCharge,
+    handleRemoveCharge,
+  } = useOneOffCharges();
 
   useEffect(() => {
     // Fetch property and last period to prefill start values

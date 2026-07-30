@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useToast } from './use-toast';
+import { useState, useEffect } from "react";
+import { useToast } from "./use-toast";
+import { useOneOffCharges } from "./use-one-off-charges";
 
 interface ReadingPeriod {
   id: string;
@@ -30,7 +31,7 @@ interface SubmitReadingData {
   period: ReadingPeriod & { status?: string };
   property: ReadingProperty;
   startValues: ReadingStartValues;
-  currentRates?: { consumptionRate: number; exportRate: number; };
+  currentRates?: { consumptionRate: number; exportRate: number };
   activeTenancySplit?: number;
   canSubmit: boolean;
   canEdit: boolean;
@@ -43,48 +44,61 @@ interface SubmitReadingData {
 
 export function useReadingSubmit(periodId: string) {
   const { toast } = useToast();
-  
+
   const [data, setData] = useState<SubmitReadingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const [solarGenerationEnd, setSolarGenerationEnd] = useState('');
-  const [exportEnd, setExportEnd] = useState('');
-  const [importEnd, setImportEnd] = useState('');
-  
-  const [reason, setReason] = useState('');
+
+  const [solarGenerationEnd, setSolarGenerationEnd] = useState("");
+  const [exportEnd, setExportEnd] = useState("");
+  const [importEnd, setImportEnd] = useState("");
+
+  const [reason, setReason] = useState("");
   const [acknowledgedWarning, setAcknowledgedWarning] = useState(false);
 
-  const [oneOffCharges, setOneOffCharges] = useState<Array<{name: string, amount: number, chargedToTenant: boolean}>>([]);
-  const [newChargeName, setNewChargeName] = useState('');
-  const [newChargeAmount, setNewChargeAmount] = useState('');
-  const [newChargeToTenant, setNewChargeToTenant] = useState(true);
+  const oneOffChargesHook = useOneOffCharges();
 
   useEffect(() => {
     const fetchContext = async () => {
       try {
         const res = await fetch(`/api/periods/${periodId}`);
-        const json = await res.json() as { success: boolean; data: SubmitReadingData; error?: { message: string } };
+        const json = (await res.json()) as {
+          success: boolean;
+          data: SubmitReadingData;
+          error?: { message: string };
+        };
         if (json.success) {
           setData(json.data);
           if (json.data.existingReading) {
-            setSolarGenerationEnd(json.data.existingReading.solarGenerationEnd.toString());
+            setSolarGenerationEnd(
+              json.data.existingReading.solarGenerationEnd.toString()
+            );
             setExportEnd(json.data.existingReading.exportEnd.toString());
             setImportEnd(json.data.existingReading.importEnd.toString());
           }
           if (json.data.period.oneOffCharges) {
             try {
-              setOneOffCharges(JSON.parse(json.data.period.oneOffCharges));
+              oneOffChargesHook.setOneOffCharges(
+                JSON.parse(json.data.period.oneOffCharges)
+              );
             } catch {
               // Ignore JSON parse errors for fallback
             }
           }
         } else {
-          toast({ variant: 'destructive', title: 'Error', description: json.error?.message || 'Failed to load' });
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: json.error?.message || "Failed to load",
+          });
         }
       } catch (err) {
         console.error(err);
-        toast({ variant: 'destructive', title: 'Error', description: 'Network error' });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Network error",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -107,14 +121,7 @@ export function useReadingSubmit(periodId: string) {
     setReason,
     acknowledgedWarning,
     setAcknowledgedWarning,
-    oneOffCharges,
-    setOneOffCharges,
-    newChargeName,
-    setNewChargeName,
-    newChargeAmount,
-    setNewChargeAmount,
-    newChargeToTenant,
-    setNewChargeToTenant,
+    ...oneOffChargesHook,
     toast,
   };
 }

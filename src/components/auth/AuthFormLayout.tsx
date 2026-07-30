@@ -89,11 +89,11 @@ export function AuthFormLayout({
               ))}
             </div>
             <div className="relative flex items-center py-2">
-              <div className="flex-grow border-t border-outline-variant"></div>
-              <span className="flex-shrink mx-4 font-label-caps text-label-caps text-outline-variant">
+              <div className="grow border-t border-outline-variant"></div>
+              <span className="shrink mx-4 font-label-caps text-label-caps text-outline-variant">
                 or
               </span>
-              <div className="flex-grow border-t border-outline-variant"></div>
+              <div className="grow border-t border-outline-variant"></div>
             </div>
           </>
         )}

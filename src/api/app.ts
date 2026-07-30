@@ -23,7 +23,7 @@ import { cronRouter } from "./routes/cron";
 import { uploadsRouter } from "./routes/uploads";
 import { enforceSessionLimit } from "./lib/session-limit";
 import { getDb } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as schema from "../db/schema";
 import {
   checkAndIncrementOtpRateLimit,
@@ -102,16 +102,17 @@ app.use("*", async (c, next) => {
 app.use(
   "*",
   cors({
-    origin: (origin) => {
+    origin: (origin, c) => {
       // Allow localhost on any port for dev
       if (
-        origin.startsWith("http://localhost:") ||
-        origin.startsWith("http://127.0.0.1:")
+        origin &&
+        (origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:"))
       ) {
         return origin;
       }
-      // In production, allow your actual domain
-      return "https://meterly.app";
+      // In production, allow your configured domain
+      return c.env.BETTER_AUTH_URL;
     },
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -328,8 +329,6 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-import { sql } from "drizzle-orm";
-
 // Health checks (Liveness and Readiness)
 // Liveness Check (shallow): verifies the Hono API is running. Does not query the database.
 const livenessHandler = (c: Context<{ Bindings: Bindings }>) => {
@@ -432,15 +431,25 @@ const handler = {
   fetch: app.fetch.bind(app),
 };
 
+// Lazy-load and store the instrumented fetcher so we only instrument once per worker isolate.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let instrumentedFetchPromise: Promise<any> | null = null;
+
 export default {
   async fetch(req: Request, env: Bindings, ctx: ExecutionContext) {
     if (env.OBSERVABILITY_ENABLED !== "true") {
       return app.fetch(req, env, ctx);
     }
-    // Lazy import: avoids loading CJS @opentelemetry/* deps at startup in workerd.
-    const { instrument } = await import("@microlabs/otel-cf-workers");
-    const instrumented = instrument(handler, resolveOtelConfig);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return instrumented.fetch!(req as any, env, ctx);
+
+    if (!instrumentedFetchPromise) {
+      instrumentedFetchPromise = (async () => {
+        const { instrument } = await import("@microlabs/otel-cf-workers");
+        const instrumented = instrument(handler, resolveOtelConfig);
+        return instrumented.fetch!;
+      })();
+    }
+
+    const instrumentedFetch = await instrumentedFetchPromise;
+    return instrumentedFetch(req, env, ctx);
   },
 };

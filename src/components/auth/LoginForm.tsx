@@ -62,26 +62,37 @@ export function LoginForm({ turnstileSiteKey }: { turnstileSiteKey?: string }) {
       return;
     }
 
-    const { error } = await authClient.signIn.email({
-      email,
-      password,
-      fetchOptions: {
-        headers: {
-          "x-cf-turnstile-response": turnstileToken,
+    try {
+      const { error } = await authClient.signIn.email({
+        email,
+        password,
+        fetchOptions: {
+          headers: {
+            "x-cf-turnstile-response": turnstileToken,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      setMessage(error.message || "Failed to sign in. Check your credentials.");
+      if (error) {
+        setMessage(
+          error.message || "Failed to sign in. Check your credentials."
+        );
+        setIsError(true);
+        if (window.turnstile && turnstileRef.current) {
+          window.turnstile.reset();
+        }
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch {
+      setMessage("Network error. Failed to sign in.");
       setIsError(true);
       if (window.turnstile && turnstileRef.current) {
         window.turnstile.reset();
       }
-    } else {
-      window.location.href = "/dashboard";
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleGoogleSignIn = async () => {

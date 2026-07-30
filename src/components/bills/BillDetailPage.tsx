@@ -536,12 +536,13 @@ function EditRequestModal({
                       step="0.01"
                       required
                       value={proposedValues.importStart ?? ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const parsed = parseFloat(e.target.value);
                         setProposedValues({
                           ...proposedValues,
-                          importStart: parseFloat(e.target.value),
-                        })
-                      }
+                          importStart: isNaN(parsed) ? undefined : parsed,
+                        });
+                      }}
                       className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                     />
                   </div>
@@ -554,12 +555,13 @@ function EditRequestModal({
                       step="0.01"
                       required
                       value={proposedValues.importEnd ?? ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const parsed = parseFloat(e.target.value);
                         setProposedValues({
                           ...proposedValues,
-                          importEnd: parseFloat(e.target.value),
-                        })
-                      }
+                          importEnd: isNaN(parsed) ? undefined : parsed,
+                        });
+                      }}
                       className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                     />
                   </div>
@@ -577,12 +579,13 @@ function EditRequestModal({
                           step="0.01"
                           required
                           value={proposedValues.exportStart ?? ""}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const parsed = parseFloat(e.target.value);
                             setProposedValues({
                               ...proposedValues,
-                              exportStart: parseFloat(e.target.value),
-                            })
-                          }
+                              exportStart: isNaN(parsed) ? undefined : parsed,
+                            });
+                          }}
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -595,12 +598,13 @@ function EditRequestModal({
                           step="0.01"
                           required
                           value={proposedValues.exportEnd ?? ""}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const parsed = parseFloat(e.target.value);
                             setProposedValues({
                               ...proposedValues,
-                              exportEnd: parseFloat(e.target.value),
-                            })
-                          }
+                              exportEnd: isNaN(parsed) ? undefined : parsed,
+                            });
+                          }}
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -615,12 +619,15 @@ function EditRequestModal({
                           step="0.01"
                           required
                           value={proposedValues.solarGenerationStart ?? ""}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const parsed = parseFloat(e.target.value);
                             setProposedValues({
                               ...proposedValues,
-                              solarGenerationStart: parseFloat(e.target.value),
-                            })
-                          }
+                              solarGenerationStart: isNaN(parsed)
+                                ? undefined
+                                : parsed,
+                            });
+                          }}
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -633,12 +640,15 @@ function EditRequestModal({
                           step="0.01"
                           required
                           value={proposedValues.solarGenerationEnd ?? ""}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const parsed = parseFloat(e.target.value);
                             setProposedValues({
                               ...proposedValues,
-                              solarGenerationEnd: parseFloat(e.target.value),
-                            })
-                          }
+                              solarGenerationEnd: isNaN(parsed)
+                                ? undefined
+                                : parsed,
+                            });
+                          }}
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -819,9 +829,14 @@ function BillLineItems({
   bill: BillDetailData["bill"];
   isSolar: boolean;
 }) {
-  const customCharges = bill.customChargesJson
-    ? JSON.parse(bill.customChargesJson)
-    : [];
+  const customCharges = (() => {
+    try {
+      return bill.customChargesJson ? JSON.parse(bill.customChargesJson) : [];
+    } catch (e) {
+      console.error("Failed to parse custom charges:", e);
+      return [];
+    }
+  })();
 
   return (
     <div className="space-y-4">

@@ -6,6 +6,7 @@ import {
   NotificationIcon,
   iconColorClass,
 } from "./NotificationHelpers";
+import { useNotificationActions } from "../../hooks/use-notification-actions";
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -46,23 +47,10 @@ export function NotificationBell() {
     setIsLoading(false);
   };
 
-  const markAllRead = async () => {
-    await apiClient.post("/notifications/read-all", {});
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, readAt: new Date().toISOString() }))
-    );
-    setUnreadCount(0);
-  };
-
-  const markRead = async (id: string) => {
-    await apiClient.patch(`/notifications/${id}/read`, {});
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, readAt: new Date().toISOString() } : n
-      )
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-  };
+  const { markRead, markAllRead } = useNotificationActions(
+    setNotifications,
+    setUnreadCount
+  );
 
   return (
     <div ref={ref} style={{ position: "relative" }}>

@@ -45,34 +45,16 @@ export function SubmitReadingPage({ periodId }: SubmitReadingPageProps) {
     acknowledgedWarning,
     setAcknowledgedWarning,
     oneOffCharges,
-    setOneOffCharges,
     newChargeName,
     setNewChargeName,
     newChargeAmount,
     setNewChargeAmount,
     newChargeToTenant,
     setNewChargeToTenant,
+    handleAddCharge,
+    handleRemoveCharge,
     toast,
   } = useReadingSubmit(periodId);
-
-  const handleAddCharge = () => {
-    if (!newChargeName || !newChargeAmount) return;
-    setOneOffCharges([
-      ...oneOffCharges,
-      {
-        name: newChargeName,
-        amount: parseFloat(newChargeAmount),
-        chargedToTenant: newChargeToTenant,
-      },
-    ]);
-    setNewChargeName("");
-    setNewChargeAmount("");
-    setNewChargeToTenant(true);
-  };
-
-  const handleRemoveCharge = (index: number) => {
-    setOneOffCharges(oneOffCharges.filter((_, i) => i !== index));
-  };
 
   const [allowRollover, setAllowRollover] = useState(false);
   const [editRates, setEditRates] = useState(false);

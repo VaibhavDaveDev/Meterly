@@ -40,29 +40,34 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
   const [status, setStatus] = useState<"all" | "pending" | "paid">("all");
 
   useEffect(() => {
-    fetchBills();
-  }, [tenancyId, year, status]);
-
-  const fetchBills = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(
-        `/api/tenancies/${tenancyId}/bills?year=${year}&status=${status}`
-      );
-      const json = (await res.json()) as TenantBillsData & {
-        error?: { message: string };
-      };
-      if (!res.ok) {
-        throw new Error(json.error?.message || "Failed to fetch bills");
+    let ignore = false;
+    const fetchBills = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(
+          `/api/tenancies/${tenancyId}/bills?year=${year}&status=${status}`
+        );
+        const json = (await res.json()) as TenantBillsData & {
+          error?: { message: string };
+        };
+        if (ignore) return;
+        if (!res.ok) {
+          throw new Error(json.error?.message || "Failed to fetch bills");
+        }
+        setData(json);
+      } catch (err) {
+        if (ignore) return;
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+      } finally {
+        if (!ignore) setLoading(false);
       }
-      setData(json);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchBills();
+    return () => {
+      ignore = true;
+    };
+  }, [tenancyId, year, status]);
 
   const handleDownloadCsv = () => {
     window.open(

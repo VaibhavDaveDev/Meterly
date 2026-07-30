@@ -20,15 +20,20 @@ export function InviteAcceptForm({ token }: { token: string }) {
 
   useEffect(() => {
     async function fetchInvite() {
-      const { data, error } = await apiClient.get<InviteDetails>(
-        `/invites/${token}`
-      );
-      if (error) {
-        setError(error.message);
-      } else {
-        setInvite(data);
+      try {
+        const { data, error } = await apiClient.get<InviteDetails>(
+          `/invites/${token}`
+        );
+        if (error) {
+          setError(error.message);
+        } else {
+          setInvite(data);
+        }
+      } catch {
+        setError("Network error or failed to load invite.");
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
     fetchInvite();
   }, [token]);
@@ -37,19 +42,25 @@ export function InviteAcceptForm({ token }: { token: string }) {
     setIsProcessing(true);
     setError(null);
 
-    const { error } = await apiClient.post(`/invites/${token}/${action}`, {});
+    try {
+      const { error } = await apiClient.post(`/invites/${token}/${action}`, {});
 
-    setIsProcessing(false);
+      setIsProcessing(false);
 
-    if (error) {
-      setError(error.message || `Failed to ${action} invite.`);
-    } else {
-      setMessage(`You have successfully ${action}ed the invitation.`);
-      if (action === "accept") {
-        setTimeout(() => {
-          window.location.href = "/dashboard";
-        }, 2000);
+      if (error) {
+        setError(error.message || `Failed to ${action} invite.`);
+      } else {
+        const pastTense = action === "accept" ? "accepted" : "declined";
+        setMessage(`You have successfully ${pastTense} the invitation.`);
+        if (action === "accept") {
+          setTimeout(() => {
+            window.location.href = "/dashboard";
+          }, 2000);
+        }
       }
+    } catch {
+      setIsProcessing(false);
+      setError(`Network error. Failed to ${action} invite.`);
     }
   };
 
