@@ -22,11 +22,19 @@ import type { Bindings, Variables } from "../app";
 
 import type { Database } from "../../db";
 import type { Property, BillingPeriod } from "../../types/db";
-import { SuccessResponse, MessageResponse, ErrorResponse, IdParam } from "../lib/openapi-schemas";
+import {
+  SuccessResponse,
+  MessageResponse,
+  ErrorResponse,
+  IdParam,
+} from "../lib/openapi-schemas";
 
-const readingsRouter = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>();
+const readingsRouter = new OpenAPIHono<{
+  Bindings: Bindings;
+  Variables: Variables;
+}>();
 
-readingsRouter.use('*', authMiddleware);
+readingsRouter.use("*", authMiddleware);
 
 async function resolveAndValidateStartValues(
   db: Database,
@@ -128,36 +136,36 @@ const SubmitReadingSchema = z.object({
 });
 
 const getPeriodContextRoute = createRoute({
-  method: 'get',
-  path: '/{id}',
-  tags: ['Meter Readings'],
-  summary: 'Get full context for the Meter Reading page',
+  method: "get",
+  path: "/{id}",
+  tags: ["Meter Readings"],
+  summary: "Get full context for the Meter Reading page",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Context retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Context retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period not found",
     },
   },
 });
 
 readingsRouter.openapi(getPeriodContextRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
   const db = getDb(c.env.DB);
 
@@ -340,74 +348,77 @@ readingsRouter.openapi(getPeriodContextRoute, async (c) => {
     isOwner && (period.status === "submitted" || period.status === "draft");
   const canRequestEdit = isTenant && period.status === "confirmed";
 
-  return c.json({
-    success: true as const,
-    data: {
-      period,
-      property: {
-        id: property.id,
-        name: property.name,
-        address: property.address,
-        hasSolar: property.hasSolar,
-        readingsRequireApproval: property.readingsRequireApproval,
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        period,
+        property: {
+          id: property.id,
+          name: property.name,
+          address: property.address,
+          hasSolar: property.hasSolar,
+          readingsRequireApproval: property.readingsRequireApproval,
+        },
+        startValues,
+        currentRates: resolvedRate || null,
+        activeTenancySplit,
+        existingReading: existingReading
+          ? {
+              solarGenerationEnd: existingReading.solarGenerationEnd,
+              exportEnd: existingReading.exportEnd,
+              importEnd: existingReading.importEnd,
+              submittedByName,
+              submittedAt: period.submittedAt,
+              version: existingReading.version || 1,
+            }
+          : null,
+        editHistory: editHistoryRows,
+        isOwner,
+        isTenant,
+        canSubmit,
+        canEdit,
+        canRequestEdit,
+        pendingEditRequests,
+        tenancyId: tenancy?.id || null,
+        allPeriods: await db
+          .select({
+            id: billingPeriods.id,
+            periodMonth: billingPeriods.periodMonth,
+            status: billingPeriods.status,
+          })
+          .from(billingPeriods)
+          .where(eq(billingPeriods.propertyId, period.propertyId))
+          .orderBy(desc(billingPeriods.periodMonth)),
       },
-      startValues,
-      currentRates: resolvedRate || null,
-      activeTenancySplit,
-      existingReading: existingReading
-        ? {
-            solarGenerationEnd: existingReading.solarGenerationEnd,
-            exportEnd: existingReading.exportEnd,
-            importEnd: existingReading.importEnd,
-            submittedByName,
-            submittedAt: period.submittedAt,
-            version: existingReading.version || 1,
-          }
-        : null,
-      editHistory: editHistoryRows,
-      isOwner,
-      isTenant,
-      canSubmit,
-      canEdit,
-      canRequestEdit,
-      pendingEditRequests,
-      tenancyId: tenancy?.id || null,
-      allPeriods: await db
-        .select({
-          id: billingPeriods.id,
-          periodMonth: billingPeriods.periodMonth,
-          status: billingPeriods.status,
-        })
-        .from(billingPeriods)
-        .where(eq(billingPeriods.propertyId, period.propertyId))
-        .orderBy(desc(billingPeriods.periodMonth)),
     },
-  }, 200);
+    200
+  );
 });
 
 const getPeriodReadingsRoute = createRoute({
-  method: 'get',
-  path: '/{id}/readings',
-  tags: ['Meter Readings'],
-  summary: 'Get readings for a period',
+  method: "get",
+  path: "/{id}/readings",
+  tags: ["Meter Readings"],
+  summary: "Get readings for a period",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Readings retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Readings retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
   },
 });
 
 readingsRouter.openapi(getPeriodReadingsRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const [reading] = await db
@@ -416,57 +427,60 @@ readingsRouter.openapi(getPeriodReadingsRoute, async (c) => {
     .where(eq(meterReadings.billingPeriodId, periodId))
     .limit(1);
 
-  return c.json({
-    success: true as const,
-    data: reading || null,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: reading || null,
+    },
+    200
+  );
 });
 
 const submitReadingsRoute = createRoute({
-  method: 'post',
-  path: '/{id}/readings',
-  tags: ['Meter Readings'],
-  summary: 'Submit readings and calculate bills',
+  method: "post",
+  path: "/{id}/readings",
+  tags: ["Meter Readings"],
+  summary: "Submit readings and calculate bills",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     body: {
-      content: { 'application/json': { schema: SubmitReadingSchema } },
+      content: { "application/json": { schema: SubmitReadingSchema } },
       required: true,
     },
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: MessageResponse } },
-      description: 'Readings submitted',
+      content: { "application/json": { schema: MessageResponse } },
+      description: "Readings submitted",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Validation error or invalid request',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Validation error or invalid request",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period not found",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Reading already exists',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Reading already exists",
     },
     429: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Rate limited',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Rate limited",
     },
   },
 });
 
 readingsRouter.openapi(submitReadingsRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
-  const data = c.req.valid('json');
+  const data = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   // --- Daily reading submission rate limit ---
@@ -546,6 +560,19 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     );
   }
 
+  if (period.status !== "draft") {
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "PERIOD_NOT_OPEN",
+          message: `Cannot submit readings for a period with status: ${period.status}`,
+        },
+      },
+      400
+    );
+  }
+
   const [existingReadingCheck] = await db
     .select()
     .from(meterReadings)
@@ -564,18 +591,6 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
       409
     );
   }
-  if (!["draft", "pending_approval"].includes(period.status)) {
-    return c.json(
-      {
-        success: false as const,
-        error: {
-          code: "PERIOD_NOT_OPEN",
-          message: `Cannot submit readings for a period with status: ${period.status}`,
-        },
-      },
-      400
-    );
-  }
   // 1. Resolve and Validate Start Values
   const startValidation = await resolveAndValidateStartValues(
     db,
@@ -584,7 +599,13 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     data
   );
   if (startValidation.error) {
-    return c.json({ success: false as const, error: startValidation.error as { code: string; message: string } }, 400);
+    return c.json(
+      {
+        success: false as const,
+        error: startValidation.error as { code: string; message: string },
+      },
+      400
+    );
   }
   const { startValues } = startValidation;
 
@@ -608,17 +629,33 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
 
   // 2. Save Readings
   const readingId = crypto.randomUUID();
-  await db.insert(meterReadings).values({
-    id: readingId,
-    billingPeriodId: periodId,
-    solarGenerationStart: startValues.solarGenerationStart,
-    solarGenerationEnd: data.solarGenerationEnd,
-    exportStart: startValues.exportStart,
-    exportEnd: data.exportEnd,
-    importStart: startValues.importStart,
-    importEnd: data.importEnd,
-    submittedBy: user.id,
-  });
+  try {
+    await db.insert(meterReadings).values({
+      id: readingId,
+      billingPeriodId: periodId,
+      solarGenerationStart: startValues.solarGenerationStart,
+      solarGenerationEnd: data.solarGenerationEnd,
+      exportStart: startValues.exportStart,
+      exportEnd: data.exportEnd,
+      importStart: startValues.importStart,
+      importEnd: data.importEnd,
+      submittedBy: user.id,
+    });
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes("UNIQUE")) {
+      return c.json(
+        {
+          success: false as const,
+          error: {
+            code: "READING_ALREADY_EXISTS",
+            message: "A reading was just submitted for this period.",
+          },
+        },
+        409
+      );
+    }
+    throw err;
+  }
 
   // 3. Resolve Rates
   const [rate] = await db
@@ -686,10 +723,13 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
         { periodId, propertyId: property.id }
       )
     );
-    return c.json({
-      success: true as const,
-      message: "Readings submitted for approval",
-    }, 200);
+    return c.json(
+      {
+        success: true as const,
+        message: "Readings submitted for approval",
+      },
+      200
+    );
   }
 
   // 5. Calculate and Save Bills
@@ -803,10 +843,13 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     );
   }
 
-  return c.json({
-    success: true as const,
-    message: "Readings submitted and bills calculated",
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      message: "Readings submitted and bills calculated",
+    },
+    200
+  );
 });
 
 const EditReadingSchema = z.object({
@@ -827,42 +870,42 @@ const EditReadingSchema = z.object({
 });
 
 const editReadingsRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/readings',
-  tags: ['Meter Readings'],
-  summary: 'Owner direct edit',
+  method: "patch",
+  path: "/{id}/readings",
+  tags: ["Meter Readings"],
+  summary: "Owner direct edit",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     body: {
-      content: { 'application/json': { schema: EditReadingSchema } },
+      content: { "application/json": { schema: EditReadingSchema } },
       required: true,
     },
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: MessageResponse } },
-      description: 'Reading updated',
+      content: { "application/json": { schema: MessageResponse } },
+      description: "Reading updated",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Validation error or invalid request',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Validation error or invalid request",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period or reading not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period or reading not found",
     },
   },
 });
 
 readingsRouter.openapi(editReadingsRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
-  const data = c.req.valid('json');
+  const data = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   const [period] = await db
@@ -971,7 +1014,13 @@ readingsRouter.openapi(editReadingsRoute, async (c) => {
     }
   );
   if (startValidation.error) {
-    return c.json({ success: false as const, error: startValidation.error as { code: string; message: string } }, 400);
+    return c.json(
+      {
+        success: false as const,
+        error: startValidation.error as { code: string; message: string },
+      },
+      400
+    );
   }
   const { startValues } = startValidation;
 
@@ -1085,43 +1134,46 @@ readingsRouter.openapi(editReadingsRoute, async (c) => {
       })
   );
 
-  return c.json({
-    success: true as const,
-    message: "Reading updated and recalculation queued",
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      message: "Reading updated and recalculation queued",
+    },
+    200
+  );
 });
 
 const reopenPeriodRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/reopen',
-  tags: ['Meter Readings'],
-  summary: 'Owner reopens a confirmed/submitted period',
+  method: "patch",
+  path: "/{id}/reopen",
+  tags: ["Meter Readings"],
+  summary: "Owner reopens a confirmed/submitted period",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: MessageResponse } },
-      description: 'Period reopened',
+      content: { "application/json": { schema: MessageResponse } },
+      description: "Period reopened",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or invalid status',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or invalid status",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period not found",
     },
   },
 });
 
 readingsRouter.openapi(reopenPeriodRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
   const db = getDb(c.env.DB);
 
@@ -1194,40 +1246,43 @@ readingsRouter.openapi(reopenPeriodRoute, async (c) => {
     }
   }
 
-  return c.json({ success: true as const, message: "Period reopened for editing" }, 200);
+  return c.json(
+    { success: true as const, message: "Period reopened for editing" },
+    200
+  );
 });
 
 const confirmPeriodRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/confirm',
-  tags: ['Meter Readings'],
-  summary: 'Owner manually confirms a submitted period',
+  method: "patch",
+  path: "/{id}/confirm",
+  tags: ["Meter Readings"],
+  summary: "Owner manually confirms a submitted period",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: MessageResponse } },
-      description: 'Period confirmed',
+      content: { "application/json": { schema: MessageResponse } },
+      description: "Period confirmed",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or invalid status/split mismatch',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or invalid status/split mismatch",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period not found",
     },
   },
 });
 
 readingsRouter.openapi(confirmPeriodRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
   const db = getDb(c.env.DB);
 
@@ -1306,40 +1361,43 @@ readingsRouter.openapi(confirmPeriodRoute, async (c) => {
     .set({ status: "confirmed" })
     .where(eq(billingPeriods.id, periodId));
 
-  return c.json({ success: true as const, message: "Period confirmed successfully" }, 200);
+  return c.json(
+    { success: true as const, message: "Period confirmed successfully" },
+    200
+  );
 });
 
 const approveReadingRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/approve',
-  tags: ['Meter Readings'],
-  summary: 'Owner approves a reading',
+  method: "patch",
+  path: "/{id}/approve",
+  tags: ["Meter Readings"],
+  summary: "Owner approves a reading",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: MessageResponse } },
-      description: 'Reading approved',
+      content: { "application/json": { schema: MessageResponse } },
+      description: "Reading approved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or invalid status',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or invalid status",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period not found",
     },
   },
 });
 
 readingsRouter.openapi(approveReadingRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
   const db = getDb(c.env.DB);
 
@@ -1489,23 +1547,26 @@ readingsRouter.openapi(approveReadingRoute, async (c) => {
     .set({ status: "confirmed" })
     .where(eq(billingPeriods.id, periodId));
 
-  return c.json({
-    success: true as const,
-    message: "Reading approved and bills generated",
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      message: "Reading approved and bills generated",
+    },
+    200
+  );
 });
 
 const rejectReadingRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/reject',
-  tags: ['Meter Readings'],
-  summary: 'Owner rejects a reading',
+  method: "patch",
+  path: "/{id}/reject",
+  tags: ["Meter Readings"],
+  summary: "Owner rejects a reading",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     body: {
       content: {
-        'application/json': {
+        "application/json": {
           schema: z.object({ reason: z.string().optional() }),
         },
       },
@@ -1514,28 +1575,28 @@ const rejectReadingRoute = createRoute({
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: MessageResponse } },
-      description: 'Reading rejected',
+      content: { "application/json": { schema: MessageResponse } },
+      description: "Reading rejected",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or invalid status',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or invalid status",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period not found",
     },
   },
 });
 
 readingsRouter.openapi(rejectReadingRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
-  const data = c.req.valid('json') || {};
+  const data = c.req.valid("json") || {};
   const reason = data.reason || "No reason provided";
   const db = getDb(c.env.DB);
 
@@ -1584,8 +1645,12 @@ readingsRouter.openapi(rejectReadingRoute, async (c) => {
 
   await db
     .update(billingPeriods)
-    .set({ status: "draft" })
+    .set({ status: "draft", submittedBy: null, submittedAt: null })
     .where(eq(billingPeriods.id, periodId));
+
+  await db
+    .delete(meterReadings)
+    .where(eq(meterReadings.billingPeriodId, periodId));
 
   if (period.submittedBy) {
     c.executionCtx.waitUntil(
@@ -1613,42 +1678,42 @@ const RateChangeSchema = z.object({
 });
 
 const changeRatesRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/rates',
-  tags: ['Meter Readings'],
-  summary: 'Owner overrides rates for a period and recalculates',
+  method: "patch",
+  path: "/{id}/rates",
+  tags: ["Meter Readings"],
+  summary: "Owner overrides rates for a period and recalculates",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     body: {
-      content: { 'application/json': { schema: RateChangeSchema } },
+      content: { "application/json": { schema: RateChangeSchema } },
       required: true,
     },
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Rates updated and bills recalculated',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Rates updated and bills recalculated",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Validation error or invalid status',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Validation error or invalid status",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Period or property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Period or property not found",
     },
   },
 });
 
 readingsRouter.openapi(changeRatesRoute, async (c) => {
-  const { id: periodId } = c.req.valid('param');
+  const { id: periodId } = c.req.valid("param");
   const user = c.get("user");
-  const data = c.req.valid('json');
+  const data = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   // 1. Fetch period and property
@@ -1866,16 +1931,19 @@ Your bill impact:
     }
   }
 
-  return c.json({
-    success: true as const,
-    data: {
-      periodId,
-      oldRates,
-      newRates,
-      billsRecalculated: newBills.length,
-      tenantsNotified,
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        periodId,
+        oldRates,
+        newRates,
+        billsRecalculated: newBills.length,
+        tenantsNotified,
+      },
     },
-  }, 200);
+    200
+  );
 });
 
 export { readingsRouter };

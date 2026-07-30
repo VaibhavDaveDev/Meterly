@@ -48,13 +48,13 @@ const footerStyle = `
 
 /** Escape special HTML characters in user-supplied strings to prevent broken markup. */
 function escapeHtml(str: string | undefined | null): string {
-  if (!str) return '';
+  if (!str) return "";
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function emailWrapper(content: string): string {
@@ -74,17 +74,21 @@ function emailWrapper(content: string): string {
         ${content}
       </div>
       <div style="${footerStyle}">
-        <p style="margin: 0 0 8px 0;">Need help? Contact us at <a href="mailto:meterly.support@protonmail.com" style="color: #064E3B; text-decoration: none;">meterly.support@protonmail.com</a></p>
-        <p style="margin: 0; color: #9CA3AF;">© 2026 Meterly. Transparent utility billing.</p>
+        <p style="margin: 0 0 8px 0;">Need help? Visit <a href="https://meterly.pages.dev" style="color: #064E3B; text-decoration: none;">meterly.pages.dev</a> or email <a href="mailto:meterly.support@protonmail.com" style="color: #064E3B; text-decoration: none;">meterly.support@protonmail.com</a></p>
+        <p style="margin: 0 0 4px 0; color: #9CA3AF;">© 2026 Meterly. Transparent utility billing.</p>
+        <p style="margin: 0; color: #9CA3AF;">Open source · <a href="https://github.com/VaibhavDaveDev/Meterly.git" style="color: #9CA3AF; text-decoration: underline;">View on GitHub</a></p>
       </div>
     </body>
     </html>
   `;
 }
 
-export function emailVerificationTemplate(otp: string): { subject: string; html: string } {
+export function emailVerificationTemplate(otp: string): {
+  subject: string;
+  html: string;
+} {
   return {
-    subject: 'Verify your Meterly email',
+    subject: "Verify your Meterly email",
     html: emailWrapper(`
       <p style="margin: 0 0 16px 0; font-size: 15px;">Welcome to Meterly. Verify your email address with this code:</p>
       <div style="background-color: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 8px; padding: 24px; text-align: center; margin: 24px 0;">
@@ -95,9 +99,12 @@ export function emailVerificationTemplate(otp: string): { subject: string; html:
   };
 }
 
-export function passwordResetTemplate(otp: string): { subject: string; html: string } {
+export function passwordResetTemplate(otp: string): {
+  subject: string;
+  html: string;
+} {
   return {
-    subject: 'Your Meterly password reset code',
+    subject: "Your Meterly password reset code",
     html: emailWrapper(`
       <p style="margin: 0 0 16px 0; font-size: 15px;">You requested a password reset for your Meterly account. Use this code to continue:</p>
       <div style="background-color: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 8px; padding: 24px; text-align: center; margin: 24px 0;">
@@ -109,7 +116,11 @@ export function passwordResetTemplate(otp: string): { subject: string; html: str
   };
 }
 
-export function tenantInviteTemplate(ownerName: string, propertyName: string, inviteUrl: string): { subject: string; html: string } {
+export function tenantInviteTemplate(
+  ownerName: string,
+  propertyName: string,
+  inviteUrl: string
+): { subject: string; html: string } {
   const safeOwnerName = escapeHtml(ownerName);
   const safePropertyName = escapeHtml(propertyName);
   return {
@@ -122,9 +133,12 @@ export function tenantInviteTemplate(ownerName: string, propertyName: string, in
   };
 }
 
-export function passwordChangedTemplate(dateStr: string, timeStr: string): { subject: string; html: string } {
+export function passwordChangedTemplate(
+  dateStr: string,
+  timeStr: string
+): { subject: string; html: string } {
   return {
-    subject: 'Your Meterly password has been changed',
+    subject: "Your Meterly password has been changed",
     html: emailWrapper(`
       <p style="margin: 0 0 16px 0; font-size: 15px;">This is a confirmation that the password for your Meterly account has been successfully changed.</p>
       <div style="background-color: #F8FAFC; border: 1px solid #E5E7EB; border-radius: 8px; padding: 24px; margin: 24px 0;">
