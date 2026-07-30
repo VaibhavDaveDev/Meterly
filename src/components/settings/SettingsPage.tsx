@@ -24,13 +24,15 @@ function parseDiceBearUrl(url: string | null | undefined): { seed: string } {
   }
 }
 
-// ponytail: initials helper matching UserNav fallback
 const getInitials = (nameStr: string) => {
   const parts = nameStr.trim().split(" ");
   return parts.length >= 2
     ? parts[0][0] + parts[parts.length - 1][0]
     : nameStr.slice(0, 2);
 };
+
+const buildDicebearUrl = (seed: string) =>
+  `https://api.dicebear.com/8.x/lorelei/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f8fafc`;
 
 export function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -132,7 +134,7 @@ export function SettingsPage() {
       if (avatarType === "gravatar") {
         finalImage = gravatarUrl || (await getGravatarUrl(user?.email || ""));
       } else if (avatarType === "dicebear") {
-        finalImage = `https://api.dicebear.com/8.x/lorelei/svg?seed=${encodeURIComponent(dicebearSeed)}&backgroundColor=f8fafc`;
+        finalImage = buildDicebearUrl(dicebearSeed);
       } // initials leaves finalImage as null
 
       const { error } = await authClient.updateUser({
@@ -356,7 +358,7 @@ export function SettingsPage() {
                 src={
                   avatarType === "gravatar"
                     ? gravatarUrl
-                    : `https://api.dicebear.com/8.x/lorelei/svg?seed=${encodeURIComponent(dicebearSeed)}&backgroundColor=f8fafc`
+                    : buildDicebearUrl(dicebearSeed)
                 }
                 alt="Avatar preview"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}

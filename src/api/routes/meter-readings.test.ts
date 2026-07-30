@@ -715,17 +715,9 @@ describe("Meter Readings API", () => {
         .update(billingPeriods)
         .set({ status: "draft" })
         .where(eq(billingPeriods.id, bpId));
-      await testDb.insert(meterReadings).values({
-        id: crypto.randomUUID(),
-        billingPeriodId: bpId,
-        importEnd: 100,
-        exportEnd: 0,
-        solarGenerationEnd: 0,
-        submittedBy: tenantId,
-      });
 
       currentUser = { id: tenantId };
-      const res = await app.request(
+      const req1 = app.request(
         `/${bpId}/readings`,
         {
           method: "POST",
@@ -736,8 +728,24 @@ describe("Meter Readings API", () => {
         { waitUntil: () => {} } as unknown as ExecutionContext
       );
 
-      expect(res.status).toBe(409);
-      const body = (await res.json()) as {
+      const req2 = app.request(
+        `/${bpId}/readings`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ importEnd: 200 }),
+        },
+        mockEnv as unknown as Parameters<typeof app.request>[2],
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
+
+      const [res1, res2] = await Promise.all([req1, req2]);
+
+      const statuses = [res1.status, res2.status].sort();
+      expect(statuses).toEqual([200, 409]);
+
+      const failedRes = res1.status === 409 ? res1 : res2;
+      const body = (await failedRes.json()) as {
         success: boolean;
         error: { code: string };
       };
