@@ -1643,14 +1643,13 @@ readingsRouter.openapi(rejectReadingRoute, async (c) => {
     );
   }
 
-  await db
-    .update(billingPeriods)
-    .set({ status: "draft", submittedBy: null, submittedAt: null })
-    .where(eq(billingPeriods.id, periodId));
-
-  await db
-    .delete(meterReadings)
-    .where(eq(meterReadings.billingPeriodId, periodId));
+  await db.batch([
+    db
+      .update(billingPeriods)
+      .set({ status: "draft", submittedBy: null, submittedAt: null })
+      .where(eq(billingPeriods.id, periodId)),
+    db.delete(meterReadings).where(eq(meterReadings.billingPeriodId, periodId)),
+  ]);
 
   if (period.submittedBy) {
     c.executionCtx.waitUntil(
