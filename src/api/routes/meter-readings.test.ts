@@ -862,5 +862,66 @@ describe("Meter Readings API", () => {
         .where(eq(billingPeriods.id, bpId));
       expect(bp?.status).toBe("submitted");
     });
+
+    it("checks period status before checking for an existing reading (PERIOD_NOT_OPEN takes priority over READING_ALREADY_EXISTS)", async () => {
+      // Regression guard for the reordering of the status check ahead of the
+      // duplicate-reading check in the POST /:id/readings handler.
+      await testDb.insert(meterReadings).values({
+        id: crypto.randomUUID(),
+        billingPeriodId: bpId,
+        importEnd: 100,
+        exportEnd: 0,
+        solarGenerationEnd: 0,
+        submittedBy: ownerId,
+      });
+      await testDb
+        .update(billingPeriods)
+        .set({ status: "confirmed" })
+        .where(eq(billingPeriods.id, bpId));
+
+      currentUser = { id: tenantId };
+      const res = await app.request(
+        `/${bpId}/readings`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ importEnd: 200 }),
+        },
+        mockEnv as unknown as Parameters<typeof app.request>[2],
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as {
+        success: boolean;
+        error: { code: string };
+      };
+      expect(body.error.code).toBe("PERIOD_NOT_OPEN");
+    });
+
+    it("allows a fresh submission for a draft period with no prior reading", async () => {
+      currentUser = { id: tenantId };
+      const res = await app.request(
+        `/${bpId}/readings`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            importEnd: 150,
+            exportEnd: 10,
+            solarGenerationEnd: 20,
+          }),
+        },
+        mockEnv as unknown as Parameters<typeof app.request>[2],
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
+
+      expect(res.status).toBe(200);
+      const [mr] = await testDb
+        .select()
+        .from(meterReadings)
+        .where(eq(meterReadings.billingPeriodId, bpId));
+      expect(mr?.importEnd).toBe(150);
+    });
   });
 });
