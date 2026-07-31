@@ -1,14 +1,13 @@
 import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 import app, { type Bindings } from "../../api/app";
 
 export const ALL: APIRoute = async (context) => {
-  // context.locals.runtime.env is the correct source for Cloudflare Pages env vars
-  // and secrets set in the Dashboard. The cloudflare:workers global import is empty
-  // for Pages projects — it does not carry Dashboard secrets.
-  const runtime = (
-    context.locals as unknown as {
-      runtime: { env: Bindings; ctx: ExecutionContext };
-    }
-  ).runtime;
-  return app.fetch(context.request, runtime.env, runtime.ctx);
+  // Astro 6+: cloudflare:workers is the correct runtime env source.
+  // locals.runtime.env was removed in Astro 6 — do NOT use it.
+  return app.fetch(
+    context.request,
+    env as unknown as Bindings,
+    context.locals.cfContext
+  );
 };
