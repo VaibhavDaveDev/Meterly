@@ -15,9 +15,18 @@ export const GET: APIRoute = async () => {
     "GITHUB_CLIENT_ID",
     "GITHUB_CLIENT_SECRET",
     "DB",
+    "BILL_PHOTOS",
     "ENVIRONMENT",
     "RESEND_API_KEY",
+    "EMAIL_PROVIDER",
+    "ATLAS_MAILER_URL",
+    "ATLAS_MAILER_SECRET",
+    // The code reads TURNSTILE_SECRET_KEY — confirm this name matches the Dashboard
+    "TURNSTILE_SECRET_KEY",
+    // Also check the name you set in the Dashboard
     "CF_TURNSTILE_SECRET",
+    "MAX_SESSIONS_PER_USER",
+    "CRON_SECRET",
   ];
 
   const report: Record<string, string> = {};
@@ -35,7 +44,15 @@ export const GET: APIRoute = async () => {
   }
 
   return new Response(
-    JSON.stringify({ source: "cloudflare:workers", env: report }, null, 2),
+    JSON.stringify(
+      {
+        source: "cloudflare:workers",
+        note: "TURNSTILE_SECRET_KEY is what the code reads. CF_TURNSTILE_SECRET is what you set in the Dashboard. They must match.",
+        env: report,
+      },
+      null,
+      2
+    ),
     {
       headers: { "Content-Type": "application/json" },
     }

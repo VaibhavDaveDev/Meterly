@@ -322,6 +322,29 @@ app.post("/api/auth/change-password", async (c) => {
   return response;
 });
 
+// Explicit handler for social sign-in — wraps Better Auth with error surfacing
+// so the 500 response body shows the actual error instead of a blank response.
+// Remove this wrapper once OAuth is confirmed working in production.
+app.post("/api/auth/sign-in/social", async (c) => {
+  const auth = getAuth(c.env);
+  try {
+    return await auth.handler(c.req.raw);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const stack =
+      err instanceof Error
+        ? (err.stack ?? "").split("\n").slice(0, 6).join("\n")
+        : undefined;
+    console.error(
+      "[Auth] social sign-in uncaught error:",
+      message,
+      "\n",
+      stack
+    );
+    return c.json({ error: message, stack }, 500);
+  }
+});
+
 // All other auth routes (session, callback, verify-email, etc.) without Turnstile
 app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   const auth = getAuth(c.env);
