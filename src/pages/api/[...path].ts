@@ -3,11 +3,24 @@ import { env } from "cloudflare:workers";
 import app, { type Bindings } from "../../api/app";
 
 export const ALL: APIRoute = async (context) => {
-  // Astro 6+: cloudflare:workers is the correct runtime env source.
-  // locals.runtime.env was removed in Astro 6 — do NOT use it.
+  const runtime = (
+    context.locals as unknown as {
+      runtime?: { env?: Bindings; ctx?: ExecutionContext };
+    }
+  )?.runtime;
+
+  const combinedEnv = {
+    ...(env as unknown as Bindings),
+    ...(runtime?.env || {}),
+  };
+
+  const ctx = runtime?.ctx || {
+    waitUntil: (p: Promise<unknown>) => p.catch(console.error),
+  };
+
   return app.fetch(
     context.request,
-    env as unknown as Bindings,
-    context.locals.cfContext
+    combinedEnv as unknown as Bindings,
+    ctx as ExecutionContext
   );
 };
