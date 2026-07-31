@@ -10,6 +10,14 @@ import {
   passwordResetTemplate,
 } from "./email-templates";
 
+function getBaseUrl(rawUrl?: string): string {
+  let url = (rawUrl || "https://meterly.pages.dev").trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
+  }
+  return url.replace(/\/+$/, "");
+}
+
 export function getAuth(env: {
   DB: D1Database;
   BETTER_AUTH_SECRET: string;
@@ -28,6 +36,12 @@ export function getAuth(env: {
   AUTH_RATE_LIMIT_WINDOW?: string;
 }) {
   const db = getDb(env.DB);
+  const baseURL = getBaseUrl(env.BETTER_AUTH_URL);
+
+  const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
+  const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+  const githubClientId = env.GITHUB_CLIENT_ID?.trim();
+  const githubClientSecret = env.GITHUB_CLIENT_SECRET?.trim();
 
   return betterAuth({
     database: drizzleAdapter(db, {
@@ -39,11 +53,17 @@ export function getAuth(env: {
         verification: schema.verification,
       },
     }),
-    secret: env.BETTER_AUTH_SECRET,
-    baseURL: (env.BETTER_AUTH_URL || "https://meterly.pages.dev").replace(
-      /\/+$/,
-      ""
-    ),
+    secret:
+      env.BETTER_AUTH_SECRET?.trim() ||
+      "fallback-secret-for-meterly-auth-key-minimum-32-chars",
+    baseURL,
+    trustedOrigins: [
+      "https://meterly.pages.dev",
+      "https://meterly.app",
+      "http://localhost:4321",
+      "http://localhost:3000",
+      "http://127.0.0.1:4321",
+    ],
 
     // Tell Better Auth how to read the real client IP on Cloudflare Workers.
     // CF-Connecting-IP is set by Cloudflare and cannot be spoofed by the client.
@@ -169,8 +189,6 @@ export function getAuth(env: {
 
     // Global Rate Limiting — Better Auth tracks per-IP using CF-Connecting-IP
     rateLimit: {
-      // Global baseline: 20 requests per 60 seconds per IP across all auth routes.
-      // Tighter custom rules applied to sensitive endpoints below.
       window: env.AUTH_RATE_LIMIT_WINDOW
         ? parseInt(env.AUTH_RATE_LIMIT_WINDOW, 10)
         : 60,
@@ -180,16 +198,11 @@ export function getAuth(env: {
           : env.AUTH_RATE_LIMIT_MAX
             ? parseInt(env.AUTH_RATE_LIMIT_MAX, 10)
             : 20,
-      // Custom rules for endpoints that should have tighter limits:
       customRules:
         env.ENVIRONMENT === "production"
           ? {
-              // Sign-in: 5 attempts per 10 minutes per IP — OTP limiter is the primary defense,
-              // this is a backstop for credential stuffing
               "/sign-in/email": { window: 600, max: 5 },
-              // Forget-password: 3 attempts per 10 minutes per IP
               "/forget-password": { window: 600, max: 3 },
-              // OTP sending: 5 per 10 minutes (our custom OTP limiter also enforces backoff)
               "/email-otp/send-verification-otp": { window: 600, max: 5 },
             }
           : undefined,
@@ -197,23 +210,22 @@ export function getAuth(env: {
 
     // Google and GitHub OAuth as alternative login methods
     socialProviders: {
-      google: {
-        clientId: env.GOOGLE_CLIENT_ID || "",
-        clientSecret: env.GOOGLE_CLIENT_SECRET || "",
-      },
-      github: {
-        clientId: env.GITHUB_CLIENT_ID || "",
-        clientSecret: env.GITHUB_CLIENT_SECRET || "",
-      },
+      ...(googleClientId && googleClientSecret
+        ? {
+            google: {
+              clientId: googleClientId,
+              clientSecret: googleClientSecret,
+            },
+          }
+        : {}),
+      ...(githubClientId && githubClientSecret
+        ? {
+            github: {
+              clientId: githubClientId,
+              clientSecret: githubClientSecret,
+            },
+          }
+        : {}),
     },
-
-    // Lifecycle hooks - disabled for now due to Better Auth v1.6.19 issues with response object
-    // TODO: Re-enable after Better Auth fixes response.headers access in hooks
-    // hooks: {
-    //   after: async (ctx: any) => {
-    //     if (!ctx.response) return;
-    //     // Avatar and email logic here
-    //   },
-    // },
   });
 }
