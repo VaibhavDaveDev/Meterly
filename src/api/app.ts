@@ -322,13 +322,57 @@ app.post("/api/auth/change-password", async (c) => {
   return response;
 });
 
-// Explicit handler for social sign-in — wraps Better Auth with error surfacing
-// so the 500 response body shows the actual error instead of a blank response.
+// Explicit handler for social sign-in — wraps Better Auth with full error surfacing.
+// Intercepts both thrown exceptions AND empty 500 responses from auth.handler.
 // Remove this wrapper once OAuth is confirmed working in production.
 app.post("/api/auth/sign-in/social", async (c) => {
   const auth = getAuth(c.env);
+
+  // Log config state — visible in Cloudflare Dashboard → Pages → Deployment → Logs
+  const urlPreview = (c.env.BETTER_AUTH_URL ?? "NOT SET").slice(0, 50);
+  console.log(
+    "[Auth] social sign-in attempt — BETTER_AUTH_URL preview:",
+    urlPreview
+  );
+  console.log(
+    "[Auth] google id present:",
+    !!c.env.GOOGLE_CLIENT_ID,
+    "| secret present:",
+    !!c.env.GOOGLE_CLIENT_SECRET
+  );
+  console.log(
+    "[Auth] github id present:",
+    !!c.env.GITHUB_CLIENT_ID,
+    "| secret present:",
+    !!c.env.GITHUB_CLIENT_SECRET
+  );
+
   try {
-    return await auth.handler(c.req.raw);
+    const response = await auth.handler(c.req.raw);
+
+    if (response.status >= 500) {
+      // Better Auth caught the error internally and returned an empty 500.
+      // Clone the body (likely empty) and surface it to the client.
+      const bodyText = await response.clone().text();
+      console.error(
+        "[Auth] social handler returned",
+        response.status,
+        "— body:",
+        bodyText || "(empty)"
+      );
+      return c.json(
+        {
+          error:
+            "Better Auth returned 500 with empty body — check Cloudflare Pages logs for detail.",
+          better_auth_status: response.status,
+          better_auth_body: bodyText || null,
+          better_auth_url_preview: urlPreview,
+        },
+        500
+      );
+    }
+
+    return response;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack =
@@ -341,7 +385,10 @@ app.post("/api/auth/sign-in/social", async (c) => {
       "\n",
       stack
     );
-    return c.json({ error: message, stack }, 500);
+    return c.json(
+      { error: message, stack, better_auth_url_preview: urlPreview },
+      500
+    );
   }
 });
 
