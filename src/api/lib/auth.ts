@@ -58,8 +58,8 @@ export function getAuth(env: {
       "fallback-secret-for-meterly-auth-key-minimum-32-chars",
     baseURL,
     trustedOrigins: [
+      ...(baseURL ? [baseURL] : []),
       "https://meterly.pages.dev",
-      "https://meterly.app",
       "http://localhost:4321",
       "http://localhost:3000",
       "http://127.0.0.1:4321",

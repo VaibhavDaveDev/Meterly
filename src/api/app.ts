@@ -79,6 +79,21 @@ export const app = new OpenAPIHono<{
   Variables: Variables;
 }>();
 
+// Global error handler — prevents silent empty 500 responses
+app.onError((err, c) => {
+  console.error("[Hono Error]", c.req.method, c.req.url, err);
+  return c.json(
+    {
+      error: err.message || "Internal Server Error",
+      name: err.name,
+      stack: err.stack
+        ? err.stack.split("\n").slice(0, 8).join("\n")
+        : undefined,
+    },
+    500
+  );
+});
+
 // Polyfill executionCtx for local Vite/Node development to prevent 500 errors
 app.use("*", async (c, next) => {
   let hasCtx: boolean;
@@ -103,7 +118,7 @@ app.use("*", async (c, next) => {
 app.use(
   "*",
   cors({
-    origin: (origin) => {
+    origin: (origin, c) => {
       if (!origin) return "*";
       // Allow localhost on any port for dev
       if (
@@ -112,12 +127,21 @@ app.use(
       ) {
         return origin;
       }
-      // Allow all Cloudflare Pages preview deployments and the production domain
-      if (origin.endsWith(".pages.dev") || origin.endsWith(".meterly.app")) {
+      // Allow configured BETTER_AUTH_URL domain if present
+      if (c?.env?.BETTER_AUTH_URL) {
+        try {
+          const authOrigin = new URL(c.env.BETTER_AUTH_URL).origin;
+          if (origin === authOrigin) return origin;
+        } catch {
+          /* ignore */
+        }
+      }
+      // Allow all Cloudflare Pages deployments (*.pages.dev)
+      if (origin.endsWith(".pages.dev")) {
         return origin;
       }
-      // Fallback: allow the exact production origin
-      return "https://meterly.pages.dev";
+      // Fallback to env.BETTER_AUTH_URL or default Cloudflare Pages domain
+      return c?.env?.BETTER_AUTH_URL || "https://meterly.pages.dev";
     },
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
