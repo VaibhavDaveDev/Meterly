@@ -13,15 +13,15 @@ describe("getAuth configuration", () => {
     expect(() => getAuth(minimalEnv)).not.toThrow();
   });
 
-  it("throws when BETTER_AUTH_SECRET is missing or empty", () => {
+  it("throws when BETTER_AUTH_SECRET is missing or empty in production", () => {
     expect(() => getAuth({ ...minimalEnv, BETTER_AUTH_SECRET: "" })).toThrow(
-      "BETTER_AUTH_SECRET environment variable is required."
+      "BETTER_AUTH_SECRET environment variable is required in production."
     );
   });
 
-  it("throws when BETTER_AUTH_URL is missing or empty", () => {
+  it("throws when BETTER_AUTH_URL is missing or empty in production", () => {
     expect(() => getAuth({ ...minimalEnv, BETTER_AUTH_URL: "" })).toThrow(
-      "BETTER_AUTH_URL environment variable is required."
+      "BETTER_AUTH_URL environment variable is required in production."
     );
   });
 

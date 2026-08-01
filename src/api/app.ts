@@ -79,8 +79,13 @@ export const app = new OpenAPIHono<{
   Variables: Variables;
 }>();
 
-// Global error handler — prevents silent empty 500 responses
+import { HTTPException } from "hono/http-exception";
+
+// Global error handler — prevents silent empty 500 responses while preserving HTTP exceptions (400, 403, 404, etc.)
 app.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    return err.getResponse();
+  }
   console.error("[Hono Error]", c.req.method, c.req.url, err);
   return c.json(
     {

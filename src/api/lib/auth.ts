@@ -10,10 +10,15 @@ import {
   passwordResetTemplate,
 } from "./email-templates";
 
-function getBaseUrl(rawUrl?: string): string {
+function getBaseUrl(rawUrl?: string, environment?: string): string {
   const trimmed = rawUrl?.trim();
   if (!trimmed) {
-    throw new Error("BETTER_AUTH_URL environment variable is required.");
+    if (environment === "production") {
+      throw new Error(
+        "BETTER_AUTH_URL environment variable is required in production."
+      );
+    }
+    return "http://localhost:4321";
   }
   let url = trimmed;
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
@@ -43,10 +48,16 @@ export function getAuth(env: {
 
   const secret = env.BETTER_AUTH_SECRET?.trim();
   if (!secret) {
-    throw new Error("BETTER_AUTH_SECRET environment variable is required.");
+    if (env.ENVIRONMENT === "production") {
+      throw new Error(
+        "BETTER_AUTH_SECRET environment variable is required in production."
+      );
+    }
   }
 
-  const baseURL = getBaseUrl(env.BETTER_AUTH_URL);
+  const effectiveSecret =
+    secret || "fallback-secret-for-meterly-auth-key-minimum-32-chars";
+  const baseURL = getBaseUrl(env.BETTER_AUTH_URL, env.ENVIRONMENT);
 
   const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
   const googleClientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
@@ -63,7 +74,7 @@ export function getAuth(env: {
         verification: schema.verification,
       },
     }),
-    secret,
+    secret: effectiveSecret,
     baseURL,
     trustedOrigins: [
       ...(baseURL ? [baseURL] : []),
