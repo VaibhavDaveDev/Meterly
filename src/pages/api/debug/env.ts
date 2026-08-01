@@ -7,6 +7,10 @@ import { env } from "cloudflare:workers";
 export const GET: APIRoute = async () => {
   const cfEnv = env as Record<string, unknown>;
 
+  if (cfEnv.ENVIRONMENT === "production") {
+    return new Response("Not Found", { status: 404 });
+  }
+
   const keys = [
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",

@@ -11,7 +11,11 @@ import {
 } from "./email-templates";
 
 function getBaseUrl(rawUrl?: string): string {
-  let url = (rawUrl || "https://meterly.pages.dev").trim();
+  const trimmed = rawUrl?.trim();
+  if (!trimmed) {
+    throw new Error("BETTER_AUTH_URL environment variable is required.");
+  }
+  let url = trimmed;
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = `https://${url}`;
   }
@@ -36,6 +40,12 @@ export function getAuth(env: {
   AUTH_RATE_LIMIT_WINDOW?: string;
 }) {
   const db = getDb(env.DB);
+
+  const secret = env.BETTER_AUTH_SECRET?.trim();
+  if (!secret) {
+    throw new Error("BETTER_AUTH_SECRET environment variable is required.");
+  }
+
   const baseURL = getBaseUrl(env.BETTER_AUTH_URL);
 
   const googleClientId = env.GOOGLE_CLIENT_ID?.trim();
@@ -53,9 +63,7 @@ export function getAuth(env: {
         verification: schema.verification,
       },
     }),
-    secret:
-      env.BETTER_AUTH_SECRET?.trim() ||
-      "fallback-secret-for-meterly-auth-key-minimum-32-chars",
+    secret,
     baseURL,
     trustedOrigins: [
       ...(baseURL ? [baseURL] : []),

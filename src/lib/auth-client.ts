@@ -6,7 +6,14 @@ const getClientBaseURL = () => {
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
-  return import.meta.env.PUBLIC_BETTER_AUTH_URL || "https://meterly.pages.dev";
+  const envUrl = import.meta.env.PUBLIC_BETTER_AUTH_URL;
+  if (envUrl) {
+    return envUrl;
+  }
+  if (import.meta.env.DEV) {
+    return "http://localhost:4321";
+  }
+  throw new Error("PUBLIC_BETTER_AUTH_URL environment variable is required.");
 };
 
 export const authClient = createAuthClient({
