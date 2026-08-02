@@ -14,6 +14,9 @@ export default defineConfig({
   }),
   integrations: [react(), tailwind()],
   vite: {
+    build: {
+      sourcemap: true,
+    },
     optimizeDeps: {
       include: ["picomatch"],
     },
