@@ -13,17 +13,20 @@ interface Env {
   BETTER_AUTH_URL: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
-  EMAIL_PROVIDER?: 'resend' | 'atlas';
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  EMAIL_PROVIDER?: "resend" | "atlas";
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
   ATLAS_MAILER_URL?: string;
   ATLAS_MAILER_SECRET?: string;
   TURNSTILE_SECRET_KEY?: string;
-  ENVIRONMENT?: 'development' | 'production' | 'test';
+  ENVIRONMENT?: "development" | "production" | "test";
 }
 
 interface ImportMetaEnv {
   readonly PUBLIC_TURNSTILE_SITE_KEY?: string;
+  readonly PUBLIC_BETTER_AUTH_URL?: string;
 }
 
 interface ImportMeta {

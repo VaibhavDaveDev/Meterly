@@ -134,6 +134,24 @@ When the user requests a durable behavior change, record it here or in the relev
 - **Husky:** Pre-commit runs `lint-staged` (ESLint + Prettier on staged files). Pre-push runs `astro check` (full typecheck). Both hooks run automatically after `pnpm install` via the `prepare` script.
 - **Dependency security:** CI runs `pnpm audit --prod` on pushes to main. DevDependency vulns (miniflare/undici) are excluded intentionally.
 
+### Drizzle ORM Bundling Rule
+
+Drizzle ORM has internal circular ESM dependencies. When Rollup splits it across multiple chunks, esbuild wraps the inter-chunk circulars in `__init()` lazy initializers, which causes `Class extends value undefined` at Cloudflare runtime. Two rules in `astro.config.mjs` prevent this:
+
+1. `ssr.noExternal: [/^drizzle-orm/]` — regex (not string) to match ALL drizzle-orm sub-paths.
+2. `vite.build.rollupOptions.output.manualChunks` — collocates all drizzle-orm code into a single `drizzle-bundle` chunk so circulars stay within one file (Rollup handles within-chunk circulars correctly via live bindings).
+
+Do NOT remove or weaken either rule.
+
+### Astro v7 / Cloudflare Adapter v14 Runtime API
+
+Both `locals.runtime.env` and `locals.runtime.ctx` were removed in Astro v6. The replacements:
+
+- **Env bindings:** `import { env } from "cloudflare:workers"` (module-level). Only `env` is exported — do NOT import `ctx` from that module.
+- **Execution context:** `context.locals.cfContext` (provides `waitUntil`, `passThroughOnException`).
+
+This applies to any Astro API route that delegates to a Cloudflare Worker handler (e.g. `src/pages/api/[...path].ts`).
+
 ### Recharts Container Rule
 
 Every `<ResponsiveContainer>` must live inside a wrapper div that has explicit `min-h-[Npx]`
