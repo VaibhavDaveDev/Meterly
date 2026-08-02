@@ -30,11 +30,13 @@ Be direct and respectful. We review code, not people. If you disagree with a dec
 Meterly uses the **DOX framework** — every directory that owns a domain has an `AGENTS.md` file that defines its purpose, rules, and contracts. Read the `AGENTS.md` in any folder you plan to touch before editing files inside it.
 
 The chain to always read before any change:
+
 1. `/AGENTS.md` — project-wide rules
 2. `/src/AGENTS.md` — source-level rules
 3. The `AGENTS.md` closest to the file you are editing
 
 **Stack:**
+
 - **Frontend:** Astro (SSR) + React islands + Tailwind CSS + shadcn/ui
 - **Backend:** Hono (on Cloudflare Workers) + Drizzle ORM
 - **Database:** Cloudflare D1 (SQLite dialect)
@@ -47,7 +49,7 @@ The chain to always read before any change:
 
 ### Prerequisites
 
-- Node.js v18+
+- Node.js v20+
 - pnpm v10+
 - A Cloudflare account (free tier is fine)
 - Wrangler CLI (installed via pnpm)
@@ -75,6 +77,7 @@ pnpm run dev
 The app runs at `http://localhost:4321`.
 
 For local development, the default values in `.dev.vars` work out of the box:
+
 - Email OTP codes print to the terminal — no mailer needed (like Resend or [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git))
 - Turnstile is pre-configured with Cloudflare's always-pass test keys
 - Google OAuth is optional
@@ -87,6 +90,7 @@ This project uses Husky for pre-commit enforcement. After `pnpm install`, git ho
 - **Pre-push:** Runs `astro check` (full TypeScript typecheck). Fix any type errors before pushing.
 
 To skip hooks in an emergency (not recommended):
+
 ```bash
 git commit --no-verify -m "your message"
 git push --no-verify
@@ -102,9 +106,9 @@ pnpm seed:fresh
 
 This resets the local database and inserts demo fixtures with two accounts:
 
-| Role | Email | Password |
-|------|-------|----------|
-| Owner | `owner@demo.meterly.app` | `DemoOwner123` |
+| Role   | Email                     | Password        |
+| ------ | ------------------------- | --------------- |
+| Owner  | `owner@demo.meterly.app`  | `DemoOwner123`  |
 | Tenant | `tenant@demo.meterly.app` | `DemoTenant123` |
 
 ---
@@ -121,6 +125,7 @@ This resets the local database and inserts demo fixtures with two accounts:
 ### Making a Change
 
 1. Create a branch from the latest `main`:
+
    ```bash
    git checkout main && git pull
    git checkout -b feat/your-feature-name
@@ -129,6 +134,7 @@ This resets the local database and inserts demo fixtures with two accounts:
 2. Read the relevant `AGENTS.md` files for the directories you plan to touch.
 
 3. Make your changes. Run checks frequently:
+
    ```bash
    pnpm run lint
    pnpm run typecheck
@@ -154,6 +160,7 @@ Optional longer explanation if needed. Wrap at 72 chars.
 Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`
 
 Examples:
+
 - `feat: add rate override to billing periods`
 - `fix: cancel pending edit requests before rate limit check`
 - `docs: update migration instructions in README`
@@ -188,6 +195,7 @@ Examples:
 All API routes must be registered using `createRoute()` from `@hono/zod-openapi`. This is what populates the Swagger UI at `/api/docs`.
 
 **Pattern for every new route:**
+
 1. Define the Zod schemas for params, query, body, and responses.
 2. Call `createRoute({ method, path, tags, summary, request, responses })`.
 3. Register with `router.openapi(route, handler)` — not `router.get/post/etc`.
@@ -199,7 +207,7 @@ If you add a route without `createRoute()`, it will not appear in the API docs a
 ### Styling
 
 - Use Tailwind utility classes. No inline styles.
-- Design tokens and theme values live in `tailwind.config.mjs` — don't hardcode colours.
+- Design tokens and theme values live in the `@theme` block of `src/styles/globals.css` — don't hardcode colours.
 - Typography: Work Sans for body, Manrope for headings, JetBrains Mono for numbers/code.
 - No gradients, heavy shadows, or animation-heavy UI. Minimal hover states only.
 
@@ -309,4 +317,4 @@ Open a GitHub Issue and describe:
 2. **Who this affects** — owners, tenants, both?
 3. **What you have tried** — workarounds you currently use
 
-Feature requests are prioritised based on how many users they affect and how well they fit the product's direction. 
+Feature requests are prioritised based on how many users they affect and how well they fit the product's direction.
