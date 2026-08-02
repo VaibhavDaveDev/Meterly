@@ -65,6 +65,10 @@ export function getAuth(env: {
   const githubClientSecret = env.GITHUB_CLIENT_SECRET?.trim();
 
   return betterAuth({
+    logger: {
+      level: "debug",
+      disabled: false,
+    },
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {
