@@ -65,7 +65,7 @@ const { title, description, type = 'signup' } = Astro.props;
         <div class="absolute inset-0 w-full h-full">
           <img alt="Modern solar home" class="absolute inset-0 w-full h-full object-cover" src="/house.png">
           <!-- Tonal Glass Overlay to ensure text readability while maintaining image visibility -->
-          <div class="absolute inset-0 bg-gradient-to-t from-primary-container/90 via-primary-container/40 to-transparent">
+          <div class="absolute inset-0 bg-transparent dark:bg-gradient-to-t dark:from-black/95 dark:via-black/60 dark:to-black/20">
           </div>
         </div>
         
@@ -73,16 +73,16 @@ const { title, description, type = 'signup' } = Astro.props;
         <div class="relative z-10 max-w-xl text-on-primary">
           <!-- Decorative Brand Mark -->
           <div class="mb-stack-lg flex items-center gap-2">
-            <a href="/" class="flex items-center gap-2 text-on-primary hover:opacity-80 transition-opacity">
+            <a href="/" class="flex items-center gap-2 text-on-primary dark:text-white hover:opacity-80 transition-opacity">
               <img src="/favicon.svg" alt="Meterly Logo" class="w-10 h-10 rounded-lg">
-              <span class="font-headline-lg text-headline-lg tracking-tight">Meterly</span>
+              <span class="font-headline-lg text-headline-lg tracking-tight dark:text-white">Meterly</span>
             </a>
           </div>
           
           <h1 class="font-headline-xl text-headline-xl mb-stack-sm text-surface-container-lowest dark:text-white drop-shadow-md">
             Join 500+ properties managing solar billing with 100% transparency.
           </h1>
-          <p class="font-body-md text-body-md text-surface-container-low max-w-md opacity-90">
+          <p class="font-body-md text-body-md text-surface-container-low dark:text-white max-w-md opacity-90">
             Experience the future of utility management. Accurate data, equitable distribution, and zero guesswork for both landlords and tenants.
           </p>
           
@@ -100,8 +100,8 @@ const { title, description, type = 'signup' } = Astro.props;
               </div>
             </div>
             <div class="text-sm">
-              <p class="font-label-caps text-label-caps text-surface-container-low">Trusted by</p>
-              <p class="font-body-sm text-body-sm font-semibold text-surface-container-lowest">Top Property Managers</p>
+              <p class="font-label-caps text-label-caps text-surface-container-low dark:text-white/80">Trusted by</p>
+              <p class="font-body-sm text-body-sm font-semibold text-surface-container-lowest dark:text-white">Top Property Managers</p>
             </div>
           </div>
         </div>
