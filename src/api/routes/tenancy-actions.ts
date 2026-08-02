@@ -1,32 +1,48 @@
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
-import { eq, and, desc, ne, sql, like, count } from 'drizzle-orm';
-import { getDb } from '../../db';
-import { tenancies, bills, billingPeriods, properties, meterReadings, editRequests } from '../../db/schema';
-import { authMiddleware } from '../middleware/auth';
-import { sweepOrphanedPropertyData } from '../lib/property-cleanup';
-import { createNotification } from '../lib/notifications';
-import { sendEmail } from '../lib/email';
-import { tenantInviteTemplate } from '../lib/email-templates';
-import { user as userTable } from '../../db/schema/auth';
-import { SuccessResponse, SimpleSuccessResponse, ErrorResponse, IdParam } from '../lib/openapi-schemas';
-import type { Bindings, Variables } from '../app';
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { eq, and, desc, ne, sql, like, count } from "drizzle-orm";
+import { getDb } from "../../db";
+import {
+  tenancies,
+  bills,
+  billingPeriods,
+  properties,
+  meterReadings,
+  editRequests,
+} from "../../db/schema";
+import { authMiddleware } from "../middleware/auth";
+import { sweepOrphanedPropertyData } from "../lib/property-cleanup";
+import { createNotification } from "../lib/notifications";
+import { sendEmail } from "../lib/email";
+import { tenantInviteTemplate } from "../lib/email-templates";
+import { user as userTable } from "../../db/schema/auth";
+import {
+  SuccessResponse,
+  SimpleSuccessResponse,
+  ErrorResponse,
+  IdParam,
+} from "../lib/openapi-schemas";
+import { csvCell } from "../lib/csv";
+import type { Bindings, Variables } from "../app";
 
-const tenancyActionsRouter = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>();
+const tenancyActionsRouter = new OpenAPIHono<{
+  Bindings: Bindings;
+  Variables: Variables;
+}>();
 
-tenancyActionsRouter.use('*', authMiddleware);
+tenancyActionsRouter.use("*", authMiddleware);
 
 const acceptInviteRoute = createRoute({
-  method: 'post',
-  path: '/accept',
-  tags: ['Tenancy Actions'],
-  summary: 'Accept an invitation',
+  method: "post",
+  path: "/accept",
+  tags: ["Tenancy Actions"],
+  summary: "Accept an invitation",
   security: [{ cookieAuth: [] }],
   request: {
     body: {
       content: {
-        'application/json': {
+        "application/json": {
           schema: z.object({
-            token: z.string().openapi({ example: 'invite_token_123' }),
+            token: z.string().openapi({ example: "invite_token_123" }),
           }),
         },
       },
@@ -35,40 +51,53 @@ const acceptInviteRoute = createRoute({
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Invitation accepted',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Invitation accepted",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Invalid or expired invitation token',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Invalid or expired invitation token",
     },
   },
 });
 
 tenancyActionsRouter.openapi(acceptInviteRoute, async (c) => {
-  const user = c.get('user');
-  const { token } = c.req.valid('json');
+  const user = c.get("user");
+  const { token } = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   const [tenancy] = await db
     .select()
     .from(tenancies)
-    .where(and(eq(tenancies.inviteToken, token), eq(tenancies.status, 'invited')))
+    .where(
+      and(eq(tenancies.inviteToken, token), eq(tenancies.status, "invited"))
+    )
     .limit(1);
 
   if (!tenancy) {
-    return c.json({ 
-      success: false as const, 
-      error: { code: 'INVALID_TOKEN', message: 'Invalid or expired invitation token' } 
-    }, 404);
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "INVALID_TOKEN",
+          message: "Invalid or expired invitation token",
+        },
+      },
+      404
+    );
   }
 
-  const [property] = await db.select().from(properties).where(eq(properties.id, tenancy.propertyId)).limit(1);
+  const [property] = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.id, tenancy.propertyId))
+    .limit(1);
 
-  await db.update(tenancies)
+  await db
+    .update(tenancies)
     .set({
       tenantId: user.id,
-      status: 'active',
+      status: "active",
       joinedAt: new Date(),
       inviteToken: null, // Clear token after use
     })
@@ -79,56 +108,63 @@ tenancyActionsRouter.openapi(acceptInviteRoute, async (c) => {
       createNotification(
         db,
         property.ownerId,
-        'system',
-        'Tenant Accepted Invite',
+        "system",
+        "Tenant Accepted Invite",
         `${user.name || user.email} has accepted the invitation for ${property.name}.`,
         { propertyId: property.id, tenancyId: tenancy.id }
       )
     );
   }
 
-  return c.json({
-    success: true as const,
-    data: { propertyId: tenancy.propertyId },
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: { propertyId: tenancy.propertyId },
+    },
+    200
+  );
 });
 
 const resendInviteRoute = createRoute({
-  method: 'post',
-  path: '/{id}/resend-invite',
-  tags: ['Tenancy Actions'],
-  summary: 'Resend an invitation email',
+  method: "post",
+  path: "/{id}/resend-invite",
+  tags: ["Tenancy Actions"],
+  summary: "Resend an invitation email",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: z.object({ success: z.literal(true), message: z.string() }) } },
-      description: 'Invite resent successfully',
+      content: {
+        "application/json": {
+          schema: z.object({ success: z.literal(true), message: z.string() }),
+        },
+      },
+      description: "Invite resent successfully",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or Invalid status',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or Invalid status",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Not authorized or tenancy not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Not authorized or tenancy not found",
     },
     429: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Rate limit exceeded',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Rate limit exceeded",
     },
     500: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Email failed to send',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Email failed to send",
     },
   },
 });
 
 tenancyActionsRouter.openapi(resendInviteRoute, async (c) => {
-  const { id: tenancyId } = c.req.valid('param');
-  const user = c.get('user');
+  const { id: tenancyId } = c.req.valid("param");
+  const user = c.get("user");
   const db = getDb(c.env.DB);
 
   // Auth check: Is this the property owner?
@@ -145,26 +181,59 @@ tenancyActionsRouter.openapi(resendInviteRoute, async (c) => {
     .limit(1);
 
   if (!tenancyData) {
-    return c.json({ success: false as const, error: { code: 'UNAUTHORIZED', message: 'Not authorized or tenancy not found' } }, 403);
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Not authorized or tenancy not found",
+        },
+      },
+      403
+    );
   }
 
   const { tenancy, property, owner } = tenancyData;
 
-  if (tenancy.status !== 'invited' || !tenancy.inviteEmail || !tenancy.inviteToken) {
-    return c.json({ success: false as const, error: { code: 'INVALID_STATUS', message: 'Tenancy is not in invited status' } }, 400);
+  if (
+    tenancy.status !== "invited" ||
+    !tenancy.inviteEmail ||
+    !tenancy.inviteToken
+  ) {
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "INVALID_STATUS",
+          message: "Tenancy is not in invited status",
+        },
+      },
+      400
+    );
   }
 
   // 24h rate limit using invitedAt
   if (tenancy.invitedAt) {
-    const hoursSinceInvite = (Date.now() - tenancy.invitedAt.getTime()) / (1000 * 60 * 60);
+    const hoursSinceInvite =
+      (Date.now() - tenancy.invitedAt.getTime()) / (1000 * 60 * 60);
     if (hoursSinceInvite < 24) {
-      return c.json({ success: false as const, error: { code: 'RATE_LIMIT_EXCEEDED', message: 'You can only resend the invite once every 24 hours.' } }, 429);
+      return c.json(
+        {
+          success: false as const,
+          error: {
+            code: "RATE_LIMIT_EXCEEDED",
+            message: "You can only resend the invite once every 24 hours.",
+          },
+        },
+        429
+      );
     }
   }
 
   // Renew token expiry and update invitedAt
   const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
-  await db.update(tenancies)
+  await db
+    .update(tenancies)
     .set({
       invitedAt: new Date(),
       inviteExpiresAt,
@@ -174,59 +243,85 @@ tenancyActionsRouter.openapi(resendInviteRoute, async (c) => {
   // Send email
   const inviteUrl = `${c.env.BETTER_AUTH_URL}/invite/${tenancy.inviteToken}`;
   try {
-    const template = tenantInviteTemplate(owner.name || 'Property Owner', property.name, inviteUrl);
+    const template = tenantInviteTemplate(
+      owner.name || "Property Owner",
+      property.name,
+      inviteUrl
+    );
     await sendEmail(c.env, {
       to: tenancy.inviteEmail,
       subject: template.subject,
       html: template.html,
     });
   } catch (error) {
-    console.error('Failed to send invite email:', error);
-    return c.json({ success: false as const, error: { code: 'EMAIL_FAILED', message: 'Failed to send email' } }, 500);
+    console.error("Failed to send invite email:", error);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "EMAIL_FAILED", message: "Failed to send email" },
+      },
+      500
+    );
   }
 
-  return c.json({ success: true as const, message: 'Invite resent successfully' }, 200);
+  return c.json(
+    { success: true as const, message: "Invite resent successfully" },
+    200
+  );
 });
 
 const exportBillsRoute = createRoute({
-  method: 'get',
-  path: '/{id}/export/csv',
-  tags: ['Tenancy Actions'],
-  summary: 'Tenant downloads their billing history',
+  method: "get",
+  path: "/{id}/export/csv",
+  tags: ["Tenancy Actions"],
+  summary: "Tenant downloads their billing history",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     query: z.object({
-      includeReadings: z.enum(['true', 'false']).optional(),
+      includeReadings: z.enum(["true", "false"]).optional(),
     }),
   },
   responses: {
     200: {
-      content: { 'text/csv': { schema: z.string() } },
-      description: 'CSV data',
+      content: { "text/csv": { schema: z.string() } },
+      description: "CSV data",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Only the tenant can export this data',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Only the tenant can export this data",
     },
   },
 });
 
 tenancyActionsRouter.openapi(exportBillsRoute, async (c) => {
-  const user = c.get('user');
-  const { id: tenancyId } = c.req.valid('param');
-  const { includeReadings: includeReadingsParam } = c.req.valid('query');
-  const includeReadings = includeReadingsParam === 'true';
+  const user = c.get("user");
+  const { id: tenancyId } = c.req.valid("param");
+  const { includeReadings: includeReadingsParam } = c.req.valid("query");
+  const includeReadings = includeReadingsParam === "true";
   const db = getDb(c.env.DB);
 
   // Auth check: Is this the tenant's tenancy?
-  const [tenancy] = await db.select().from(tenancies).where(eq(tenancies.id, tenancyId)).limit(1);
+  const [tenancy] = await db
+    .select()
+    .from(tenancies)
+    .where(eq(tenancies.id, tenancyId))
+    .limit(1);
   if (!tenancy || tenancy.tenantId !== user.id) {
-    return c.json({ success: false as const, error: { code: 'UNAUTHORIZED', message: 'Only the tenant can export this data' } }, 403);
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Only the tenant can export this data",
+        },
+      },
+      403
+    );
   }
 
   const result = await db
@@ -237,66 +332,89 @@ tenancyActionsRouter.openapi(exportBillsRoute, async (c) => {
     })
     .from(bills)
     .innerJoin(billingPeriods, eq(bills.billingPeriodId, billingPeriods.id))
-    .leftJoin(meterReadings, eq(billingPeriods.id, meterReadings.billingPeriodId))
+    .leftJoin(
+      meterReadings,
+      eq(billingPeriods.id, meterReadings.billingPeriodId)
+    )
     .where(eq(bills.tenancyId, tenancyId))
     .orderBy(desc(billingPeriods.periodMonth));
 
-  let csv = includeReadings 
-    ? 'Month,Total Consumption,Split %,Tenant Consumption,Solar Share,Consumption Cost,Export Refund,Custom Charges,Total Due,Status,Import Start,Import End,Export Start,Export End,Solar Gen Start,Solar Gen End\n'
-    : 'Month,Total Consumption,Split %,Tenant Consumption,Solar Share,Consumption Cost,Export Refund,Custom Charges,Total Due,Status\n';
+  let csv = includeReadings
+    ? "Month,Total Consumption,Split %,Tenant Consumption,Solar Share,Consumption Cost,Export Refund,Custom Charges,Total Due,Status,Import Start,Import End,Export Start,Export End,Solar Gen Start,Solar Gen End\n"
+    : "Month,Total Consumption,Split %,Tenant Consumption,Solar Share,Consumption Cost,Export Refund,Custom Charges,Total Due,Status\n";
 
-  result.forEach(row => {
-    let line = `${row.periodMonth},${row.bill.totalConsumption},${row.bill.splitPercentage},${row.bill.tenantConsumption},${row.bill.solarSelfConsumed},${row.bill.consumptionCost},${row.bill.exportRefund},${row.bill.customChargesTotal},${row.bill.totalDue},${row.bill.status}`;
-    
+  result.forEach((row) => {
+    let line = [
+      csvCell(row.periodMonth),
+      csvCell(row.bill.totalConsumption),
+      csvCell(row.bill.splitPercentage),
+      csvCell(row.bill.tenantConsumption),
+      csvCell(row.bill.solarSelfConsumed),
+      csvCell(row.bill.consumptionCost),
+      csvCell(row.bill.exportRefund),
+      csvCell(row.bill.customChargesTotal),
+      csvCell(row.bill.totalDue),
+      csvCell(row.bill.status),
+    ].join(",");
+
     if (includeReadings) {
       if (row.readings) {
-        line += `,${row.readings.importStart},${row.readings.importEnd},${row.readings.exportStart},${row.readings.exportEnd},${row.readings.solarGenerationStart},${row.readings.solarGenerationEnd}`;
+        line +=
+          "," +
+          [
+            csvCell(row.readings.importStart),
+            csvCell(row.readings.importEnd),
+            csvCell(row.readings.exportStart),
+            csvCell(row.readings.exportEnd),
+            csvCell(row.readings.solarGenerationStart),
+            csvCell(row.readings.solarGenerationEnd),
+          ].join(",");
       } else {
-        line += `,,,,,,`; // Empty columns if no readings
+        line += ",,,,,,"; // Empty columns if no readings
       }
     }
-    
-    csv += line + '\n';
+
+    csv += line + "\n";
   });
 
   return c.text(csv, 200, {
-    'Content-Type': 'text/csv',
-    'Content-Disposition': `attachment; filename="tenancy-${tenancyId}-bills.csv"`,
+    "Content-Type": "text/csv",
+    "Content-Disposition": `attachment; filename="tenancy-${tenancyId}-bills.csv"`,
   });
 });
 
 const leaveTenancyRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/leave',
-  tags: ['Tenancy Actions'],
-  summary: 'Tenant exits a property voluntarily',
+  method: "patch",
+  path: "/{id}/leave",
+  tags: ["Tenancy Actions"],
+  summary: "Tenant exits a property voluntarily",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Tenancy left',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Tenancy left",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Tenancy not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Tenancy not found",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Owner tenancy or not active',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Owner tenancy or not active",
     },
   },
 });
 
 tenancyActionsRouter.openapi(leaveTenancyRoute, async (c) => {
-  const user = c.get('user');
-  const { id: tenancyId } = c.req.valid('param');
+  const user = c.get("user");
+  const { id: tenancyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const [tenancy] = await db
@@ -306,37 +424,61 @@ tenancyActionsRouter.openapi(leaveTenancyRoute, async (c) => {
     .limit(1);
 
   if (!tenancy) {
-    return c.json({ success: false as const, error: { code: 'NOT_FOUND', message: 'Tenancy not found' } }, 404);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
   }
 
   // Block: owner cannot leave their own auto-created tenancy (solo mode)
   if (tenancy.isOwnerTenancy) {
-    return c.json({
-      success: false as const,
-      error: { code: 'OWNER_TENANCY', message: 'Owners cannot leave their own property. Archive or delete the property instead.' }
-    }, 409);
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "OWNER_TENANCY",
+          message:
+            "Owners cannot leave their own property. Archive or delete the property instead.",
+        },
+      },
+      409
+    );
   }
 
   // Block: can only leave an active tenancy
-  if (tenancy.status !== 'active') {
-    return c.json({
-      success: false as const,
-      error: { code: 'NOT_ACTIVE', message: 'You are not an active tenant of this property.' }
-    }, 409);
+  if (tenancy.status !== "active") {
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "NOT_ACTIVE",
+          message: "You are not an active tenant of this property.",
+        },
+      },
+      409
+    );
   }
 
-  const [property] = await db.select().from(properties).where(eq(properties.id, tenancy.propertyId)).limit(1);
+  const [property] = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.id, tenancy.propertyId))
+    .limit(1);
 
   // Check for pending bills (unpaid) — warn via response metadata but allow leaving
   const pendingBills = await db
     .select({ count: count() })
     .from(bills)
-    .where(and(eq(bills.tenancyId, tenancyId), eq(bills.status, 'pending')));
+    .where(and(eq(bills.tenancyId, tenancyId), eq(bills.status, "pending")));
   const hasPendingBills = (pendingBills[0]?.count ?? 0) > 0;
 
-  await db.update(tenancies)
+  await db
+    .update(tenancies)
     .set({
-      status: 'inactive',
+      status: "inactive",
       leftAt: new Date(),
     })
     .where(eq(tenancies.id, tenancyId));
@@ -347,129 +489,165 @@ tenancyActionsRouter.openapi(leaveTenancyRoute, async (c) => {
       createNotification(
         db,
         property.ownerId,
-        'system',
-        'Tenant Left Property',
+        "system",
+        "Tenant Left Property",
         `${user.name || user.email} has left ${property.name}.`,
         { propertyId: property.id, tenancyId }
       )
     );
   }
 
-  return c.json({
-    success: true as const,
-    data: {
-      hasPendingBills,
-      warning: hasPendingBills
-        ? 'You have unpaid bills. Please settle them with your landlord.'
-        : null,
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        hasPendingBills,
+        warning: hasPendingBills
+          ? "You have unpaid bills. Please settle them with your landlord."
+          : null,
+      },
     },
-  }, 200);
+    200
+  );
 });
 
 const archiveTenancyRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/archive',
-  tags: ['Tenancy Actions'],
-  summary: 'Tenant archives a past tenancy',
+  method: "patch",
+  path: "/{id}/archive",
+  tags: ["Tenancy Actions"],
+  summary: "Tenant archives a past tenancy",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SimpleSuccessResponse } },
-      description: 'Tenancy archived',
+      content: { "application/json": { schema: SimpleSuccessResponse } },
+      description: "Tenancy archived",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Tenancy not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Tenancy not found",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Cannot archive an active tenancy',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Cannot archive an active tenancy",
     },
   },
 });
 
 tenancyActionsRouter.openapi(archiveTenancyRoute, async (c) => {
-  const user = c.get('user');
-  const { id: tenancyId } = c.req.valid('param');
+  const user = c.get("user");
+  const { id: tenancyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const [tenancy] = await db
     .select()
     .from(tenancies)
-    .where(and(eq(tenancies.id, tenancyId as string), eq(tenancies.tenantId, user.id)))
+    .where(
+      and(
+        eq(tenancies.id, tenancyId as string),
+        eq(tenancies.tenantId, user.id)
+      )
+    )
     .limit(1);
 
   if (!tenancy) {
-    return c.json({ success: false as const, error: { code: 'NOT_FOUND', message: 'Tenancy not found' } }, 404);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
   }
 
   // Can only archive inactive or property_deleted tenancies
-  if (tenancy.status === 'active') {
-    return c.json({
-      success: false as const,
-      error: { code: 'ACTIVE_TENANCY', message: 'Cannot archive an active tenancy. Leave the property first.' }
-    }, 409);
+  if (tenancy.status === "active") {
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "ACTIVE_TENANCY",
+          message:
+            "Cannot archive an active tenancy. Leave the property first.",
+        },
+      },
+      409
+    );
   }
 
-  await db.update(tenancies)
+  await db
+    .update(tenancies)
     .set({ archivedByTenantAt: new Date() })
     .where(eq(tenancies.id, tenancyId as string));
 
   // If this was the last tenant to archive it, and the owner has deleted the property, sweep the data.
   // This runs in the background so we don't block the response.
-  c.executionCtx.waitUntil(sweepOrphanedPropertyData(db, c.env, tenancy.propertyId));
+  c.executionCtx.waitUntil(
+    sweepOrphanedPropertyData(db, c.env, tenancy.propertyId)
+  );
 
   return c.json({ success: true as const }, 200);
 });
 
 const unarchiveTenancyRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/unarchive',
-  tags: ['Tenancy Actions'],
-  summary: 'Tenant restores a past tenancy to visible',
+  method: "patch",
+  path: "/{id}/unarchive",
+  tags: ["Tenancy Actions"],
+  summary: "Tenant restores a past tenancy to visible",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SimpleSuccessResponse } },
-      description: 'Tenancy unarchived',
+      content: { "application/json": { schema: SimpleSuccessResponse } },
+      description: "Tenancy unarchived",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Tenancy not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Tenancy not found",
     },
   },
 });
 
 tenancyActionsRouter.openapi(unarchiveTenancyRoute, async (c) => {
-  const user = c.get('user');
-  const { id: tenancyId } = c.req.valid('param');
+  const user = c.get("user");
+  const { id: tenancyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const [tenancy] = await db
     .select()
     .from(tenancies)
-    .where(and(eq(tenancies.id, tenancyId as string), eq(tenancies.tenantId, user.id)))
+    .where(
+      and(
+        eq(tenancies.id, tenancyId as string),
+        eq(tenancies.tenantId, user.id)
+      )
+    )
     .limit(1);
 
   if (!tenancy) {
-    return c.json({ success: false as const, error: { code: 'NOT_FOUND', message: 'Tenancy not found' } }, 404);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
   }
 
-  await db.update(tenancies)
+  await db
+    .update(tenancies)
     .set({ archivedByTenantAt: null })
     .where(eq(tenancies.id, tenancyId as string));
 
@@ -477,68 +655,88 @@ tenancyActionsRouter.openapi(unarchiveTenancyRoute, async (c) => {
 });
 
 const getTenancyBillsRoute = createRoute({
-  method: 'get',
-  path: '/{id}/bills',
-  tags: ['Tenancy Actions'],
-  summary: 'Tenant reads their own bills',
+  method: "get",
+  path: "/{id}/bills",
+  tags: ["Tenancy Actions"],
+  summary: "Tenant reads their own bills",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     query: z.object({
       year: z.string().optional(),
-      status: z.enum(['all', 'pending', 'paid']).optional(),
+      status: z.enum(["all", "pending", "paid"]).optional(),
     }),
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Tenancy bills retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Tenancy bills retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Tenancy not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Tenancy not found",
     },
   },
 });
 
 tenancyActionsRouter.openapi(getTenancyBillsRoute, async (c) => {
-  const { id: tenancyId } = c.req.valid('param');
-  const query = c.req.valid('query');
+  const { id: tenancyId } = c.req.valid("param");
+  const query = c.req.valid("query");
   const year = query.year || new Date().getFullYear().toString();
-  const status = query.status || 'all';
-  const user = c.get('user');
+  const status = query.status || "all";
+  const user = c.get("user");
   const db = getDb(c.env.DB);
 
   // Load the tenancy
-  const [tenancy] = await db.select().from(tenancies).where(eq(tenancies.id, tenancyId)).limit(1);
+  const [tenancy] = await db
+    .select()
+    .from(tenancies)
+    .where(eq(tenancies.id, tenancyId))
+    .limit(1);
   if (!tenancy) {
-    return c.json({ success: false as const, error: { code: 'TENANCY_NOT_FOUND', message: 'Tenancy not found' } }, 404);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "TENANCY_NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
   }
 
   // Only the tenant themselves (or the property owner) can read these bills
-  const [property] = await db.select().from(properties).where(eq(properties.id, tenancy.propertyId)).limit(1);
+  const [property] = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.id, tenancy.propertyId))
+    .limit(1);
   const isOwner = property?.ownerId === user.id;
   const isTenant = tenancy.tenantId === user.id;
 
   if (!isOwner && !isTenant) {
-    return c.json({ success: false as const, error: { code: 'UNAUTHORIZED', message: 'Access denied' } }, 403);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "UNAUTHORIZED", message: "Access denied" },
+      },
+      403
+    );
   }
 
   // Build conditions
   const conditions = [
     eq(bills.tenancyId, tenancyId),
-    like(billingPeriods.periodMonth, `${year}-%`)
+    like(billingPeriods.periodMonth, `${year}-%`),
   ];
-  
-  if (status === 'pending' || status === 'paid') {
+
+  if (status === "pending" || status === "paid") {
     conditions.push(eq(bills.status, status));
   }
 
@@ -561,7 +759,7 @@ tenancyActionsRouter.openapi(getTenancyBillsRoute, async (c) => {
         WHERE ${editRequests.billingPeriodId} = ${bills.billingPeriodId} 
         AND ${editRequests.requestedBy} = ${user.id} 
         AND ${editRequests.status} = 'pending'
-      )`
+      )`,
     })
     .from(bills)
     .innerJoin(billingPeriods, eq(billingPeriods.id, bills.billingPeriodId))
@@ -572,66 +770,75 @@ tenancyActionsRouter.openapi(getTenancyBillsRoute, async (c) => {
   const yearlyBillsQuery = await db
     .select({
       totalDue: bills.totalDue,
-      status: bills.status
+      status: bills.status,
     })
     .from(bills)
     .innerJoin(billingPeriods, eq(billingPeriods.id, bills.billingPeriodId))
-    .where(and(eq(bills.tenancyId, tenancyId), like(billingPeriods.periodMonth, `${year}-%`)));
+    .where(
+      and(
+        eq(bills.tenancyId, tenancyId),
+        like(billingPeriods.periodMonth, `${year}-%`)
+      )
+    );
 
   let totalPaid = 0;
   let totalPending = 0;
   for (const b of yearlyBillsQuery) {
     const due = b.totalDue || 0;
-    if (b.status === 'paid') totalPaid += due;
+    if (b.status === "paid") totalPaid += due;
     else totalPending += due;
   }
-  
-  const avgMonthlyBill = yearlyBillsQuery.length > 0 
-    ? (totalPaid + totalPending) / yearlyBillsQuery.length 
-    : 0;
 
-  return c.json({
-    propertyName: property?.name || 'Property',
-    bills: billsData.map(b => ({
-      ...b,
-      markedPaidAt: b.markedPaidAt?.toISOString() || null
-    })),
-    yearlyStats: {
-      totalPaid,
-      totalPending,
-      avgMonthlyBill
-    }
-  } as unknown as z.infer<typeof SuccessResponse>, 200);
+  const avgMonthlyBill =
+    yearlyBillsQuery.length > 0
+      ? (totalPaid + totalPending) / yearlyBillsQuery.length
+      : 0;
+
+  return c.json(
+    {
+      propertyName: property?.name || "Property",
+      bills: billsData.map((b) => ({
+        ...b,
+        markedPaidAt: b.markedPaidAt?.toISOString() || null,
+      })),
+      yearlyStats: {
+        totalPaid,
+        totalPending,
+        avgMonthlyBill,
+      },
+    } as unknown as z.infer<typeof SuccessResponse>,
+    200
+  );
 });
 
 const getTenancyRoute = createRoute({
-  method: 'get',
-  path: '/{id}',
-  tags: ['Tenancy Actions'],
-  summary: 'Returns complete tenancy overview for the tenant',
+  method: "get",
+  path: "/{id}",
+  tags: ["Tenancy Actions"],
+  summary: "Returns complete tenancy overview for the tenant",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Tenancy retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Tenancy retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Tenancy not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Tenancy not found",
     },
   },
 });
 
 tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
-  const { id: tenancyId } = c.req.valid('param');
-  const user = c.get('user');
+  const { id: tenancyId } = c.req.valid("param");
+  const user = c.get("user");
   const db = getDb(c.env.DB);
 
   // 1. Fetch tenancy, property, and owner details
@@ -639,16 +846,27 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
     .select({
       tenancy: tenancies,
       property: properties,
-      owner: userTable
+      owner: userTable,
     })
     .from(tenancies)
     .innerJoin(properties, eq(properties.id, tenancies.propertyId))
     .innerJoin(userTable, eq(userTable.id, properties.ownerId))
-    .where(and(eq(tenancies.id, tenancyId as string), eq(tenancies.tenantId, user.id as string)))
+    .where(
+      and(
+        eq(tenancies.id, tenancyId as string),
+        eq(tenancies.tenantId, user.id as string)
+      )
+    )
     .limit(1);
 
   if (!tenancyData) {
-    return c.json({ success: false as const, error: { code: 'NOT_FOUND', message: 'Tenancy not found' } }, 404);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
   }
 
   const { tenancy, property, owner } = tenancyData;
@@ -665,10 +883,12 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
   const [lastConfirmedPeriod] = await db
     .select({ id: billingPeriods.id })
     .from(billingPeriods)
-    .where(and(
-      eq(billingPeriods.propertyId, property.id),
-      eq(billingPeriods.status, 'confirmed')
-    ))
+    .where(
+      and(
+        eq(billingPeriods.propertyId, property.id),
+        eq(billingPeriods.status, "confirmed")
+      )
+    )
     .orderBy(desc(billingPeriods.periodMonth))
     .limit(1);
 
@@ -678,7 +898,12 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
     const [bill] = await db
       .select()
       .from(bills)
-      .where(and(eq(bills.billingPeriodId, currentPeriod.id), eq(bills.tenancyId, tenancy.id)))
+      .where(
+        and(
+          eq(bills.billingPeriodId, currentPeriod.id),
+          eq(bills.tenancyId, tenancy.id)
+        )
+      )
       .limit(1);
 
     // Check if a reading has been submitted for this period (in general)
@@ -692,14 +917,16 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
       periodId: currentPeriod.id,
       periodMonth: currentPeriod.periodMonth,
       status: currentPeriod.status,
-      bill: bill ? {
-        billId: bill.id,
-        totalDue: bill.totalDue,
-        status: bill.status,
-        markedPaidAt: bill.markedPaidAt
-      } : null,
+      bill: bill
+        ? {
+            billId: bill.id,
+            totalDue: bill.totalDue,
+            status: bill.status,
+            markedPaidAt: bill.markedPaidAt,
+          }
+        : null,
       hasReading: !!reading,
-      canSubmit: !reading // Simplification: can submit if no reading exists
+      canSubmit: !reading, // Simplification: can submit if no reading exists
     };
   }
 
@@ -709,14 +936,16 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
       billId: bills.id,
       totalDue: bills.totalDue,
       status: bills.status,
-      periodMonth: billingPeriods.periodMonth
+      periodMonth: billingPeriods.periodMonth,
     })
     .from(bills)
     .innerJoin(billingPeriods, eq(billingPeriods.id, bills.billingPeriodId))
-    .where(and(
-      eq(bills.tenancyId, tenancy.id),
-      currentPeriod ? ne(billingPeriods.id, currentPeriod.id) : undefined
-    ))
+    .where(
+      and(
+        eq(bills.tenancyId, tenancy.id),
+        currentPeriod ? ne(billingPeriods.id, currentPeriod.id) : undefined
+      )
+    )
     .orderBy(desc(billingPeriods.periodMonth))
     .limit(3);
 
@@ -726,12 +955,15 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
   const [pendingRequestsResult] = await db
     .select({ count: sql<number>`count(*)` })
     .from(editRequests)
-    .innerJoin(billingPeriods, eq(billingPeriods.id, editRequests.billingPeriodId))
+    .innerJoin(
+      billingPeriods,
+      eq(billingPeriods.id, editRequests.billingPeriodId)
+    )
     .where(
       and(
         eq(billingPeriods.propertyId, property.id),
         eq(editRequests.requestedBy, user.id),
-        eq(editRequests.status, 'pending')
+        eq(editRequests.status, "pending")
       )
     );
 
@@ -756,209 +988,277 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
     currentPeriod: currentPeriodData,
     recentBills,
     pendingEditRequests,
-    lastConfirmedPeriodId: lastConfirmedPeriod?.id || null
+    lastConfirmedPeriodId: lastConfirmedPeriod?.id || null,
   };
 
   return c.json(response as unknown as z.infer<typeof SuccessResponse>, 200);
 });
 
 const getPendingEditRequestsRoute = createRoute({
-  method: 'get',
-  path: '/{id}/pending-edit-requests',
-  tags: ['Tenancy Actions'],
-  summary: 'Get pending edit requests',
+  method: "get",
+  path: "/{id}/pending-edit-requests",
+  tags: ["Tenancy Actions"],
+  summary: "Get pending edit requests",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Pending requests retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Pending requests retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Not found",
     },
   },
 });
 
 tenancyActionsRouter.openapi(getPendingEditRequestsRoute, async (c) => {
-  const { id: tenancyId } = c.req.valid('param');
-  const user = c.get('user');
+  const { id: tenancyId } = c.req.valid("param");
+  const user = c.get("user");
   const db = getDb(c.env.DB);
 
-  const [tenancy] = await db.select().from(tenancies).where(and(eq(tenancies.id, tenancyId), eq(tenancies.tenantId, user.id))).limit(1);
-  if (!tenancy) return c.json({ success: false as const, error: { code: 'NOT_FOUND', message: 'Not found' } }, 404);
+  const [tenancy] = await db
+    .select()
+    .from(tenancies)
+    .where(and(eq(tenancies.id, tenancyId), eq(tenancies.tenantId, user.id)))
+    .limit(1);
+  if (!tenancy)
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Not found" },
+      },
+      404
+    );
 
   const requestsData = await db
     .select({ request: editRequests })
     .from(editRequests)
-    .innerJoin(billingPeriods, eq(editRequests.billingPeriodId, billingPeriods.id))
-    .where(and(
-      eq(billingPeriods.propertyId, tenancy.propertyId),
-      eq(editRequests.requestedBy, user.id),
-      eq(editRequests.status, 'pending')
-    ));
+    .innerJoin(
+      billingPeriods,
+      eq(editRequests.billingPeriodId, billingPeriods.id)
+    )
+    .where(
+      and(
+        eq(billingPeriods.propertyId, tenancy.propertyId),
+        eq(editRequests.requestedBy, user.id),
+        eq(editRequests.status, "pending")
+      )
+    );
 
-  return c.json({ success: true as const, data: requestsData.map(r => r.request) }, 200);
+  return c.json(
+    { success: true as const, data: requestsData.map((r) => r.request) },
+    200
+  );
 });
 
 const getChartDataRoute = createRoute({
-  method: 'get',
-  path: '/{id}/chart-data',
-  tags: ['Tenancy Actions'],
-  summary: 'Get chart data',
+  method: "get",
+  path: "/{id}/chart-data",
+  tags: ["Tenancy Actions"],
+  summary: "Get chart data",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Chart data retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Chart data retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Not found",
     },
   },
 });
 
 tenancyActionsRouter.openapi(getChartDataRoute, async (c) => {
-  const { id: tenancyId } = c.req.valid('param');
-  const user = c.get('user');
+  const { id: tenancyId } = c.req.valid("param");
+  const user = c.get("user");
   const db = getDb(c.env.DB);
 
-  const [tenancy] = await db.select().from(tenancies).where(and(eq(tenancies.id, tenancyId), eq(tenancies.tenantId, user.id))).limit(1);
-  if (!tenancy) return c.json({ success: false as const, error: { code: 'NOT_FOUND', message: 'Not found' } }, 404);
+  const [tenancy] = await db
+    .select()
+    .from(tenancies)
+    .where(and(eq(tenancies.id, tenancyId), eq(tenancies.tenantId, user.id)))
+    .limit(1);
+  if (!tenancy)
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Not found" },
+      },
+      404
+    );
 
-  const [property] = await db.select().from(properties).where(eq(properties.id, tenancy.propertyId)).limit(1);
+  const [property] = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.id, tenancy.propertyId))
+    .limit(1);
 
   const allBills = await db
     .select({
       bill: bills,
       periodMonth: billingPeriods.periodMonth,
-      reading: meterReadings
+      reading: meterReadings,
     })
     .from(bills)
     .innerJoin(billingPeriods, eq(bills.billingPeriodId, billingPeriods.id))
-    .innerJoin(meterReadings, eq(billingPeriods.id, meterReadings.billingPeriodId))
+    .innerJoin(
+      meterReadings,
+      eq(billingPeriods.id, meterReadings.billingPeriodId)
+    )
     .where(eq(bills.tenancyId, tenancyId))
     .orderBy(billingPeriods.periodMonth);
 
   const round2 = (n: number) => Math.round(n * 100) / 100;
 
-  const monthlyBills = allBills.map(b => ({
+  const monthlyBills = allBills.map((b) => ({
     month: b.periodMonth.slice(0, 7),
     amount: round2(Number(b.bill.totalDue)),
-    status: b.bill.status
+    status: b.bill.status,
   }));
 
-  const monthlyConsumption = allBills.map(b => ({
+  const monthlyConsumption = allBills.map((b) => ({
     month: b.periodMonth.slice(0, 7),
-    units: round2(Number(b.bill.tenantConsumption || 0))
+    units: round2(Number(b.bill.tenantConsumption || 0)),
   }));
 
-  let solarSavings: Array<{ month: string; actual: number; withoutSolar: number }> | null = null;
-  let costTrend: Array<{ month: string; bill: number; exportRefund: number; net: number }> | null = null;
+  let solarSavings: Array<{
+    month: string;
+    actual: number;
+    withoutSolar: number;
+  }> | null = null;
+  let costTrend: Array<{
+    month: string;
+    bill: number;
+    exportRefund: number;
+    net: number;
+  }> | null = null;
   if (property.hasSolar) {
-    solarSavings = allBills.map(b => {
+    solarSavings = allBills.map((b) => {
       const tenantConsumption = Number(b.bill.tenantConsumption || 0);
       const consumptionRate = Number(b.bill.consumptionRate || 0);
       const consumptionCost = Number(b.bill.consumptionCost || 0);
       const exportRefund = Number(b.bill.exportRefund || 0);
-      const billSolarSavings = (tenantConsumption * consumptionRate) - consumptionCost + exportRefund;
+      const billSolarSavings =
+        tenantConsumption * consumptionRate - consumptionCost + exportRefund;
       return {
         month: b.periodMonth.slice(0, 7),
         actual: round2(Number(b.bill.totalDue)),
-        withoutSolar: round2(Number(b.bill.totalDue) + billSolarSavings)
+        withoutSolar: round2(Number(b.bill.totalDue) + billSolarSavings),
       };
     });
 
-    costTrend = allBills.map(b => {
+    costTrend = allBills.map((b) => {
       const billAmount = Number(b.bill.totalDue);
       const exportRefund = Number(b.bill.exportRefund || 0);
       return {
         month: b.periodMonth.slice(0, 7),
         bill: round2(billAmount),
         exportRefund: round2(exportRefund),
-        net: round2(billAmount - exportRefund)
+        net: round2(billAmount - exportRefund),
       };
     });
   }
 
   let cumulative = 0;
-  const cumulativeBills = allBills.map(b => {
+  const cumulativeBills = allBills.map((b) => {
     cumulative += Number(b.bill.totalDue);
     return { month: b.periodMonth.slice(0, 7), cumulative: round2(cumulative) };
   });
 
-  return c.json({
-    success: true as const,
-    data: {
-      monthlyBills,
-      monthlyConsumption,
-      solarSavings,
-      costTrend,
-      cumulativeBills
-    }
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        monthlyBills,
+        monthlyConsumption,
+        solarSavings,
+        costTrend,
+        cumulativeBills,
+      },
+    },
+    200
+  );
 });
 
 const getConfirmedPeriodsRoute = createRoute({
-  method: 'get',
-  path: '/{id}/confirmed-periods',
-  tags: ['Tenancy Actions'],
-  summary: 'Get confirmed periods',
+  method: "get",
+  path: "/{id}/confirmed-periods",
+  tags: ["Tenancy Actions"],
+  summary: "Get confirmed periods",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Confirmed periods retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Confirmed periods retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     401: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Access denied',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Access denied",
     },
   },
 });
 
 tenancyActionsRouter.openapi(getConfirmedPeriodsRoute, async (c) => {
-  const { id: tenancyId } = c.req.valid('param');
-  const user = c.get('user');
+  const { id: tenancyId } = c.req.valid("param");
+  const user = c.get("user");
   const db = getDb(c.env.DB);
 
   if (!user?.id) {
-    return c.json({ success: false as const, error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } }, 401);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "UNAUTHORIZED", message: "Unauthorized" },
+      },
+      401
+    );
   }
 
-  const [tenancy] = await db.select()
+  const [tenancy] = await db
+    .select()
     .from(tenancies)
-    .where(and(eq(tenancies.id, tenancyId), eq(tenancies.tenantId, user.id as string)))
+    .where(
+      and(
+        eq(tenancies.id, tenancyId),
+        eq(tenancies.tenantId, user.id as string)
+      )
+    )
     .limit(1);
 
   if (!tenancy) {
-    return c.json({ success: false as const, error: { code: 'FORBIDDEN', message: 'Access denied' } }, 403);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "FORBIDDEN", message: "Access denied" },
+      },
+      403
+    );
   }
 
   // Get all confirmed periods for this property
@@ -968,28 +1268,35 @@ tenancyActionsRouter.openapi(getConfirmedPeriodsRoute, async (c) => {
       periodMonth: billingPeriods.periodMonth,
     })
     .from(billingPeriods)
-    .where(and(
-      eq(billingPeriods.propertyId, tenancy.propertyId),
-      eq(billingPeriods.status, 'confirmed')
-    ))
+    .where(
+      and(
+        eq(billingPeriods.propertyId, tenancy.propertyId),
+        eq(billingPeriods.status, "confirmed")
+      )
+    )
     .orderBy(desc(billingPeriods.periodMonth));
 
   // Check which periods have pending edit requests
-  const periodsWithRequests = await Promise.all(periods.map(async p => {
-    const [req] = await db.select()
-      .from(editRequests)
-      .where(and(
-        eq(editRequests.billingPeriodId, p.id),
-        eq(editRequests.requestedBy, user.id),
-        eq(editRequests.status, 'pending')
-      ))
-      .limit(1);
-    
-    return {
-      ...p,
-      hasPendingRequest: !!req
-    };
-  }));
+  const periodsWithRequests = await Promise.all(
+    periods.map(async (p) => {
+      const [req] = await db
+        .select()
+        .from(editRequests)
+        .where(
+          and(
+            eq(editRequests.billingPeriodId, p.id),
+            eq(editRequests.requestedBy, user.id),
+            eq(editRequests.status, "pending")
+          )
+        )
+        .limit(1);
+
+      return {
+        ...p,
+        hasPendingRequest: !!req,
+      };
+    })
+  );
 
   return c.json({ success: true as const, data: periodsWithRequests }, 200);
 });

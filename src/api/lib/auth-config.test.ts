@@ -15,7 +15,7 @@ describe("getAuth configuration", () => {
 
   it("throws when BETTER_AUTH_SECRET is missing or empty in production", () => {
     expect(() => getAuth({ ...minimalEnv, BETTER_AUTH_SECRET: "" })).toThrow(
-      "BETTER_AUTH_SECRET environment variable is required in production."
+      "BETTER_AUTH_SECRET environment variable is required. Set ENVIRONMENT=development or ENVIRONMENT=test to use the local fallback."
     );
   });
 

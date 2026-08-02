@@ -48,9 +48,9 @@ export function getAuth(env: {
 
   const secret = env.BETTER_AUTH_SECRET?.trim();
   if (!secret) {
-    if (env.ENVIRONMENT === "production") {
+    if (env.ENVIRONMENT !== "development" && env.ENVIRONMENT !== "test") {
       throw new Error(
-        "BETTER_AUTH_SECRET environment variable is required in production."
+        "BETTER_AUTH_SECRET environment variable is required. Set ENVIRONMENT=development or ENVIRONMENT=test to use the local fallback."
       );
     }
   }
