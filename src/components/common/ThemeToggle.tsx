@@ -8,13 +8,15 @@ export function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme =
-      (localStorage.getItem("meterly-theme") as "light" | "dark") ||
-      (document.documentElement.getAttribute("data-theme") as
-        | "light"
-        | "dark") ||
-      "dark";
-    setTheme(savedTheme === "light" ? "light" : "dark");
+    const savedTheme = localStorage.getItem("meterly-theme");
+    const documentTheme = document.documentElement.getAttribute("data-theme");
+    const resolvedTheme =
+      savedTheme === "light" || savedTheme === "dark"
+        ? savedTheme
+        : documentTheme === "light"
+          ? "light"
+          : "dark";
+    setTheme(resolvedTheme);
   }, []);
 
   const toggleTheme = () => {

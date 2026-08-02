@@ -1,5 +1,5 @@
 import { type Context } from "hono";
-import { OpenAPIHono } from "@hono/zod-openapi";
+import { OpenAPIHono, z } from "@hono/zod-openapi";
 import { cors } from "hono/cors";
 import { instrument } from "@microlabs/otel-cf-workers";
 import { resolveOtelConfig } from "./lib/otel-config";
@@ -87,14 +87,17 @@ app.onError((err, c) => {
     return err.getResponse();
   }
   console.error("[Hono Error]", c.req.method, c.req.url, err);
+  const isDev = c.env?.ENVIRONMENT !== "production";
   return c.json(
-    {
-      error: err.message || "Internal Server Error",
-      name: err.name,
-      stack: err.stack
-        ? err.stack.split("\n").slice(0, 8).join("\n")
-        : undefined,
-    },
+    isDev
+      ? {
+          error: err.message || "Internal Server Error",
+          name: err.name,
+          stack: err.stack
+            ? err.stack.split("\n").slice(0, 8).join("\n")
+            : undefined,
+        }
+      : { error: "Internal Server Error" },
     500
   );
 });
@@ -173,19 +176,18 @@ app.post("/api/auth/sign-in/email", turnstileMiddleware, async (c) => {
   if (response.status === 200) {
     const cloned = response.clone();
     try {
-      const data = (await cloned.json()) as { user?: { id?: string } };
-      if (data && data.user && data.user.id) {
+      const data = await cloned.json();
+      const parsed = z
+        .object({ user: z.object({ id: z.string() }).optional() })
+        .safeParse(data);
+      if (parsed.success && parsed.data.user?.id) {
+        const userId = parsed.data.user.id;
         const db = getDb(c.env.DB);
         const maxSessions = c.env.MAX_SESSIONS_PER_USER
           ? parseInt(c.env.MAX_SESSIONS_PER_USER, 10)
           : 3;
-        c.executionCtx.waitUntil(
-          enforceSessionLimit(db, data.user.id, maxSessions)
-        );
-        logger.info(
-          { userId: data.user.id, event: "user.sign_in" },
-          "user signed in"
-        );
+        c.executionCtx.waitUntil(enforceSessionLimit(db, userId, maxSessions));
+        logger.info({ userId, event: "user.sign_in" }, "user signed in");
       }
     } catch {
       /* ignore */
@@ -204,10 +206,19 @@ app.post(
   turnstileMiddleware,
   async (c) => {
     const db = getDb(c.env.DB);
-    let body: { email?: string; type?: string };
+    const sendOtpBodySchema = z.object({
+      email: z
+        .string()
+        .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email")
+        .toLowerCase()
+        .trim(),
+      type: z.enum(["forget-password", "email-verification"]),
+    });
+    let parsedBody;
     try {
       const cloned = c.req.raw.clone();
-      body = (await cloned.json()) as { email?: string; type?: string };
+      const json = await cloned.json();
+      parsedBody = sendOtpBodySchema.safeParse(json);
     } catch {
       return c.json(
         {
@@ -218,15 +229,16 @@ app.post(
       );
     }
 
-    const email = body.email;
-    const type = body.type;
-
-    if (!email || !type) {
+    if (!parsedBody.success) {
       return c.json(
-        { success: false, error: { message: "Email and type are required" } },
+        {
+          success: false,
+          error: { code: "INVALID_BODY", message: "Invalid request body" },
+        },
         400
       );
     }
+    const { email, type } = parsedBody.data;
 
     // 1. If forgot password, check if the user is registered in the database
     if (type === "forget-password") {
@@ -350,6 +362,7 @@ app.post("/api/auth/change-password", async (c) => {
 
   return response;
 });
+
 
 // All other auth routes (session, callback, verify-email, etc.) without Turnstile
 app.on(["POST", "GET"], "/api/auth/*", async (c) => {
