@@ -71,15 +71,24 @@ export async function sweepOrphanedPropertyData(
 
   if (env.BILL_PHOTOS && photos.length > 0) {
     try {
-      await Promise.all(photos.map((p) => env.BILL_PHOTOS!.delete(p.objectKey)));
+      await Promise.all(
+        photos.map((p) => env.BILL_PHOTOS!.delete(p.objectKey))
+      );
     } catch (e) {
       // Log but continue — orphan R2 objects are cheaper than a partial DB sweep
-      console.error("[property-cleanup] R2 sweep failed, continuing with DB cleanup", e);
+      console.error(
+        "[property-cleanup] R2 sweep failed, continuing with DB cleanup",
+        e
+      );
     }
   }
 
   // 3d. Delete DB rows leaf → root (respecting FK order)
-  await db.delete(billPhotos).where(eq(billPhotos.propertyId, propertyId));
+  const sweepOps = [];
+
+  sweepOps.push(
+    db.delete(billPhotos).where(eq(billPhotos.propertyId, propertyId))
+  );
 
   if (periodIds.length > 0) {
     // Collect reading IDs first so we can delete their edits (which FK to meterReadingId, not billingPeriodId)
@@ -90,17 +99,29 @@ export async function sweepOrphanedPropertyData(
     const readingIds = readings.map((r) => r.id);
 
     if (readingIds.length > 0) {
-      await db.delete(meterReadingEdits).where(inArray(meterReadingEdits.meterReadingId, readingIds));
+      sweepOps.push(
+        db
+          .delete(meterReadingEdits)
+          .where(inArray(meterReadingEdits.meterReadingId, readingIds))
+      );
     }
-    await db.delete(meterReadings).where(inArray(meterReadings.billingPeriodId, periodIds));
+    sweepOps.push(
+      db
+        .delete(meterReadings)
+        .where(inArray(meterReadings.billingPeriodId, periodIds))
+    );
   }
 
   if (tenancyIds.length > 0) {
-    await db.delete(bills).where(inArray(bills.tenancyId, tenancyIds));
+    sweepOps.push(db.delete(bills).where(inArray(bills.tenancyId, tenancyIds)));
   }
 
-  await db.delete(billingPeriods).where(eq(billingPeriods.propertyId, propertyId));
-  await db.delete(tenancies).where(eq(tenancies.propertyId, propertyId));
+  sweepOps.push(
+    db.delete(billingPeriods).where(eq(billingPeriods.propertyId, propertyId)),
+    db.delete(tenancies).where(eq(tenancies.propertyId, propertyId))
+  );
+
+  await db.batch(sweepOps as unknown as Parameters<typeof db.batch>[0]);
 
   return true;
 }

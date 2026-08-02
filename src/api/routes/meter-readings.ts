@@ -11,6 +11,7 @@ import {
   meterReadingEdits,
   editRequests,
   bills,
+  readingDailyCount,
 } from "../../db/schema";
 import { user as userTable } from "../../db/schema/auth";
 import { authMiddleware } from "../middleware/auth";
@@ -488,18 +489,27 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     ? parseInt(c.env.MAX_READINGS_PER_DAY, 10)
     : 20;
 
-  const [readingsToday] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(meterReadings)
-    .where(
-      and(
-        eq(meterReadings.submittedBy, user.id),
-        sql`${meterReadings.createdAt} >= strftime('%s', 'now', 'start of day')`
-      )
-    );
-  const submissionCount = readingsToday?.count ?? 0;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const counterId = `${user.id}:${todayKey}`;
 
-  if (submissionCount >= MAX_READINGS_PER_DAY) {
+  await db.run(sql`
+    INSERT INTO reading_daily_count (id, user_id, date_key, count)
+    VALUES (${counterId}, ${user.id}, ${todayKey}, 1)
+    ON CONFLICT (user_id, date_key)
+    DO UPDATE SET count = count + 1
+  `);
+
+  const [counter] = await db
+    .select({ count: readingDailyCount.count })
+    .from(readingDailyCount)
+    .where(eq(readingDailyCount.id, counterId));
+
+  const submissionCount = counter?.count ?? 1;
+
+  if (submissionCount > MAX_READINGS_PER_DAY) {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -519,6 +529,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     .where(eq(billingPeriods.id, periodId))
     .limit(1);
   if (!period) {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -548,6 +561,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     )
     .limit(1);
   if (property.ownerId !== user.id && !tenancy) {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -561,6 +577,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
   }
 
   if (period.status !== "draft") {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -579,6 +598,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     .where(eq(meterReadings.billingPeriodId, periodId))
     .limit(1);
   if (existingReadingCheck) {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -599,6 +621,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     data
   );
   if (startValidation.error) {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -614,6 +639,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
       data.solarGenerationEnd - startValues.solarGenerationStart;
     const gridExported = data.exportEnd - startValues.exportStart;
     if (gridExported > solarGenerated) {
+      await db.run(
+        sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      );
       return c.json(
         {
           success: false as const,
@@ -642,6 +670,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
       submittedBy: user.id,
     });
   } catch (err: unknown) {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     if (err instanceof Error && err.message.includes("UNIQUE")) {
       return c.json(
         {
@@ -671,6 +702,9 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     .limit(1);
 
   if (!rate) {
+    await db.run(
+      sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,

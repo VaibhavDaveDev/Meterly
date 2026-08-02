@@ -1125,30 +1125,29 @@ propertiesRouter.openapi(deletePropertyRoute, async (c) => {
   // STEP 3: Delete operational data.
   // Billing periods, bills, meter_readings, and bill_photos are KEPT — they form the tenant's permanent billing history.
   // Bills FK to billingPeriodId, so we cannot delete periods without breaking bill access.
+  const deleteOps = [];
+
   if (periodIds.length > 0) {
-    await db
-      .delete(editRequests)
-      .where(inArray(editRequests.billingPeriodId, periodIds));
+    deleteOps.push(
+      db
+        .delete(editRequests)
+        .where(inArray(editRequests.billingPeriodId, periodIds))
+    );
     // billingPeriods, meterReadings, meterReadingEdits, and billPhotos intentionally NOT deleted
   }
 
-  await db
-    .delete(customCharges)
-    .where(eq(customCharges.propertyId, propertyId));
-  await db
-    .delete(propertyRates)
-    .where(eq(propertyRates.propertyId, propertyId));
+  deleteOps.push(
+    db.delete(customCharges).where(eq(customCharges.propertyId, propertyId)),
+    db.delete(propertyRates).where(eq(propertyRates.propertyId, propertyId)),
+    db
+      .delete(notifications)
+      .where(
+        sql`json_extract(${notifications.metadata}, '$.property_id') = ${propertyId}`
+      ),
+    db.delete(properties).where(eq(properties.id, propertyId))
+  );
 
-  // Notifications: stored per-user but tagged with property_id in metadata JSON.
-  // SQLite doesn't have JSON_CONTAINS, so use a LIKE filter on the metadata column.
-  await db
-    .delete(notifications)
-    .where(
-      sql`json_extract(${notifications.metadata}, '$.property_id') = ${propertyId}`
-    );
-
-  // Delete the property itself
-  await db.delete(properties).where(eq(properties.id, propertyId));
+  await db.batch(deleteOps as unknown as Parameters<typeof db.batch>[0]);
 
   // --- R2 cleanup (skipped) ---
   // Photos are intentionally kept to preserve proof of billing history.

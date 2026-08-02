@@ -43,6 +43,7 @@ import {
   tenancies,
   bills,
   billPhotos,
+  uploadDailyCount,
 } from "../../db/schema";
 import { uploadsRouter } from "./uploads";
 
@@ -55,6 +56,7 @@ describe("Uploads API", () => {
     currentUser = { id: "owner-id" };
     vi.clearAllMocks();
 
+    await testDb.delete(uploadDailyCount);
     await testDb.delete(billPhotos);
     await testDb.delete(bills);
     await testDb.delete(billingPeriods);
@@ -196,20 +198,13 @@ describe("Uploads API", () => {
   });
 
   it("enforces daily upload rate limit and returns 429 after limit is reached", async () => {
-    // Pre-insert 2 bill_photos rows for today for this user to simulate the limit being hit
-    const today = new Date();
-    const inserts = Array.from({ length: 2 }, (_, i) => ({
-      id: `photo-rl-${i}`,
-      propertyId: propId,
-      billingPeriodId: `dummy-bp-${i}`, // Use different periods to avoid the period-level cap of 3
-      uploadedBy: "owner-id",
-      objectKey: `${propId}/dummy-bp-${i}/owner-id/${i}.webp`,
-      purpose: "import_meter" as const,
-      version: 1,
-      status: "active" as const,
-      uploadedAt: today,
-    }));
-    await testDb.insert(billPhotos).values(inserts);
+    const todayKey = new Date().toISOString().slice(0, 10);
+    await testDb.insert(uploadDailyCount).values({
+      id: `owner-id:${todayKey}`,
+      userId: "owner-id",
+      dateKey: todayKey,
+      count: 2, // Mock MAX_UPLOADS_PER_DAY is 2
+    });
 
     currentUser = { id: "owner-id" };
     const formData = new FormData();
@@ -234,5 +229,44 @@ describe("Uploads API", () => {
     };
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("RATE_LIMITED");
+  });
+
+  it("concurrent reservation does not bypass the limit", async () => {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    await testDb.insert(uploadDailyCount).values({
+      id: `owner-id:${todayKey}`,
+      userId: "owner-id",
+      dateKey: todayKey,
+      count: 1, // Mock MAX_UPLOADS_PER_DAY is 2, so 1 more is allowed
+    });
+
+    currentUser = { id: "owner-id" };
+
+    const req1 = new FormData();
+    req1.append("photo", createMockFile("test1.jpg", "image/jpeg"));
+    req1.append("propertyId", propId);
+    req1.append("periodId", bpId);
+    req1.append("purpose", "import_meter");
+
+    const req2 = new FormData();
+    req2.append("photo", createMockFile("test2.jpg", "image/jpeg"));
+    req2.append("propertyId", propId);
+    req2.append("periodId", bpId);
+    req2.append("purpose", "export_meter");
+
+    const res1 = await app.request(
+      "/uploads/bill-photo",
+      { method: "POST", body: req1 },
+      mockEnv as unknown as Parameters<typeof app.request>[2]
+    );
+
+    const res2 = await app.request(
+      "/uploads/bill-photo",
+      { method: "POST", body: req2 },
+      mockEnv as unknown as Parameters<typeof app.request>[2]
+    );
+
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(429);
   });
 });
