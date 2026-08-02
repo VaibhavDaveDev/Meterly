@@ -9,6 +9,7 @@ import {
   properties,
   tenancies,
   billingPeriods,
+  uploadDailyCount,
 } from "../../db/schema";
 import { validateUploadedFile } from "../lib/file-validation";
 import {
@@ -86,18 +87,28 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
     ? parseInt(c.env.MAX_UPLOADS_PER_DAY, 10)
     : 60;
 
-  const [uploadsCount] = await db
-    .select({ count: sql<number>`count(${billPhotos.id})` })
-    .from(billPhotos)
-    .where(
-      and(
-        eq(billPhotos.uploadedBy, user.id),
-        sql`${billPhotos.uploadedAt} >= strftime('%s', 'now', 'start of day')`
-      )
-    );
-  const count = uploadsCount?.count ?? 0;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const counterId = `${user.id}:${todayKey}`;
 
-  if (count >= MAX_UPLOADS_PER_DAY) {
+  await db.run(sql`
+    INSERT INTO upload_daily_count (id, user_id, date_key, count)
+    VALUES (${counterId}, ${user.id}, ${todayKey}, 1)
+    ON CONFLICT (user_id, date_key)
+    DO UPDATE SET count = count + 1
+  `);
+
+  const [counter] = await db
+    .select({ count: uploadDailyCount.count })
+    .from(uploadDailyCount)
+    .where(eq(uploadDailyCount.id, counterId));
+
+  const newCount = counter?.count ?? 1;
+
+  if (newCount > MAX_UPLOADS_PER_DAY) {
+    await db.run(sql`
+      UPDATE upload_daily_count SET count = count - 1
+      WHERE id = ${counterId}
+    `);
     c.header("Retry-After", "86400");
     return c.json(
       {
@@ -125,6 +136,9 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   const editRequestId = formData.get("editRequestId") as string | null;
 
   if (!photo || !periodId || !propertyId || !purpose) {
+    await db.run(
+      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -144,6 +158,9 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
     "bill_document",
   ] as const;
   if (!VALID_PURPOSES.includes(purpose as never)) {
+    await db.run(
+      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -165,6 +182,9 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   });
 
   if (!tenancyCheck && !propertyCheck) {
+    await db.run(
+      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -182,6 +202,9 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
     purpose === "bill_document" ? "bill-document" : "meter-photo"
   );
   if (!validation.valid) {
+    await db.run(
+      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     return c.json(
       {
         success: false as const,
@@ -234,7 +257,10 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
       );
 
     if (existing.length >= MAX_PHOTOS) {
-      await r2.delete(objectKey);
+      await r2.delete(objectKey).catch(() => {});
+      await db.run(
+        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      );
       return c.json(
         {
           success: false as const,
@@ -262,7 +288,10 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
     });
   } catch (err) {
     // If anything fails in the DB after we put the object in R2, clean it up
-    await r2.delete(objectKey);
+    await r2.delete(objectKey).catch(() => {});
+    await db.run(
+      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+    );
     throw err;
   }
 

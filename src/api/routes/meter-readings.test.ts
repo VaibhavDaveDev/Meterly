@@ -36,6 +36,7 @@ import {
   propertyRates,
   meterReadingEdits,
   editRequests,
+  readingDailyCount,
 } from "../../db/schema";
 import { eq } from "drizzle-orm";
 
@@ -56,6 +57,7 @@ describe("Meter Readings API", () => {
     vi.clearAllMocks();
 
     await testDb.delete(editRequests);
+    await testDb.delete(readingDailyCount);
     await testDb.delete(meterReadingEdits);
     await testDb.delete(meterReadings);
     await testDb.delete(billingPeriods);
@@ -127,30 +129,13 @@ describe("Meter Readings API", () => {
 
   describe("POST /:id/readings — Submit reading", () => {
     it("returns 429 when daily submission limit is reached", async () => {
-      // Pre-insert 40 meterReadings for today for this user
-      const inserts = Array.from({ length: 40 }, (_, i) => {
-        const fakeBpId = crypto.randomUUID();
-        return {
-          id: `reading-limit-${i}`,
-          billingPeriodId: fakeBpId,
-          importEnd: 100 + i,
-          exportEnd: 10,
-          solarGenerationEnd: 20,
-          submittedBy: tenantId,
-          createdAt: new Date(), // today
-          updatedAt: new Date(),
-        };
+      const todayKey = new Date().toISOString().slice(0, 10);
+      await testDb.insert(readingDailyCount).values({
+        id: `${tenantId}:${todayKey}`,
+        userId: tenantId,
+        dateKey: todayKey,
+        count: 40, // Trigger limit
       });
-      // Need billing periods for these readings
-      const bpInserts = Array.from({ length: 40 }, (_, i) => ({
-        id: inserts[i].billingPeriodId,
-        propertyId: propId,
-        periodMonth: `2020-01-${(i % 28) + 1}`.padStart(2, "0"),
-        calculationMode: "grid_only" as const,
-        status: "draft" as const,
-      }));
-      await testDb.insert(billingPeriods).values(bpInserts);
-      await testDb.insert(meterReadings).values(inserts);
 
       currentUser = { id: tenantId };
       const res = await app.request(
