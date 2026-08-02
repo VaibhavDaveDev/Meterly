@@ -1,7 +1,7 @@
 import { defineConfig } from "astro/config";
 import cloudflare from "@astrojs/cloudflare";
 import react from "@astrojs/react";
-import tailwind from "@astrojs/tailwind";
+import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 
 export default defineConfig({
@@ -12,7 +12,7 @@ export default defineConfig({
     },
     imageService: "passthrough",
   }),
-  integrations: [react(), tailwind()],
+  integrations: [react()],
   vite: {
     optimizeDeps: {
       include: ["picomatch"],
@@ -41,6 +41,7 @@ export default defineConfig({
       },
     },
     plugins: [
+      tailwindcss(),
       viteStaticCopy({
         targets: [
           {
