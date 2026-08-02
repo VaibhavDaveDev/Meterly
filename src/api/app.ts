@@ -34,6 +34,7 @@ import { checkAndIncrementPasswordChangeLimit } from "./lib/password-change-limi
 import { sendEmail } from "./lib/email";
 import { passwordChangedTemplate } from "./lib/email-templates";
 import { swaggerUI } from "@hono/swagger-ui";
+import { HTTPException } from "hono/http-exception";
 
 export type Bindings = {
   DB: D1Database;
@@ -79,9 +80,8 @@ export const app = new OpenAPIHono<{
   Variables: Variables;
 }>();
 
-import { HTTPException } from "hono/http-exception";
-
-// Global error handler — prevents silent empty 500 responses while preserving HTTP exceptions (400, 403, 404, etc.)
+// Global error handler — preserves HTTPException status codes (400, 401, 403, 404, etc.)
+// and prevents silent empty 500 responses for unexpected errors.
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
     return err.getResponse();
@@ -119,7 +119,8 @@ app.use("*", async (c, next) => {
 
 // ponytail: KV-based rate limiting deferred to v1.1. Better Auth built-in is enough for v1 auth routes.
 
-// CORS middleware for local dev & production
+// CORS middleware — dynamically allows the configured BETTER_AUTH_URL domain,
+// all *.pages.dev preview deployments, and localhost for dev.
 app.use(
   "*",
   cors({
@@ -138,14 +139,13 @@ app.use(
           const authOrigin = new URL(c.env.BETTER_AUTH_URL).origin;
           if (origin === authOrigin) return origin;
         } catch {
-          /* ignore */
+          /* ignore malformed URL */
         }
       }
-      // Allow all Cloudflare Pages deployments (*.pages.dev)
+      // Allow all Cloudflare Pages preview deployments
       if (origin.endsWith(".pages.dev")) {
         return origin;
       }
-      // Fallback to env.BETTER_AUTH_URL or default Cloudflare Pages domain
       return c?.env?.BETTER_AUTH_URL || "https://meterly.pages.dev";
     },
     credentials: true,

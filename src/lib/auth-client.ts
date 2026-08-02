@@ -1,7 +1,9 @@
 import { createAuthClient } from "better-auth/client";
 import { emailOTPClient } from "better-auth/client/plugins";
 
-// In Astro, client-side code must use import.meta.env instead of process.env
+// In Astro, client-side code must use import.meta.env instead of process.env.
+// In the browser, use window.location.origin so the client always matches the
+// current deployment (production, preview, or localhost).
 const getClientBaseURL = () => {
   if (typeof window !== "undefined") {
     return window.location.origin;

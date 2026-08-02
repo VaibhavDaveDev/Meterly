@@ -64,23 +64,6 @@ export function getAuth(env: {
   const githubClientId = env.GITHUB_CLIENT_ID?.trim();
   const githubClientSecret = env.GITHUB_CLIENT_SECRET?.trim();
 
-  // Diagnostic log — visible in Cloudflare Pages → Deployment → Logs
-  console.log("[Auth] getAuth called — ENVIRONMENT:", env.ENVIRONMENT);
-  console.log("[Auth] baseURL:", baseURL);
-  console.log("[Auth] BETTER_AUTH_SECRET present:", !!effectiveSecret);
-  console.log(
-    "[Auth] googleClientId present:",
-    !!googleClientId,
-    "| googleClientSecret present:",
-    !!googleClientSecret
-  );
-  console.log(
-    "[Auth] githubClientId present:",
-    !!githubClientId,
-    "| githubClientSecret present:",
-    !!githubClientSecret
-  );
-
   return betterAuth({
     logger: {
       level: "debug",
@@ -248,7 +231,9 @@ export function getAuth(env: {
           : undefined,
     },
 
-    // Google and GitHub OAuth as alternative login methods
+    // Google and GitHub OAuth as alternative login methods.
+    // Only register a provider when both client ID and secret are present —
+    // passing empty strings causes Better Auth to reject the configuration.
     socialProviders: {
       ...(googleClientId && googleClientSecret
         ? {
