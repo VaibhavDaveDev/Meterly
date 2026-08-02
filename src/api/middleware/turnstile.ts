@@ -1,5 +1,5 @@
-import { Context, Next } from 'hono';
-import type { Bindings, Variables } from '../app';
+import { Context, Next } from "hono";
+import type { Bindings, Variables } from "../app";
 
 /**
  * Cloudflare Turnstile bot-protection middleware.
@@ -36,11 +36,10 @@ export const turnstileMiddleware = async (
   c: Context<{ Bindings: Bindings; Variables: Variables }>,
   next: Next
 ) => {
-  const env = c.env.ENVIRONMENT || 'development';
-  
-  // Auto-detect: Skip Turnstile verification in test and development environments
-  if (env === 'test' || env === 'development') {
-    console.log(`[Turnstile] Skipping verification in ${env} mode`);
+  const environment = c.env.ENVIRONMENT;
+
+  // Auto-detect: Skip Turnstile verification in explicit test and development environments
+  if (environment === "test" || environment === "development") {
     return next();
   }
 
@@ -50,53 +49,90 @@ export const turnstileMiddleware = async (
     body = await clonedReq.json();
   } catch {
     return c.json(
-      { success: false, error: { code: 'INVALID_BODY', message: 'Invalid request body' } },
+      {
+        success: false,
+        error: { code: "INVALID_BODY", message: "Invalid request body" },
+      },
       400
     );
   }
 
-  const token = body['cf-turnstile-response'] || c.req.header('x-cf-turnstile-response');
-  if (!token || typeof token !== 'string') {
+  const token =
+    body["cf-turnstile-response"] || c.req.header("x-cf-turnstile-response");
+  if (!token || typeof token !== "string") {
     return c.json(
-      { success: false, error: { code: 'TURNSTILE_MISSING', message: 'Bot protection check is required.' } },
+      {
+        success: false,
+        error: {
+          code: "TURNSTILE_MISSING",
+          message: "Bot protection check is required.",
+        },
+      },
       400
     );
   }
 
   const secretKey = c.env.TURNSTILE_SECRET_KEY;
   if (!secretKey) {
-    console.error('[Turnstile] TURNSTILE_SECRET_KEY is not set in production!');
+    console.error("[Turnstile] TURNSTILE_SECRET_KEY is not set in production!");
     return c.json(
-      { success: false, error: { code: 'TURNSTILE_CONFIG_ERROR', message: 'Server misconfiguration. Contact support.' } },
+      {
+        success: false,
+        error: {
+          code: "TURNSTILE_CONFIG_ERROR",
+          message: "Server misconfiguration. Contact support.",
+        },
+      },
       500
     );
   }
 
-  let verifyResult: { success: boolean; 'error-codes'?: string[] };
+  let verifyResult: { success: boolean; "error-codes"?: string[] };
   try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        secret: secretKey,
-        response: token,
-        // Optionally bind the token to the user's IP for extra security
-        remoteip: c.req.header('CF-Connecting-IP'),
-      }),
-    });
-    verifyResult = await res.json() as { success: boolean; 'error-codes'?: string[] };
+    const res = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: secretKey,
+          response: token,
+          // Optionally bind the token to the user's IP for extra security
+          remoteip: c.req.header("CF-Connecting-IP"),
+        }),
+      }
+    );
+    verifyResult = (await res.json()) as {
+      success: boolean;
+      "error-codes"?: string[];
+    };
   } catch (err) {
-    console.error('[Turnstile] siteverify request failed:', err);
+    console.error("[Turnstile] siteverify request failed:", err);
     return c.json(
-      { success: false, error: { code: 'TURNSTILE_ERROR', message: 'Bot check failed. Please try again.' } },
+      {
+        success: false,
+        error: {
+          code: "TURNSTILE_ERROR",
+          message: "Bot check failed. Please try again.",
+        },
+      },
       500
     );
   }
 
   if (!verifyResult.success) {
-    console.warn('[Turnstile] Token rejected. Error codes:', verifyResult['error-codes']);
+    console.warn(
+      "[Turnstile] Token rejected. Error codes:",
+      verifyResult["error-codes"]
+    );
     return c.json(
-      { success: false, error: { code: 'TURNSTILE_FAILED', message: 'Bot check failed. Please refresh and try again.' } },
+      {
+        success: false,
+        error: {
+          code: "TURNSTILE_FAILED",
+          message: "Bot check failed. Please refresh and try again.",
+        },
+      },
       400
     );
   }

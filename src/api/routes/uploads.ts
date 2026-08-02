@@ -197,7 +197,16 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   // --- Store in R2 ---
   // Key: propertyId/periodId/userId/timestamp.webp
   const timestamp = Date.now();
-  const ext = photo.type === "image/webp" ? "webp" : "jpg";
+  const MIME_TO_EXT: Record<string, string> = {
+    "image/webp": "webp",
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "application/pdf": "pdf",
+  };
+  const ext = MIME_TO_EXT[photo.type] ?? "bin";
   const objectKey = `${propertyId}/${periodId}/${user.id}/${timestamp}.${ext}`;
 
   await r2.put(objectKey, await photo.arrayBuffer(), {
@@ -393,27 +402,30 @@ uploadsRouter.get("/bill-photo/*", async (c) => {
   // Extract full object key from path (everything after /bill-photo/)
   const objectKey = c.req.path.replace("/api/uploads/bill-photo/", "");
 
-  // Security: object key format is propertyId/periodId/userId/timestamp.ext
-  const parts = objectKey.split("/");
-  if (parts.length < 4) {
+  // 1. Lookup photo row by objectKey
+  const [photoRow] = await db
+    .select()
+    .from(billPhotos)
+    .where(eq(billPhotos.objectKey, objectKey))
+    .limit(1);
+
+  if (!photoRow) {
     return c.json(
       {
         success: false as const,
-        error: { code: "INVALID_KEY", message: "Invalid file key." },
+        error: { code: "NOT_FOUND", message: "File not found." },
       },
-      400
+      404
     );
   }
 
-  const propertyId = parts[0];
-  const uId = parts[2];
-
-  // Check if owner or tenant of this property
+  // 2. Use photoRow.propertyId for authorization (never trust path segments)
   const [property] = await db
     .select()
     .from(properties)
-    .where(eq(properties.id, propertyId))
+    .where(eq(properties.id, photoRow.propertyId))
     .limit(1);
+
   if (!property) {
     return c.json(
       {
@@ -429,12 +441,14 @@ uploadsRouter.get("/bill-photo/*", async (c) => {
     .select()
     .from(tenancies)
     .where(
-      and(eq(tenancies.propertyId, propertyId), eq(tenancies.tenantId, user.id))
+      and(
+        eq(tenancies.propertyId, photoRow.propertyId),
+        eq(tenancies.tenantId, user.id)
+      )
     )
     .limit(1);
-  const isTenant = !!tenancy;
 
-  if (uId !== user.id && !isOwner && !isTenant) {
+  if (!isOwner && !tenancy) {
     return c.json(
       {
         success: false as const,

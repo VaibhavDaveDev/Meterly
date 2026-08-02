@@ -19,14 +19,20 @@ import { requirePropertyAccess, requireOwner } from "../lib/property-auth";
 import { sweepOrphanedPropertyData } from "../lib/property-cleanup";
 import { createNotification } from "../lib/notifications";
 import type { Bindings, Variables } from "../app";
-import { SuccessResponse, SimpleSuccessResponse, ErrorResponse, IdParam } from "../lib/openapi-schemas";
+import {
+  SuccessResponse,
+  SimpleSuccessResponse,
+  ErrorResponse,
+  IdParam,
+} from "../lib/openapi-schemas";
+import { csvCell } from "../lib/csv";
 
 const propertiesRouter = new OpenAPIHono<{
   Bindings: Bindings;
   Variables: Variables;
 }>();
 
-propertiesRouter.use('*', authMiddleware);
+propertiesRouter.use("*", authMiddleware);
 
 const CreatePropertySchema = z.object({
   name: z
@@ -45,10 +51,10 @@ const CreatePropertySchema = z.object({
 });
 
 const checkNameRoute = createRoute({
-  method: 'get',
-  path: '/check-name',
-  tags: ['Properties'],
-  summary: 'Check if a property name already exists for the owner',
+  method: "get",
+  path: "/check-name",
+  tags: ["Properties"],
+  summary: "Check if a property name already exists for the owner",
   security: [{ cookieAuth: [] }],
   request: {
     query: z.object({
@@ -57,15 +63,17 @@ const checkNameRoute = createRoute({
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: z.object({ exists: z.boolean() }) } },
-      description: 'Check result',
+      content: {
+        "application/json": { schema: z.object({ exists: z.boolean() }) },
+      },
+      description: "Check result",
     },
   },
 });
 
 propertiesRouter.openapi(checkNameRoute, async (c) => {
   const user = c.get("user");
-  const { name } = c.req.valid('query');
+  const { name } = c.req.valid("query");
   const db = getDb(c.env.DB);
 
   if (!name) {
@@ -82,10 +90,10 @@ propertiesRouter.openapi(checkNameRoute, async (c) => {
 });
 
 const listPropertiesRoute = createRoute({
-  method: 'get',
-  path: '/',
-  tags: ['Properties'],
-  summary: 'List all properties where user is owner or tenant',
+  method: "get",
+  path: "/",
+  tags: ["Properties"],
+  summary: "List all properties where user is owner or tenant",
   security: [{ cookieAuth: [] }],
   request: {
     query: z.object({
@@ -94,8 +102,8 @@ const listPropertiesRoute = createRoute({
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Properties retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Properties retrieved",
     },
   },
 });
@@ -103,7 +111,7 @@ const listPropertiesRoute = createRoute({
 propertiesRouter.openapi(listPropertiesRoute, async (c) => {
   const user = c.get("user");
   const db = getDb(c.env.DB);
-  const { include_archived } = c.req.valid('query');
+  const { include_archived } = c.req.valid("query");
   const includeArchived = include_archived === "true";
 
   // Properties owned by user
@@ -217,43 +225,46 @@ propertiesRouter.openapi(listPropertiesRoute, async (c) => {
       and(eq(tenancies.tenantId, user.id), eq(tenancies.status, "inactive"))
     );
 
-  return c.json({
-    success: true as const,
-    data: {
-      owned: augmentedOwned,
-      tenant: augmentedTenantActive,
-      tenantPast: tenantPast.map((t) => t.property),
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        owned: augmentedOwned,
+        tenant: augmentedTenantActive,
+        tenantPast: tenantPast.map((t) => t.property),
+      },
     },
-  }, 200);
+    200
+  );
 });
 
 const createPropertyRoute = createRoute({
-  method: 'post',
-  path: '/',
-  tags: ['Properties'],
-  summary: 'Create a new property',
+  method: "post",
+  path: "/",
+  tags: ["Properties"],
+  summary: "Create a new property",
   security: [{ cookieAuth: [] }],
   request: {
     body: {
-      content: { 'application/json': { schema: CreatePropertySchema } },
+      content: { "application/json": { schema: CreatePropertySchema } },
       required: true,
     },
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Property created',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Property created",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Validation error',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Validation error",
     },
   },
 });
 
 propertiesRouter.openapi(createPropertyRoute, async (c) => {
   const user = c.get("user");
-  const data = c.req.valid('json');
+  const data = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   const newPropertyId = crypto.randomUUID();
@@ -263,15 +274,9 @@ propertiesRouter.openapi(createPropertyRoute, async (c) => {
     name: data.name,
     address: data.address,
     hasSolar: data.hasSolar,
-    solarGenInitial: data.hasSolar
-      ? (data.solarGenInitial ?? 0)
-      : 0,
-    solarExportInitial: data.hasSolar
-      ? (data.solarExportInitial ?? 0)
-      : 0,
-    importInitial: data.hasSolar
-      ? (data.importInitial ?? 0)
-      : null,
+    solarGenInitial: data.hasSolar ? (data.solarGenInitial ?? 0) : 0,
+    solarExportInitial: data.hasSolar ? (data.solarExportInitial ?? 0) : 0,
+    importInitial: data.hasSolar ? (data.importInitial ?? 0) : null,
     solarActivatedAt: data.hasSolar ? new Date() : null,
     soloMode: data.soloMode,
     soloModeChangedAt: data.soloMode ? new Date() : null,
@@ -294,40 +299,43 @@ propertiesRouter.openapi(createPropertyRoute, async (c) => {
     .where(eq(properties.id, newPropertyId))
     .limit(1);
 
-  return c.json({
-    success: true as const,
-    data: newProperty,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: newProperty,
+    },
+    200
+  );
 });
 
 const getPropertyRoute = createRoute({
-  method: 'get',
-  path: '/{id}',
-  tags: ['Properties'],
-  summary: 'Get property details',
+  method: "get",
+  path: "/{id}",
+  tags: ["Properties"],
+  summary: "Get property details",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Property retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Property retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
   },
 });
 
 propertiesRouter.openapi(getPropertyRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
+  const { id: propertyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const access = await requirePropertyAccess(db, propertyId, user.id);
@@ -345,17 +353,20 @@ propertiesRouter.openapi(getPropertyRoute, async (c) => {
   }
   const { property } = access;
 
-  return c.json({
-    success: true as const,
-    data: property,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: property,
+    },
+    200
+  );
 });
 
 const getPropertyPeriodsRoute = createRoute({
-  method: 'get',
-  path: '/{id}/periods',
-  tags: ['Properties'],
-  summary: 'Get billing periods for a property',
+  method: "get",
+  path: "/{id}/periods",
+  tags: ["Properties"],
+  summary: "Get billing periods for a property",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
@@ -366,24 +377,24 @@ const getPropertyPeriodsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Periods retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Periods retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
   },
 });
 
 propertiesRouter.openapi(getPropertyPeriodsRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
-  const { context, limit: limitStr } = c.req.valid('query');
+  const { id: propertyId } = c.req.valid("param");
+  const { context, limit: limitStr } = c.req.valid("query");
   const limit = limitStr ? parseInt(limitStr, 10) : undefined;
   const db = getDb(c.env.DB);
 
@@ -407,7 +418,10 @@ propertiesRouter.openapi(getPropertyPeriodsRoute, async (c) => {
     .orderBy(desc(billingPeriods.periodMonth));
   const periods = await (limit ? baseQuery.limit(limit) : baseQuery);
   if (periods.length === 0) {
-    return c.json({ success: true as const, data: { activePeriod: null, stats: null } }, 200);
+    return c.json(
+      { success: true as const, data: { activePeriod: null, stats: null } },
+      200
+    );
   }
 
   // If we only want the current/latest period
@@ -460,32 +474,38 @@ propertiesRouter.openapi(getPropertyPeriodsRoute, async (c) => {
       (b) => b.status === "paid"
     ).length;
 
-    return c.json({
-      success: true as const,
-      data: {
-        activePeriod: {
-          id: activePeriod.id,
-          periodMonth: activePeriod.periodMonth,
-          calculationMode: activePeriod.calculationMode,
-          status: activePeriod.status,
-          submittedAt: activePeriod.submittedAt
-            ? activePeriod.submittedAt.toISOString()
-            : null,
-          submittedByName: activePeriod.submittedBy,
-          bills: augmentedBills,
-        },
-        stats: {
-          totalTenants: augmentedBills.length,
-          paidThisPeriod,
+    return c.json(
+      {
+        success: true as const,
+        data: {
+          activePeriod: {
+            id: activePeriod.id,
+            periodMonth: activePeriod.periodMonth,
+            calculationMode: activePeriod.calculationMode,
+            status: activePeriod.status,
+            submittedAt: activePeriod.submittedAt
+              ? activePeriod.submittedAt.toISOString()
+              : null,
+            submittedByName: activePeriod.submittedBy,
+            bills: augmentedBills,
+          },
+          stats: {
+            totalTenants: augmentedBills.length,
+            paidThisPeriod,
+          },
         },
       },
-    }, 200);
+      200
+    );
   }
 
-  return c.json({
-    success: true as const,
-    data: periods,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: periods,
+    },
+    200
+  );
 });
 
 const SoloModeSchema = z.object({
@@ -493,42 +513,42 @@ const SoloModeSchema = z.object({
 });
 
 const toggleSoloModeRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/mode',
-  tags: ['Properties'],
-  summary: 'Toggle solo mode on/off',
+  method: "patch",
+  path: "/{id}/mode",
+  tags: ["Properties"],
+  summary: "Toggle solo mode on/off",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     body: {
-      content: { 'application/json': { schema: SoloModeSchema } },
+      content: { "application/json": { schema: SoloModeSchema } },
       required: true,
     },
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Solo mode toggled',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Solo mode toggled",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or invalid input',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or invalid input",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Property not found",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Cannot switch with active tenants',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Cannot switch with active tenants",
     },
   },
 });
 
 propertiesRouter.openapi(toggleSoloModeRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
-  const data = c.req.valid('json');
+  const { id: propertyId } = c.req.valid("param");
+  const data = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
@@ -623,38 +643,38 @@ const SolarToggleSchema = z
   );
 
 const toggleSolarRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/solar',
-  tags: ['Properties'],
-  summary: 'Enable/disable solar mode',
+  method: "patch",
+  path: "/{id}/solar",
+  tags: ["Properties"],
+  summary: "Enable/disable solar mode",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     body: {
-      content: { 'application/json': { schema: SolarToggleSchema } },
+      content: { "application/json": { schema: SolarToggleSchema } },
       required: true,
     },
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Solar mode toggled',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Solar mode toggled",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or validation error',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or validation error",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Property not found",
     },
   },
 });
 
 propertiesRouter.openapi(toggleSolarRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
-  const data = c.req.valid('json');
+  const { id: propertyId } = c.req.valid("param");
+  const data = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
@@ -677,9 +697,7 @@ propertiesRouter.openapi(toggleSolarRoute, async (c) => {
       hasSolar: data.hasSolar,
       solarGenInitial: data.solarGenInitial ?? 0,
       solarExportInitial: data.solarExportInitial ?? 0,
-      importInitial: data.hasSolar
-        ? (data.importInitial ?? 0)
-        : null,
+      importInitial: data.hasSolar ? (data.importInitial ?? 0) : null,
       solarActivatedAt: data.hasSolar ? new Date() : null,
       updatedAt: new Date(),
     })
@@ -691,17 +709,20 @@ propertiesRouter.openapi(toggleSolarRoute, async (c) => {
     .where(eq(properties.id, propertyId))
     .limit(1);
 
-  return c.json({
-    success: true as const,
-    data: updatedProperty,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: updatedProperty,
+    },
+    200
+  );
 });
 
 const getPropertyBillsRoute = createRoute({
-  method: 'get',
-  path: '/{id}/bills',
-  tags: ['Properties'],
-  summary: 'Get all bills for a property',
+  method: "get",
+  path: "/{id}/bills",
+  tags: ["Properties"],
+  summary: "Get all bills for a property",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
@@ -712,28 +733,28 @@ const getPropertyBillsRoute = createRoute({
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Bills retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Bills retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Property not found",
     },
   },
 });
 
 propertiesRouter.openapi(getPropertyBillsRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
-  const { year: yearQuery, status: statusFilterQuery } = c.req.valid('query');
+  const { id: propertyId } = c.req.valid("param");
+  const { year: yearQuery, status: statusFilterQuery } = c.req.valid("query");
   const year = yearQuery || "all";
   const statusFilter = statusFilterQuery || "all";
   const db = getDb(c.env.DB);
@@ -858,47 +879,50 @@ propertiesRouter.openapi(getPropertyBillsRoute, async (c) => {
     });
   }
 
-  return c.json({
-    success: true as const,
-    data: {
-      bills: groupedData,
-      summary: {
-        totalBilled,
-        totalCollected,
-        totalOutstanding,
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        bills: groupedData,
+        summary: {
+          totalBilled,
+          totalCollected,
+          totalOutstanding,
+        },
       },
     },
-  }, 200);
+    200
+  );
 });
 
 const exportBillsCsvRoute = createRoute({
-  method: 'get',
-  path: '/{id}/export/csv',
-  tags: ['Properties'],
-  summary: 'Owner downloads property billing history',
+  method: "get",
+  path: "/{id}/export/csv",
+  tags: ["Properties"],
+  summary: "Owner downloads property billing history",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'text/csv': { schema: z.string() } },
-      description: 'CSV file',
+      content: { "text/csv": { schema: z.string() } },
+      description: "CSV file",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
   },
 });
 
 propertiesRouter.openapi(exportBillsCsvRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
+  const { id: propertyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
@@ -935,7 +959,20 @@ propertiesRouter.openapi(exportBillsCsvRoute, async (c) => {
     "Month,Tenant,Total Consumption,Split %,Tenant Consumption,Solar Self-Consumed,Consumption Cost,Export Refund,Custom Charges,Total Due,Status\n";
   result.forEach((row) => {
     const tenantName = row.tenantName || "Pending";
-    csv += `"${row.periodMonth}","${tenantName}",${row.bill.totalConsumption},${row.bill.splitPercentage},${row.bill.tenantConsumption},${row.bill.solarSelfConsumed},${row.bill.consumptionCost},${row.bill.exportRefund},${row.bill.customChargesTotal},${row.bill.totalDue},${row.bill.status}\n`;
+    csv +=
+      [
+        csvCell(row.periodMonth),
+        csvCell(tenantName),
+        csvCell(row.bill.totalConsumption),
+        csvCell(row.bill.splitPercentage),
+        csvCell(row.bill.tenantConsumption),
+        csvCell(row.bill.solarSelfConsumed),
+        csvCell(row.bill.consumptionCost),
+        csvCell(row.bill.exportRefund),
+        csvCell(row.bill.customChargesTotal),
+        csvCell(row.bill.totalDue),
+        csvCell(row.bill.status),
+      ].join(",") + "\n";
   });
 
   return c.text(csv, 200, {
@@ -964,37 +1001,37 @@ propertiesRouter.openapi(exportBillsCsvRoute, async (c) => {
 // block the HTTP response — if it fails, the DB data is already gone (acceptable
 // for storage cleanup; no user-visible data remains).
 const deletePropertyRoute = createRoute({
-  method: 'delete',
-  path: '/{id}',
-  tags: ['Properties'],
-  summary: 'Hard delete a property and all child data',
+  method: "delete",
+  path: "/{id}",
+  tags: ["Properties"],
+  summary: "Hard delete a property and all child data",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SimpleSuccessResponse } },
-      description: 'Property deleted',
+      content: { "application/json": { schema: SimpleSuccessResponse } },
+      description: "Property deleted",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     403: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Unauthorized',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Has pending requests',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Has pending requests",
     },
   },
 });
 
 propertiesRouter.openapi(deletePropertyRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
+  const { id: propertyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
@@ -1148,38 +1185,38 @@ const SettingsSchema = z.object({
 });
 
 const updateSettingsRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/settings',
-  tags: ['Properties'],
-  summary: 'Update property settings',
+  method: "patch",
+  path: "/{id}/settings",
+  tags: ["Properties"],
+  summary: "Update property settings",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
     body: {
-      content: { 'application/json': { schema: SettingsSchema } },
+      content: { "application/json": { schema: SettingsSchema } },
       required: true,
     },
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Settings updated',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Settings updated",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID or validation error',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID or validation error",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Property not found",
     },
   },
 });
 
 propertiesRouter.openapi(updateSettingsRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
-  const data = c.req.valid('json');
+  const { id: propertyId } = c.req.valid("param");
+  const data = c.req.valid("json");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
@@ -1210,44 +1247,47 @@ propertiesRouter.openapi(updateSettingsRoute, async (c) => {
     .where(eq(properties.id, propertyId))
     .limit(1);
 
-  return c.json({
-    success: true as const,
-    data: updatedProperty,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: updatedProperty,
+    },
+    200
+  );
 });
 
 const archivePropertyRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/archive',
-  tags: ['Properties'],
-  summary: 'Archive a property',
+  method: "patch",
+  path: "/{id}/archive",
+  tags: ["Properties"],
+  summary: "Archive a property",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Property archived',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Property archived",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Property not found",
     },
     409: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Active tenants exist',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Active tenants exist",
     },
   },
 });
 
 propertiesRouter.openapi(archivePropertyRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
+  const { id: propertyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
@@ -1302,40 +1342,43 @@ propertiesRouter.openapi(archivePropertyRoute, async (c) => {
     .where(eq(properties.id, propertyId))
     .limit(1);
 
-  return c.json({
-    success: true as const,
-    data: updatedProperty,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: updatedProperty,
+    },
+    200
+  );
 });
 
 const unarchivePropertyRoute = createRoute({
-  method: 'patch',
-  path: '/{id}/unarchive',
-  tags: ['Properties'],
-  summary: 'Unarchive a property',
+  method: "patch",
+  path: "/{id}/unarchive",
+  tags: ["Properties"],
+  summary: "Unarchive a property",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Property unarchived',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Property unarchived",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Property not found",
     },
   },
 });
 
 propertiesRouter.openapi(unarchivePropertyRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
+  const { id: propertyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
@@ -1366,45 +1409,54 @@ propertiesRouter.openapi(unarchivePropertyRoute, async (c) => {
     .where(eq(properties.id, propertyId))
     .limit(1);
 
-  return c.json({
-    success: true as const,
-    data: updatedProperty,
-  }, 200);
+  return c.json(
+    {
+      success: true as const,
+      data: updatedProperty,
+    },
+    200
+  );
 });
 
 const getPropertyChartDataRoute = createRoute({
-  method: 'get',
-  path: '/{id}/chart-data',
-  tags: ['Properties'],
-  summary: 'Get chart data for a property',
+  method: "get",
+  path: "/{id}/chart-data",
+  tags: ["Properties"],
+  summary: "Get chart data for a property",
   security: [{ cookieAuth: [] }],
   request: {
     params: IdParam,
   },
   responses: {
     200: {
-      content: { 'application/json': { schema: SuccessResponse } },
-      description: 'Chart data retrieved',
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Chart data retrieved",
     },
     400: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Missing ID',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
     },
     404: {
-      content: { 'application/json': { schema: ErrorResponse } },
-      description: 'Property not found',
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Property not found",
     },
   },
 });
 
 propertiesRouter.openapi(getPropertyChartDataRoute, async (c) => {
   const user = c.get("user");
-  const { id: propertyId } = c.req.valid('param');
+  const { id: propertyId } = c.req.valid("param");
   const db = getDb(c.env.DB);
 
   const property = await requireOwner(db, propertyId, user.id);
   if (!property) {
-    return c.json({ success: false as const, error: { code: "NOT_FOUND", message: "Not found" } }, 404);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Not found" },
+      },
+      404
+    );
   }
 
   const allData = await db
@@ -1566,19 +1618,22 @@ propertiesRouter.openapi(getPropertyChartDataRoute, async (c) => {
       }))
     : null;
 
-  return c.json({
-    success: true as const,
-    data: {
-      monthlyRevenue,
-      monthlyConsumption,
-      solarSavings,
-      importExport,
-      billVsCollected,
-      tenantBreakdown,
-      solarDetail,
-      cumulativeExportEarnings,
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        monthlyRevenue,
+        monthlyConsumption,
+        solarSavings,
+        importExport,
+        billVsCollected,
+        tenantBreakdown,
+        solarDetail,
+        cumulativeExportEarnings,
+      },
     },
-  }, 200);
+    200
+  );
 });
 
 export { propertiesRouter };
