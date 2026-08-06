@@ -1,3 +1,7 @@
 #!/usr/bin/env sh
 echo "⏳ Running typecheck before push..."
 pnpm typecheck
+echo "⏳ Running lint before push..."
+pnpm lint
+echo "⏳ Running tests before push..."
+pnpm test --run

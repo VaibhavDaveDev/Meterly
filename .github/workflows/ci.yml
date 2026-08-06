@@ -4,29 +4,29 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'tsconfig.json'
-      - 'eslint.config.mjs'
-      - 'vitest.config.ts'
-      - 'astro.config.mjs'
-      - 'wrangler.jsonc'
-      - 'drizzle.config.ts'
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - "eslint.config.mjs"
+      - "vitest.config.mts"
+      - "astro.config.mjs"
+      - "wrangler.jsonc"
+      - "drizzle.config.ts"
   pull_request:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'tsconfig.json'
-      - 'eslint.config.mjs'
-      - 'vitest.config.ts'
-      - 'astro.config.mjs'
-      - 'wrangler.jsonc'
-      - 'drizzle.config.ts'
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "tsconfig.json"
+      - "eslint.config.mjs"
+      - "vitest.config.mts"
+      - "astro.config.mjs"
+      - "wrangler.jsonc"
+      - "drizzle.config.ts"
 
 jobs:
   ci:
@@ -45,8 +45,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'pnpm'
+          node-version: "24"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -60,8 +60,10 @@ jobs:
       - name: Run tests
         run: pnpm test --run
         env:
-          # Vitest needs this to stay in test mode
           NODE_ENV: test
+
+      - name: Build (catch Astro + Wrangler errors)
+        run: pnpm build:ci
 
   security:
     name: Dependency Security Audit
@@ -81,16 +83,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'pnpm'
+          node-version: "24"
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Audit production dependencies only
         # --prod skips devDependencies (miniflare, vitest, etc.)
-        # Transitive Astro 6.x CVEs that require Astro 7 to fix are
-        # suppressed via pnpm.auditConfig.ignoreCves in package.json.
-        # Update the ignore list when upgrading to Astro 7 + Tailwind v4.
+        # Transitive CVEs are suppressed via pnpm.auditConfig.ignoreGhsas
+        # in package.json. Update the ignore list when upgrading Astro.
         run: pnpm audit --prod
         continue-on-error: false

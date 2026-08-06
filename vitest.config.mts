@@ -21,5 +21,17 @@ export default defineConfig({
         inline: [/@microlabs\/otel-cf-workers/],
       },
     },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      include: ["src/api/**/*.ts", "src/db/**/*.ts", "src/lib/**/*.ts"],
+      exclude: ["src/**/*.test.ts", "src/test/**", "src/**/*.d.ts"],
+      thresholds: {
+        lines: 30,
+        functions: 30,
+        branches: 25,
+        statements: 30,
+      },
+    },
   },
 });
