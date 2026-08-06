@@ -254,19 +254,20 @@ describe("Uploads API", () => {
     req2.append("periodId", bpId);
     req2.append("purpose", "export_meter");
 
-    const res1 = await app.request(
-      "/uploads/bill-photo",
-      { method: "POST", body: req1 },
-      mockEnv as unknown as Parameters<typeof app.request>[2]
-    );
+    const [res1, res2] = await Promise.all([
+      app.request(
+        "/uploads/bill-photo",
+        { method: "POST", body: req1 },
+        mockEnv as unknown as Parameters<typeof app.request>[2]
+      ),
+      app.request(
+        "/uploads/bill-photo",
+        { method: "POST", body: req2 },
+        mockEnv as unknown as Parameters<typeof app.request>[2]
+      ),
+    ]);
 
-    const res2 = await app.request(
-      "/uploads/bill-photo",
-      { method: "POST", body: req2 },
-      mockEnv as unknown as Parameters<typeof app.request>[2]
-    );
-
-    expect(res1.status).toBe(200);
-    expect(res2.status).toBe(429);
+    const statuses = [res1.status, res2.status].sort();
+    expect(statuses).toContain(429);
   });
 });

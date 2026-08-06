@@ -123,128 +123,132 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   }
 
   // --- Parse multipart ---
-  const formData = await c.req.formData();
-  const photo = formData.get("photo") as File | null;
-  const periodId = formData.get("periodId") as string | null;
-  const propertyId = formData.get("propertyId") as string | null;
-  const purpose = formData.get("purpose") as
-    | "import_meter"
-    | "export_meter"
-    | "solar_meter"
-    | "bill_document"
-    | null;
-  const editRequestId = formData.get("editRequestId") as string | null;
-
-  if (!photo || !periodId || !propertyId || !purpose) {
-    await db.run(
-      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
-    );
-    return c.json(
-      {
-        success: false as const,
-        error: {
-          code: "MISSING_FIELDS",
-          message: "photo, periodId, propertyId, and purpose are required",
-        },
-      },
-      400
-    );
-  }
-
-  const VALID_PURPOSES = [
-    "import_meter",
-    "export_meter",
-    "solar_meter",
-    "bill_document",
-  ] as const;
-  if (!VALID_PURPOSES.includes(purpose as never)) {
-    await db.run(
-      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
-    );
-    return c.json(
-      {
-        success: false as const,
-        error: { code: "INVALID_PURPOSE", message: "Invalid purpose value." },
-      },
-      400
-    );
-  }
-
-  // --- Auth Check ---
-  const tenancyCheck = await db.query.tenancies.findFirst({
-    where: and(
-      eq(tenancies.propertyId, propertyId),
-      eq(tenancies.tenantId, user.id)
-    ),
-  });
-  const propertyCheck = await db.query.properties.findFirst({
-    where: and(eq(properties.id, propertyId), eq(properties.ownerId, user.id)),
-  });
-
-  if (!tenancyCheck && !propertyCheck) {
-    await db.run(
-      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
-    );
-    return c.json(
-      {
-        success: false as const,
-        error: {
-          code: "FORBIDDEN",
-          message: "Not authorized for this property",
-        },
-      },
-      403
-    );
-  }
-
-  const validation = await validateUploadedFile(
-    photo,
-    purpose === "bill_document" ? "bill-document" : "meter-photo"
-  );
-  if (!validation.valid) {
-    await db.run(
-      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
-    );
-    return c.json(
-      {
-        success: false as const,
-        error: {
-          code: "INVALID_FILE",
-          message: validation.error || "Invalid file.",
-        },
-      },
-      400
-    );
-  }
-
-  // --- Store in R2 ---
-  // Key: propertyId/periodId/userId/timestamp.webp
-  const timestamp = Date.now();
-  const MIME_TO_EXT: Record<string, string> = {
-    "image/webp": "webp",
-    "image/jpeg": "jpg",
-    "image/jpg": "jpg",
-    "image/png": "png",
-    "image/heic": "heic",
-    "image/heif": "heif",
-    "application/pdf": "pdf",
-  };
-  const ext = MIME_TO_EXT[photo.type] ?? "bin";
-  const objectKey = `${propertyId}/${periodId}/${user.id}/${timestamp}.${ext}`;
-
-  await r2.put(objectKey, await photo.arrayBuffer(), {
-    httpMetadata: { contentType: photo.type },
-    customMetadata: {
-      uploadedBy: user.id,
-      periodId,
-      propertyId,
-      purpose,
-      uploadedAt: new Date().toISOString(),
-    },
-  });
-
-  // --- Cap enforcement in DB (Max 3 per period) ---
+  let objectKey: string | undefined;
   try {
+    const formData = await c.req.formData();
+    const photo = formData.get("photo") as File | null;
+    const periodId = formData.get("periodId") as string | null;
+    const propertyId = formData.get("propertyId") as string | null;
+    const purpose = formData.get("purpose") as
+      | "import_meter"
+      | "export_meter"
+      | "solar_meter"
+      | "bill_document"
+      | null;
+    const editRequestId = formData.get("editRequestId") as string | null;
+
+    if (!photo || !periodId || !propertyId || !purpose) {
+      await db.run(
+        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      );
+      return c.json(
+        {
+          success: false as const,
+          error: {
+            code: "MISSING_FIELDS",
+            message: "photo, periodId, propertyId, and purpose are required",
+          },
+        },
+        400
+      );
+    }
+
+    const VALID_PURPOSES = [
+      "import_meter",
+      "export_meter",
+      "solar_meter",
+      "bill_document",
+    ] as const;
+    if (!VALID_PURPOSES.includes(purpose as never)) {
+      await db.run(
+        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      );
+      return c.json(
+        {
+          success: false as const,
+          error: { code: "INVALID_PURPOSE", message: "Invalid purpose value." },
+        },
+        400
+      );
+    }
+
+    // --- Auth Check ---
+    const tenancyCheck = await db.query.tenancies.findFirst({
+      where: and(
+        eq(tenancies.propertyId, propertyId),
+        eq(tenancies.tenantId, user.id)
+      ),
+    });
+    const propertyCheck = await db.query.properties.findFirst({
+      where: and(
+        eq(properties.id, propertyId),
+        eq(properties.ownerId, user.id)
+      ),
+    });
+
+    if (!tenancyCheck && !propertyCheck) {
+      await db.run(
+        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      );
+      return c.json(
+        {
+          success: false as const,
+          error: {
+            code: "FORBIDDEN",
+            message: "Not authorized for this property",
+          },
+        },
+        403
+      );
+    }
+
+    const validation = await validateUploadedFile(
+      photo,
+      purpose === "bill_document" ? "bill-document" : "meter-photo"
+    );
+    if (!validation.valid) {
+      await db.run(
+        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      );
+      return c.json(
+        {
+          success: false as const,
+          error: {
+            code: "INVALID_FILE",
+            message: validation.error || "Invalid file.",
+          },
+        },
+        400
+      );
+    }
+
+    // --- Store in R2 ---
+    // Key: propertyId/periodId/userId/timestamp.webp
+    const timestamp = Date.now();
+    const MIME_TO_EXT: Record<string, string> = {
+      "image/webp": "webp",
+      "image/jpeg": "jpg",
+      "image/jpg": "jpg",
+      "image/png": "png",
+      "image/heic": "heic",
+      "image/heif": "heif",
+      "application/pdf": "pdf",
+    };
+    const ext = MIME_TO_EXT[photo.type] ?? "bin";
+    objectKey = `${propertyId}/${periodId}/${user.id}/${timestamp}.${ext}`;
+
+    await r2.put(objectKey, await photo.arrayBuffer(), {
+      httpMetadata: { contentType: photo.type },
+      customMetadata: {
+        uploadedBy: user.id,
+        periodId,
+        propertyId,
+        purpose,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+
+    // --- Cap enforcement in DB (Max 3 per period) ---
     const MAX_PHOTOS = 3;
     const existing = await db
       .select()
@@ -286,27 +290,27 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
       status: "active",
       editRequestId: editRequestId ?? null,
     });
-  } catch (err) {
-    // If anything fails in the DB after we put the object in R2, clean it up
-    await r2.delete(objectKey).catch(() => {});
-    await db.run(
-      sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+
+    // --- Increment rate limit counter is handled automatically since we write to DB ---
+    return c.json(
+      {
+        success: true as const,
+        data: {
+          objectKey,
+          sizeKb: Math.round(photo.size / 1024),
+        },
+      },
+      200
     );
+  } catch (err) {
+    if (objectKey) await r2.delete(objectKey).catch(() => {});
+    await db
+      .run(
+        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      )
+      .catch(() => {});
     throw err;
   }
-
-  // --- Increment rate limit counter is handled automatically since we write to DB ---
-
-  return c.json(
-    {
-      success: true as const,
-      data: {
-        objectKey,
-        sizeKb: Math.round(photo.size / 1024),
-      },
-    },
-    200
-  );
 });
 
 const listPhotosRoute = createRoute({

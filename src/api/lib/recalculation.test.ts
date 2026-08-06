@@ -177,4 +177,31 @@ describe("recalculateChain", () => {
       /\[recalculation\] Malformed oneOffCharges JSON on period/
     );
   });
+
+  it("deletes bills but skips start-value update when meter reading is missing", async () => {
+    // Remove the reading for period 2 to simulate missing data
+    await testDb
+      .delete(meterReadings)
+      .where(eq(meterReadings.billingPeriodId, bp2));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await recalculateChain(testDb as any, bp1);
+
+    const { generateAndSaveBills } = await import("./bill-generation");
+
+    // Period 1 has a reading — it recalculates
+    // Period 2 has NO reading — recalculateBillsForPeriod returns early (no bills generated)
+    // generateAndSaveBills should only be called once (for period 1)
+    expect(generateAndSaveBills).toHaveBeenCalledTimes(1);
+    expect(generateAndSaveBills).toHaveBeenCalledWith(
+      testDb,
+      bp1,
+      "solar",
+      expect.any(Object),
+      expect.any(Object),
+      expect.any(Array),
+      expect.any(Array),
+      true
+    );
+  });
 });

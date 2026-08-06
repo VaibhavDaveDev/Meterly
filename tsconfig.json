@@ -6,7 +6,12 @@
     "strict": true,
     "skipLibCheck": true,
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["@astrojs/cloudflare", "@cloudflare/workers-types", "node", "vitest/globals"],
+    "types": [
+      "@astrojs/cloudflare",
+      "@cloudflare/workers-types",
+      "node",
+      "vitest/globals"
+    ],
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -18,5 +23,5 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "exclude": ["dist", ".astro", "node_modules", "Reference"]
+  "exclude": ["dist", ".astro", "node_modules", "Reference", "coverage"]
 }

@@ -176,6 +176,15 @@ Examples:
 - Use the Parameter Object pattern when passing 3+ related values across function boundaries.
 - All functions called from API routes must be typed end-to-end.
 
+### ESLint Configuration
+
+- **Type-aware rules**: `@typescript-eslint/recommended-type-checked` is not
+  currently enabled. Enabling it requires `parserOptions.project` and surfaces
+  many findings needing incremental remediation. Deferred until the codebase
+  reaches a stable lint-clean state.
+- **`no-explicit-any`**: Suppression is allowed only at Drizzle `testDb as any`
+  cast sites in test files and in well-documented adapter boundaries.
+
 ### React Components
 
 - One component per file.

@@ -15,6 +15,13 @@
       "when": 1783969800000,
       "tag": "0001_integrity_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783969810000,
+      "tag": "0002_data_integrity_fixes",
+      "breakpoints": true
     }
   ]
 }

@@ -39,6 +39,32 @@ export async function recalculateChain(
   // 3. Process the chain
   const periodsToProcess = [startPeriod, ...subsequentPeriods];
 
+  // 3a. Pre-validate all JSON fields before any deletion.
+  //     Throws immediately if any period has malformed JSON,
+  //     preventing a period from ending up with zero bills.
+  for (const p of periodsToProcess) {
+    if (p.oneOffCharges) {
+      try {
+        JSON.parse(p.oneOffCharges);
+      } catch (e) {
+        throw new Error(
+          `[recalculation] Malformed oneOffCharges JSON on period ${p.id}: ${String(e)}`,
+          { cause: e }
+        );
+      }
+    }
+    if (p.rateOverride) {
+      try {
+        JSON.parse(p.rateOverride);
+      } catch (e) {
+        throw new Error(
+          `[recalculation] Malformed rateOverride JSON on period ${p.id}: ${String(e)}`,
+          { cause: e }
+        );
+      }
+    }
+  }
+
   for (let i = 0; i < periodsToProcess.length; i++) {
     const period = periodsToProcess[i];
 
