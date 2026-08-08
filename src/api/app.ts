@@ -35,6 +35,7 @@ import { sendEmail } from "./lib/email";
 import { passwordChangedTemplate } from "./lib/email-templates";
 import { swaggerUI } from "@hono/swagger-ui";
 import { HTTPException } from "hono/http-exception";
+import { secureHeaders } from "hono/secure-headers";
 
 export type Bindings = {
   DB: D1Database;
@@ -79,6 +80,16 @@ export const app = new OpenAPIHono<{
   Bindings: Bindings;
   Variables: Variables;
 }>();
+
+// Baseline security headers on every API response.
+// CSP is intentionally omitted — tuning it for Astro/React is future work.
+app.use(
+  "*",
+  secureHeaders({
+    xFrameOptions: "SAMEORIGIN",
+    xContentTypeOptions: "nosniff",
+  })
+);
 
 // Global error handler — preserves HTTPException status codes (400, 401, 403, 404, etc.)
 // and prevents silent empty 500 responses for unexpected errors.
@@ -362,7 +373,6 @@ app.post("/api/auth/change-password", async (c) => {
 
   return response;
 });
-
 
 // All other auth routes (session, callback, verify-email, etc.) without Turnstile
 app.on(["POST", "GET"], "/api/auth/*", async (c) => {

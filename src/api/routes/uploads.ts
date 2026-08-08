@@ -90,17 +90,19 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   const todayKey = new Date().toISOString().slice(0, 10);
   const counterId = `${user.id}:${todayKey}`;
 
-  await db.run(sql`
-    INSERT INTO upload_daily_count (id, user_id, date_key, count)
-    VALUES (${counterId}, ${user.id}, ${todayKey}, 1)
-    ON CONFLICT (user_id, date_key)
-    DO UPDATE SET count = count + 1
-  `);
-
   const [counter] = await db
-    .select({ count: uploadDailyCount.count })
-    .from(uploadDailyCount)
-    .where(eq(uploadDailyCount.id, counterId));
+    .insert(uploadDailyCount)
+    .values({
+      id: counterId,
+      userId: user.id,
+      dateKey: todayKey,
+      count: 1,
+    })
+    .onConflictDoUpdate({
+      target: uploadDailyCount.id,
+      set: { count: sql`${uploadDailyCount.count} + 1` },
+    })
+    .returning({ count: uploadDailyCount.count });
 
   const newCount = counter?.count ?? 1;
 
@@ -125,19 +127,28 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   // --- Parse multipart ---
   let objectKey: string | undefined;
   try {
+    const uploadFormSchema = z.object({
+      periodId: z.string().min(1),
+      propertyId: z.string().min(1),
+      purpose: z.enum([
+        "import_meter",
+        "export_meter",
+        "solar_meter",
+        "bill_document",
+      ]),
+      editRequestId: z.string().optional(),
+    });
+
     const formData = await c.req.formData();
     const photo = formData.get("photo") as File | null;
-    const periodId = formData.get("periodId") as string | null;
-    const propertyId = formData.get("propertyId") as string | null;
-    const purpose = formData.get("purpose") as
-      | "import_meter"
-      | "export_meter"
-      | "solar_meter"
-      | "bill_document"
-      | null;
-    const editRequestId = formData.get("editRequestId") as string | null;
 
-    if (!photo || !periodId || !propertyId || !purpose) {
+    const fieldsParsed = uploadFormSchema.safeParse({
+      periodId: formData.get("periodId"),
+      propertyId: formData.get("propertyId"),
+      purpose: formData.get("purpose"),
+      editRequestId: formData.get("editRequestId") ?? undefined,
+    });
+    if (!photo || !fieldsParsed.success) {
       await db.run(
         sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
       );
@@ -152,25 +163,7 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
         400
       );
     }
-
-    const VALID_PURPOSES = [
-      "import_meter",
-      "export_meter",
-      "solar_meter",
-      "bill_document",
-    ] as const;
-    if (!VALID_PURPOSES.includes(purpose as never)) {
-      await db.run(
-        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
-      );
-      return c.json(
-        {
-          success: false as const,
-          error: { code: "INVALID_PURPOSE", message: "Invalid purpose value." },
-        },
-        400
-      );
-    }
+    const { periodId, propertyId, purpose, editRequestId } = fieldsParsed.data;
 
     // --- Auth Check ---
     const tenancyCheck = await db.query.tenancies.findFirst({
@@ -223,8 +216,10 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
     }
 
     // --- Store in R2 ---
-    // Key: propertyId/periodId/userId/timestamp.webp
+    // Key: propertyId/periodId/userId/timestamp-uuid.webp
+    const verifiedMime = validation.verifiedMimeType ?? photo.type;
     const timestamp = Date.now();
+    const uid = crypto.randomUUID();
     const MIME_TO_EXT: Record<string, string> = {
       "image/webp": "webp",
       "image/jpeg": "jpg",
@@ -234,11 +229,11 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
       "image/heif": "heif",
       "application/pdf": "pdf",
     };
-    const ext = MIME_TO_EXT[photo.type] ?? "bin";
-    objectKey = `${propertyId}/${periodId}/${user.id}/${timestamp}.${ext}`;
+    const ext = MIME_TO_EXT[verifiedMime] ?? "bin";
+    objectKey = `${propertyId}/${periodId}/${user.id}/${timestamp}-${uid}.${ext}`;
 
     await r2.put(objectKey, await photo.arrayBuffer(), {
-      httpMetadata: { contentType: photo.type },
+      httpMetadata: { contentType: verifiedMime },
       customMetadata: {
         uploadedBy: user.id,
         periodId,
@@ -506,9 +501,23 @@ uploadsRouter.get("/bill-photo/*", async (c) => {
   }
 
   // Stream the image
+  const SAFE_CONTENT_TYPES: Record<string, string> = {
+    "image/webp": "image/webp",
+    "image/jpeg": "image/jpeg",
+    "image/jpg": "image/jpeg",
+    "image/png": "image/png",
+    "image/heic": "image/heic",
+    "image/heif": "image/heif",
+  };
+  const storedType = object.httpMetadata?.contentType ?? "";
+  const safeType = SAFE_CONTENT_TYPES[storedType] ?? "application/octet-stream";
+  const filename = objectKey.split("/").pop() ?? "download";
+
   return new Response(object.body, {
     headers: {
-      "Content-Type": object.httpMetadata?.contentType || "image/webp",
+      "Content-Type": safeType,
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "X-Content-Type-Options": "nosniff",
       "Cache-Control": "private, max-age=3600",
     },
   });

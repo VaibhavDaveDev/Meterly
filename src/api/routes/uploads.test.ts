@@ -268,6 +268,6 @@ describe("Uploads API", () => {
     ]);
 
     const statuses = [res1.status, res2.status].sort();
-    expect(statuses).toContain(429);
+    expect(statuses).toEqual([200, 429]);
   });
 });

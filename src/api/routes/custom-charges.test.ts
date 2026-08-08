@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { testDb } from "../../test/setup";
 import { user, properties, customCharges } from "../../db/schema";
 import { chargesRouter as customChargesRouter } from "./custom-charges";
+import { eq } from "drizzle-orm";
 
 let currentUser: { id: string } = { id: "owner-id" };
 vi.mock("../middleware/auth", () => ({
@@ -51,14 +52,12 @@ describe("Custom Charges API", () => {
     ]);
 
     propertyId = "prop-" + Math.random();
-    await testDb
-      .insert(properties)
-      .values({
-        id: propertyId,
-        name: "Prop",
-        ownerId: "owner-id",
-        hasSolar: false,
-      });
+    await testDb.insert(properties).values({
+      id: propertyId,
+      name: "Prop",
+      ownerId: "owner-id",
+      hasSolar: false,
+    });
 
     chargeId = "charge-1";
     await testDb.insert(customCharges).values({
@@ -72,7 +71,7 @@ describe("Custom Charges API", () => {
     app.route("/custom-charges", customChargesRouter);
   });
 
-  it("POST / returns 201 for the owner", async () => {
+  it("POST / returns 200 and persists the charge", async () => {
     const res = await app.request(
       `/custom-charges/${propertyId}/charges`,
       {
@@ -83,29 +82,52 @@ describe("Custom Charges API", () => {
       mockEnv as never
     );
     expect(res.status).toBe(200);
+    // Verify the charge was actually written to DB
+    const rows = await testDb
+      .select()
+      .from(customCharges)
+      .where(eq(customCharges.name, "Internet"));
+    expect(rows.length).toBe(1);
+    expect(rows[0].amount).toBe(30);
+    expect(rows[0].propertyId).toBe(propertyId);
   });
 
-  it("POST / returns 403 for unauthorized user", async () => {
+  it("POST / unauthorized — leaves DB unchanged", async () => {
     currentUser = { id: "stranger-id" };
+    const before = await testDb
+      .select()
+      .from(customCharges)
+      .orderBy(customCharges.id);
     const res = await app.request(
       `/custom-charges/${propertyId}/charges`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Internet", amount: 30 }),
+        body: JSON.stringify({ name: "Unauthorized charge", amount: 99 }),
       },
       mockEnv as never
     );
     expect(res.status).toBe(403);
+    const after = await testDb
+      .select()
+      .from(customCharges)
+      .orderBy(customCharges.id);
+    // Full snapshot comparison — row count AND content must be identical
+    expect(after).toEqual(before);
   });
 
-  it("DELETE /{id} returns 200 for the owner", async () => {
+  it("DELETE /{id} removes the charge from DB", async () => {
     const res = await app.request(
       `/custom-charges/charges/${chargeId}`,
       { method: "DELETE" },
       mockEnv as never
     );
     expect(res.status).toBe(200);
+    const rows = await testDb
+      .select()
+      .from(customCharges)
+      .where(eq(customCharges.id, chargeId));
+    expect(rows.length).toBe(0);
   });
 
   it("DELETE /{id} returns 403 for unauthorized user", async () => {

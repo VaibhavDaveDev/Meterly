@@ -85,7 +85,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - Typography: Work Sans for body, Manrope for headings, JetBrains Mono for numbers
 - Direct, honest copy — no marketing jargon like "revolutionary," "paradigm," "disruptive"
 - No emojis except occasional use when contextually appropriate
-- I don't want to constraint your design imiganation do your best.
 
 ### Build & Lint Configuration
 
@@ -93,14 +92,6 @@ When the user requests a durable behavior change, record it here or in the relev
 - Node memory increased to 4GB via .npmrc for build process (prevents heap out of memory)
 - React unescaped entities warning disabled (use &apos; for apostrophes in JSX)
 - No explicit `any` types — use proper TypeScript types
-
-### Code Quality — Fallow
-
-- Run `pnpm fallow` to get the review report; save output to `fallow_review.txt`.
-- Dead files/exports: delete before refactoring anything else.
-- Duplication budget: keep duplicated lines under 5% (currently 10.2% — active work item).
-- Complexity budget: no new CRITICAL-rated functions (cyclomatic ≥ 20 or CRAP ≥ 400).
-- Extract data-fetching into custom hooks before splitting JSX.
 
 ### Parameter Object Pattern (TypeScript)
 
@@ -176,7 +167,6 @@ If migrating away from Cloudflare Workers:
 - [src](./src/AGENTS.md): Core application source code.
 - [DESIGN.md]: contains the design rules and guidelines.
 - [CONTRIBUTING.md]: contributor guide — local setup, code standards, migration workflow, testing, and PR process.
-- [DEPLOY.md]: personal deployment guide (not committed — delete after deployment).
 
 ### Account Deletion
 
