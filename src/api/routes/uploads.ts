@@ -64,6 +64,18 @@ const uploadPhotoRoute = createRoute({
   },
 });
 
+const uploadFormSchema = z.object({
+  periodId: z.string().min(1),
+  propertyId: z.string().min(1),
+  purpose: z.enum([
+    "import_meter",
+    "export_meter",
+    "solar_meter",
+    "bill_document",
+  ]),
+  editRequestId: z.string().min(1).optional(),
+});
+
 uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   const user = c.get("user");
   const r2 = c.env.BILL_PHOTOS;
@@ -127,26 +139,15 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
   // --- Parse multipart ---
   let objectKey: string | undefined;
   try {
-    const uploadFormSchema = z.object({
-      periodId: z.string().min(1),
-      propertyId: z.string().min(1),
-      purpose: z.enum([
-        "import_meter",
-        "export_meter",
-        "solar_meter",
-        "bill_document",
-      ]),
-      editRequestId: z.string().optional(),
-    });
-
     const formData = await c.req.formData();
-    const photo = formData.get("photo") as File | null;
+    const photoEntry = formData.get("photo");
+    const photo = photoEntry instanceof File ? photoEntry : null;
 
     const fieldsParsed = uploadFormSchema.safeParse({
       periodId: formData.get("periodId"),
       propertyId: formData.get("propertyId"),
       purpose: formData.get("purpose"),
-      editRequestId: formData.get("editRequestId") ?? undefined,
+      editRequestId: formData.get("editRequestId") || undefined,
     });
     if (!photo || !fieldsParsed.success) {
       await db.run(
@@ -232,7 +233,7 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
     const ext = MIME_TO_EXT[verifiedMime] ?? "bin";
     objectKey = `${propertyId}/${periodId}/${user.id}/${timestamp}-${uid}.${ext}`;
 
-    await r2.put(objectKey, await photo.arrayBuffer(), {
+    await r2.put(objectKey, validation.buffer ?? (await photo.arrayBuffer()), {
       httpMetadata: { contentType: verifiedMime },
       customMetadata: {
         uploadedBy: user.id,
@@ -511,7 +512,10 @@ uploadsRouter.get("/bill-photo/*", async (c) => {
   };
   const storedType = object.httpMetadata?.contentType ?? "";
   const safeType = SAFE_CONTENT_TYPES[storedType] ?? "application/octet-stream";
-  const filename = objectKey.split("/").pop() ?? "download";
+  const filename = (objectKey.split("/").pop() ?? "download").replace(
+    /[^A-Za-z0-9._-]/g,
+    "_"
+  );
 
   return new Response(object.body, {
     headers: {

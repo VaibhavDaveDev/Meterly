@@ -159,7 +159,7 @@ describe("Notifications API", () => {
       { method: "PATCH" },
       mockEnv as never
     );
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(404);
 
     const [row] = await testDb
       .select()
@@ -189,16 +189,22 @@ describe("Notifications API", () => {
     ]);
 
     currentUser = { id: "user-1" };
-    await app.request(
+    const res = await app.request(
       "/notifications/read-all",
       { method: "POST" },
       mockEnv as never
     );
+    expect(res.status).toBe(200);
 
+    const [u1row] = await testDb
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, "n-new-1"));
     const [u2row] = await testDb
       .select()
       .from(notifications)
       .where(eq(notifications.id, "n-other"));
+    expect(u1row.readAt).not.toBeNull();
     expect(u2row.readAt).toBeNull();
   });
 });

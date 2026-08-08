@@ -16,9 +16,15 @@ vi.mock("../middleware/auth", () => ({
   },
 }));
 
-// Mock file validation to avoid actual FormData Buffer issues in Node
+// Mock file validation to avoid actual FormData Buffer issues in Node.
+// The buffer is inlined in the factory because vi.mock is hoisted above all
+// variable declarations — referencing an outer const would throw a TDZ error.
 vi.mock("../lib/file-validation", () => ({
-  validateUploadedFile: vi.fn().mockResolvedValue({ valid: true }),
+  validateUploadedFile: vi.fn().mockResolvedValue({
+    valid: true,
+    verifiedMimeType: "image/jpeg",
+    buffer: new Uint8Array([0xff, 0xd8, 0xff]).buffer,
+  }),
 }));
 
 // Mock pdf-extract to avoid actual parsing
@@ -36,6 +42,7 @@ vi.mock("../../lib/pdf-extract", () => ({
 
 import { testDb } from "../../test/setup";
 import { eq } from "drizzle-orm";
+import { validateUploadedFile } from "../lib/file-validation";
 import {
   properties,
   user,
@@ -51,10 +58,20 @@ describe("Uploads API", () => {
   let app: Hono;
   let propId: string;
   let bpId: string;
+  // Holds the ArrayBuffer reference the mock resolves with, set each beforeEach
+  // so it stays in sync after vi.clearAllMocks() resets call history.
+  let mockBuffer: ArrayBuffer;
 
   beforeEach(async () => {
     currentUser = { id: "owner-id" };
     vi.clearAllMocks();
+    // Re-apply mock resolved value after clearAllMocks so buffer is available.
+    mockBuffer = new Uint8Array([0xff, 0xd8, 0xff]).buffer;
+    (validateUploadedFile as ReturnType<typeof vi.fn>).mockResolvedValue({
+      valid: true,
+      verifiedMimeType: "image/jpeg",
+      buffer: mockBuffer,
+    });
 
     await testDb.delete(uploadDailyCount);
     await testDb.delete(billPhotos);
@@ -187,6 +204,14 @@ describe("Uploads API", () => {
     };
     expect(body.success).toBe(true);
     expect(body.data.objectKey).toBeDefined();
+    expect(body.data.objectKey).toMatch(/\.jpg$/);
+
+    // Verify the validated buffer (not a fresh arrayBuffer()) was passed to R2.
+    // This covers the `validation.buffer ?? (await photo.arrayBuffer())` path.
+    expect(mockEnv.BILL_PHOTOS.put).toHaveBeenCalledOnce();
+    const [, putBody] = (mockEnv.BILL_PHOTOS.put as ReturnType<typeof vi.fn>)
+      .mock.calls[0];
+    expect(putBody).toBe(mockBuffer);
 
     // Verify DB insert
     const photos = await testDb
@@ -267,7 +292,63 @@ describe("Uploads API", () => {
       ),
     ]);
 
-    const statuses = [res1.status, res2.status].sort();
+    const statuses = [res1.status, res2.status].sort((a, b) => a - b);
     expect(statuses).toEqual([200, 429]);
+  });
+
+  it("decrements daily count when rejected with 403 (forbidden)", async () => {
+    currentUser = { id: "stranger-id" };
+
+    const formData = new FormData();
+    formData.append("photo", createMockFile("test.jpg", "image/jpeg"));
+    formData.append("propertyId", propId);
+    formData.append("periodId", bpId);
+    formData.append("purpose", "import_meter");
+
+    const res = await app.request(
+      "/uploads/bill-photo",
+      { method: "POST", body: formData },
+      mockEnv as unknown as Parameters<typeof app.request>[2]
+    );
+
+    expect(res.status).toBe(403);
+
+    const countRow = await testDb
+      .select()
+      .from(uploadDailyCount)
+      .where(eq(uploadDailyCount.userId, "stranger-id"));
+
+    expect(countRow.length).toBe(1);
+    expect(countRow[0].count).toBe(0);
+  });
+
+  it("decrements daily count when rejected with 400 (invalid file)", async () => {
+    currentUser = { id: "owner-id" };
+    vi.mocked(validateUploadedFile).mockResolvedValueOnce({
+      valid: false,
+      error: "bad file",
+    });
+
+    const formData = new FormData();
+    formData.append("photo", createMockFile("test.jpg", "image/jpeg"));
+    formData.append("propertyId", propId);
+    formData.append("periodId", bpId);
+    formData.append("purpose", "import_meter");
+
+    const res = await app.request(
+      "/uploads/bill-photo",
+      { method: "POST", body: formData },
+      mockEnv as unknown as Parameters<typeof app.request>[2]
+    );
+
+    expect(res.status).toBe(400);
+
+    const countRow = await testDb
+      .select()
+      .from(uploadDailyCount)
+      .where(eq(uploadDailyCount.userId, "owner-id"));
+
+    expect(countRow.length).toBe(1);
+    expect(countRow[0].count).toBe(0);
   });
 });
