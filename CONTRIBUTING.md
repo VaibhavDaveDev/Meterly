@@ -87,7 +87,7 @@ For local development, the default values in `.dev.vars` work out of the box:
 This project uses Husky for pre-commit enforcement. After `pnpm install`, git hooks are automatically installed.
 
 - **Pre-commit:** Runs ESLint and Prettier on staged files via `lint-staged`. Fix any lint errors before committing.
-- **Pre-push:** Runs `astro check` (full TypeScript typecheck). Fix any type errors before pushing.
+- **Pre-push:** Runs `pnpm typecheck`, `pnpm lint`, and `pnpm test`. Fix any errors before pushing.
 
 To skip hooks in an emergency (not recommended):
 

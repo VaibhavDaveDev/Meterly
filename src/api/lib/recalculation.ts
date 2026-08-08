@@ -43,9 +43,31 @@ export async function recalculateChain(
   //     Throws immediately if any period has malformed JSON,
   //     preventing a period from ending up with zero bills.
   for (const p of periodsToProcess) {
+    // Mirror the execution-loop boundary: stop before a non-target confirmed period.
+    // The start period (startPeriodId) always validates even if confirmed,
+    // because explicit recalculation is allowed to override confirmed periods.
+    if (p.id !== startPeriodId && p.status === "confirmed") break;
+
     if (p.oneOffCharges) {
       try {
-        JSON.parse(p.oneOffCharges);
+        const parsed: unknown = JSON.parse(p.oneOffCharges);
+        if (
+          !Array.isArray(parsed) ||
+          parsed.some((charge) => {
+            if (typeof charge !== "object" || charge === null) return true;
+            const c = charge as Record<string, unknown>;
+            return (
+              typeof c.chargedToTenant !== "boolean" ||
+              typeof c.amount !== "number" ||
+              !Number.isFinite(c.amount) ||
+              typeof c.name !== "string"
+            );
+          })
+        ) {
+          throw new TypeError(
+            "oneOffCharges must be an array of {chargedToTenant: boolean, amount: number, name: string}"
+          );
+        }
       } catch (e) {
         throw new Error(
           `[recalculation] Malformed oneOffCharges JSON on period ${p.id}: ${String(e)}`,
@@ -55,7 +77,33 @@ export async function recalculateChain(
     }
     if (p.rateOverride) {
       try {
-        JSON.parse(p.rateOverride);
+        const parsed: unknown = JSON.parse(p.rateOverride);
+        if (
+          typeof parsed !== "object" ||
+          parsed === null ||
+          !("consumptionRate" in parsed)
+        ) {
+          throw new TypeError("rateOverride must contain consumptionRate");
+        }
+        const r = parsed as Record<string, unknown>;
+        if (
+          typeof r.consumptionRate !== "number" ||
+          !Number.isFinite(r.consumptionRate)
+        ) {
+          throw new TypeError(
+            "rateOverride.consumptionRate must be a finite number"
+          );
+        }
+        if (r.exportRate !== undefined) {
+          if (
+            typeof r.exportRate !== "number" ||
+            !Number.isFinite(r.exportRate)
+          ) {
+            throw new TypeError(
+              "rateOverride.exportRate must be a finite number when present"
+            );
+          }
+        }
       } catch (e) {
         throw new Error(
           `[recalculation] Malformed rateOverride JSON on period ${p.id}: ${String(e)}`,
@@ -207,8 +255,24 @@ async function recalculateBillsForPeriod(
   if (period.rateOverride) {
     try {
       const override = JSON.parse(period.rateOverride);
+      if (
+        typeof override.consumptionRate !== "number" ||
+        !Number.isFinite(override.consumptionRate)
+      ) {
+        throw new TypeError(
+          "rateOverride.consumptionRate must be a finite number"
+        );
+      }
       rates.consumptionRate = override.consumptionRate;
       if (override.exportRate !== undefined) {
+        if (
+          typeof override.exportRate !== "number" ||
+          !Number.isFinite(override.exportRate)
+        ) {
+          throw new TypeError(
+            "rateOverride.exportRate must be a finite number when present"
+          );
+        }
         rates.exportRate = override.exportRate;
       }
     } catch (e) {

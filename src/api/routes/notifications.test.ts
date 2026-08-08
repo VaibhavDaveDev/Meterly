@@ -29,14 +29,24 @@ describe("Notifications API", () => {
     currentUser = { id: "user-1" };
     await testDb.delete(notifications);
     await testDb.delete(user);
-    await testDb.insert(user).values({
-      id: "user-1",
-      name: "User",
-      email: "u@test.com",
-      emailVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    await testDb.insert(user).values([
+      {
+        id: "user-1",
+        name: "User",
+        email: "u@test.com",
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "user-2",
+        name: "Other",
+        email: "other@test.com",
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
     app = new Hono();
     app.route("/notifications", notificationsRouter);
   });
@@ -50,14 +60,6 @@ describe("Notifications API", () => {
   });
 
   it("GET / returns notifications for current user only", async () => {
-    await testDb.insert(user).values({
-      id: "user-2",
-      name: "Other",
-      email: "other@test.com",
-      emailVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
     await testDb.insert(notifications).values([
       {
         id: "n1",
@@ -139,5 +141,70 @@ describe("Notifications API", () => {
       .from(notifications)
       .where(eq(notifications.userId, "user-1"));
     expect(rows.every((r) => r.readAt !== null)).toBe(true);
+  });
+
+  it("PATCH /{id}/read — user-1 cannot mark user-2's notification as read", async () => {
+    await testDb.insert(notifications).values({
+      id: "n-other",
+      userId: "user-2",
+      type: "system",
+      title: "Other",
+      body: "B",
+      metadata: "{}",
+    });
+
+    currentUser = { id: "user-1" };
+    const res = await app.request(
+      "/notifications/n-other/read",
+      { method: "PATCH" },
+      mockEnv as never
+    );
+    expect(res.status).toBe(404);
+
+    const [row] = await testDb
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, "n-other"));
+    expect(row.readAt).toBeNull();
+  });
+
+  it("POST /read-all — only marks user-1's notifications as read", async () => {
+    await testDb.insert(notifications).values([
+      {
+        id: "n-new-1",
+        userId: "user-1",
+        type: "system",
+        title: "T1",
+        body: "B",
+        metadata: "{}",
+      },
+      {
+        id: "n-other",
+        userId: "user-2",
+        type: "system",
+        title: "T2",
+        body: "B",
+        metadata: "{}",
+      },
+    ]);
+
+    currentUser = { id: "user-1" };
+    const res = await app.request(
+      "/notifications/read-all",
+      { method: "POST" },
+      mockEnv as never
+    );
+    expect(res.status).toBe(200);
+
+    const [u1row] = await testDb
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, "n-new-1"));
+    const [u2row] = await testDb
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, "n-other"));
+    expect(u1row.readAt).not.toBeNull();
+    expect(u2row.readAt).toBeNull();
   });
 });

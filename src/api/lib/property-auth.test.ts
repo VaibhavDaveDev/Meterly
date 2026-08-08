@@ -6,6 +6,7 @@ import { requireOwner, requirePropertyAccess } from "./property-auth";
 import { testDb } from "../../test/setup";
 import { properties, tenancies, user } from "../../db/schema";
 import type { Database } from "../../db";
+import { eq } from "drizzle-orm";
 
 describe("requireOwner", () => {
   let propId: string;
@@ -33,14 +34,12 @@ describe("requireOwner", () => {
       },
     ]);
     propId = "prop-" + Math.random();
-    await testDb
-      .insert(properties)
-      .values({
-        id: propId,
-        name: "Test",
-        ownerId: "owner-id",
-        hasSolar: false,
-      });
+    await testDb.insert(properties).values({
+      id: propId,
+      name: "Test",
+      ownerId: "owner-id",
+      hasSolar: false,
+    });
   });
 
   it("returns the property when caller is the owner", async () => {
@@ -106,14 +105,12 @@ describe("requirePropertyAccess", () => {
       },
     ]);
     propId = "prop-" + Math.random();
-    await testDb
-      .insert(properties)
-      .values({
-        id: propId,
-        name: "Test",
-        ownerId: "owner-id",
-        hasSolar: false,
-      });
+    await testDb.insert(properties).values({
+      id: propId,
+      name: "Test",
+      ownerId: "owner-id",
+      hasSolar: false,
+    });
     await testDb.insert(tenancies).values({
       id: "tenancy-1",
       propertyId: propId,
@@ -154,6 +151,24 @@ describe("requirePropertyAccess", () => {
       testDb as unknown as Database,
       "ghost-prop",
       "owner-id"
+    );
+    expect(result).toBeNull();
+  });
+
+  it("returns null for an inactive tenancy", async () => {
+    // Replace the active tenancy with an inactive one
+    await testDb.delete(tenancies).where(eq(tenancies.id, "tenancy-1"));
+    await testDb.insert(tenancies).values({
+      id: "tenancy-inactive",
+      propertyId: propId,
+      tenantId: "tenant-id",
+      status: "inactive",
+    });
+
+    const result = await requirePropertyAccess(
+      testDb as unknown as Database,
+      propId,
+      "tenant-id"
     );
     expect(result).toBeNull();
   });

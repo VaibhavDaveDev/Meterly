@@ -5,7 +5,7 @@
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext"],
     "types": [
       "@astrojs/cloudflare",
       "@cloudflare/workers-types",
