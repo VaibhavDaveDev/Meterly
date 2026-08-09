@@ -88,6 +88,10 @@ app.use(
   secureHeaders({
     xFrameOptions: "SAMEORIGIN",
     xContentTypeOptions: "nosniff",
+    crossOriginResourcePolicy: "same-origin",
+    crossOriginOpenerPolicy: "same-origin",
+    referrerPolicy: "no-referrer",
+    strictTransportSecurity: "max-age=15552000; includeSubDomains",
   })
 );
 

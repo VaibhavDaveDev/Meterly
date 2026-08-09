@@ -41,9 +41,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.31",
+    "hono": "^4.12.34",
     "lucide-react": "^1.20.0",
-    "pdfjs-dist": "^6.1.200",
+    "pdfjs-dist": "^6.2.108",
     "piexifjs": "^1.0.6",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -90,38 +90,23 @@
   },
   "pnpm": {
     "overrides": {
-      "postcss": "^8.5.25"
+      "postcss": "^8.5.25",
+      "undici": "^7.29.0",
+      "js-yaml": "^4.3.1",
+      "nanoid": ">=3.3.17"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"
     ],
     "auditConfig": {
       "ignoreGhsas": [
-        "GHSA-52cp-r559-cp3m",
-        "GHSA-7pw4-f3q4-r2p2",
-        "GHSA-f48w-9m4c-m7f5",
-        "GHSA-g7r4-m6w7-qqqr",
-        "GHSA-j3f2-48v5-ccww",
-        "GHSA-hvrm-45r6-mjfj",
-        "GHSA-w62v-xxxg-mg59",
+        "GHSA-7p8r-x3mc-p8w7",
+        "GHSA-rgw5-rvv9-x895",
+        "GHSA-2p49-hgcm-8545",
         "GHSA-f88m-g3jw-g9cj",
         "GHSA-67mh-4wv8-2f99",
         "GHSA-8988-4f7v-96qf",
-        "GHSA-4g3v-8h47-v7g6",
-        "GHSA-2p49-hgcm-8545",
-        "GHSA-p88m-4jfj-68fv",
-        "GHSA-pr7r-676h-xcf6",
-        "GHSA-35p6-xmwp-9g52",
-        "GHSA-g8m3-5g58-fq7m",
-        "GHSA-3jxr-9vmj-r5cp",
-        "GHSA-mh99-v99m-4gvg",
-        "GHSA-v2hh-gcrm-f6hx",
-        "GHSA-4c8g-83qw-93j6",
-        "GHSA-48c2-rrv3-qjmp",
-        "GHSA-96hv-2xvq-fx4p",
-        "GHSA-hm92-r4w5-c3mj",
-        "GHSA-vmh5-mc38-953g",
-        "GHSA-vxpw-j846-p89q"
+        "GHSA-j3f2-48v5-ccww"
       ]
     }
   }

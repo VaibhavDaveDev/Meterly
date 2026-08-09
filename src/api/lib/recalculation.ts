@@ -159,13 +159,17 @@ export async function recalculateChain(
     }
 
     // Recalculate bills for this period (delete is already handled above)
-    await recalculateBillsForPeriod(db, period.id);
+    await recalculateBillsForPeriod(db, period.id, {
+      oneOffCharges: period.oneOffCharges,
+      rateOverride: period.rateOverride,
+    });
   }
 }
 
 async function recalculateBillsForPeriod(
   db: ReturnType<typeof getDb>,
-  periodId: string
+  periodId: string,
+  snapshot?: { oneOffCharges: string | null; rateOverride: string | null }
 ) {
   const [period] = await db
     .select()
@@ -173,6 +177,14 @@ async function recalculateBillsForPeriod(
     .where(eq(billingPeriods.id, periodId))
     .limit(1);
   if (!period) return;
+
+  // Use pre-validated snapshot values when provided to prevent a race condition
+  // where another request mutates oneOffCharges or rateOverride between
+  // pre-validation in recalculateChain and bill generation here.
+  const effectiveOneOffCharges =
+    snapshot !== undefined ? snapshot.oneOffCharges : period.oneOffCharges;
+  const effectiveRateOverride =
+    snapshot !== undefined ? snapshot.rateOverride : period.rateOverride;
 
   const [property] = await db
     .select()
@@ -234,9 +246,9 @@ async function recalculateBillsForPeriod(
     amount: number;
     name: string;
   }> = [];
-  if (period.oneOffCharges) {
+  if (effectiveOneOffCharges) {
     try {
-      oneOffChargesList = JSON.parse(period.oneOffCharges);
+      oneOffChargesList = JSON.parse(effectiveOneOffCharges);
     } catch (e) {
       throw new Error(
         `[recalculation] Malformed oneOffCharges JSON on period ${periodId}: ${String(e)}`,
@@ -252,9 +264,9 @@ async function recalculateBillsForPeriod(
     exportRate: rate?.exportRate || 0,
   };
 
-  if (period.rateOverride) {
+  if (effectiveRateOverride) {
     try {
-      const override = JSON.parse(period.rateOverride);
+      const override = JSON.parse(effectiveRateOverride);
       if (
         typeof override.consumptionRate !== "number" ||
         !Number.isFinite(override.consumptionRate)
