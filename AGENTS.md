@@ -122,8 +122,15 @@ When the user requests a durable behavior change, record it here or in the relev
 ### CI / Developer Tooling
 
 - **GitHub Actions:** `.github/workflows/ci.yml` runs lint + typecheck + test on every PR and push that touches `src/`, `scripts/`, or key config files. Pure markdown changes skip CI. Runs on Node.js 24. pnpm version is read from the `packageManager` field in `package.json` — do not add an explicit `version:` in the workflow.
-- **Husky:** Pre-commit runs `lint-staged` (ESLint + Prettier on staged files). Pre-push runs `astro check` (full typecheck). Both hooks run automatically after `pnpm install` via the `prepare` script.
-- **Dependency security:** CI runs `pnpm audit --prod` on pushes to main. DevDependency vulns (miniflare/undici) are excluded intentionally.
+- **Husky:** Pre-commit runs `lint-staged` (ESLint + Prettier on staged files). Pre-push runs `pnpm typecheck`, `pnpm lint`, and `pnpm test --run`. Both hooks run automatically after `pnpm install` via the `prepare` script.
+- **Dependency security:** CI runs `pnpm audit --prod` on pushes to main. Remediation policy: upgrade direct dep → `pnpm.overrides` for transitive → `ignoreGhsas` only when no compatible fix exists. Per-GHSA rationale for current `ignoreGhsas` entries:
+  - `GHSA-7p8r-x3mc-p8w7` (fast-uri): dev-only, via `@astrojs/check > yaml-language-server > ajv`; no compatible upgrade path without breaking check toolchain.
+  - `GHSA-rgw5-rvv9-x895` (brace-expansion): dev-only, via `typescript-eslint > minimatch` and `eslint > minimatch`; no parent upgrade resolves it without a major ESLint version jump.
+  - `GHSA-2p49-hgcm-8545` (sharp): prod transitive via `astro > sharp`; no patch available in the current astro 7.x line; low exploitability in Cloudflare Workers context.
+  - `GHSA-f88m-g3jw-g9cj` (sharp): same as above — second advisory on the same `astro > sharp` path; no fix in current astro 7.x.
+  - `GHSA-67mh-4wv8-2f99` (esbuild): prod transitive via `better-auth > drizzle-kit > @esbuild-kit`; bumping esbuild risks the Drizzle ORM bundling rule (`Class extends value undefined`); safe to ignore as this path is dev-server only (esbuild dev server CORS issue, not runtime).
+  - `GHSA-8988-4f7v-96qf` (@opentelemetry/core): prod transitive via pinned `@microlabs/otel-cf-workers@1.0.0-rc.52`; cannot bump without breaking observability; low exploitability (baggage header parsing).
+  - `GHSA-j3f2-48v5-ccww` (protobufjs): prod transitive via pinned `@microlabs/otel-cf-workers`; same constraint as above.
 
 ### Drizzle ORM Bundling Rule
 

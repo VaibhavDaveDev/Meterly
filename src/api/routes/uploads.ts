@@ -196,6 +196,31 @@ uploadsRouter.openapi(uploadPhotoRoute, async (c) => {
       );
     }
 
+    // --- Verify periodId belongs to this property ---
+    const [period] = await db
+      .select()
+      .from(billingPeriods)
+      .where(
+        and(
+          eq(billingPeriods.id, periodId),
+          eq(billingPeriods.propertyId, propertyId)
+        )
+      )
+      .limit(1);
+
+    if (!period) {
+      await db.run(
+        sql`UPDATE upload_daily_count SET count = count - 1 WHERE id = ${counterId}`
+      );
+      return c.json(
+        {
+          success: false as const,
+          error: { code: "NOT_FOUND", message: "Billing period not found" },
+        },
+        404
+      );
+    }
+
     const validation = await validateUploadedFile(
       photo,
       purpose === "bill_document" ? "bill-document" : "meter-photo"

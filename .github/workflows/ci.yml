@@ -91,7 +91,7 @@ jobs:
 
       - name: Audit production dependencies only
         # --prod skips devDependencies (miniflare, vitest, etc.)
-        # Transitive CVEs are suppressed via pnpm.auditConfig.ignoreGhsas
-        # in package.json. Update the ignore list when upgrading Astro.
+        # Remediation policy: upgrade direct dep → pnpm.overrides → ignoreGhsas (unfixable only).
+        # Per-GHSA rationale for the current ignoreGhsas list is in AGENTS.md under "Dependency security".
         run: pnpm audit --prod
         continue-on-error: false
