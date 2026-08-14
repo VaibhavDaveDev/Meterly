@@ -4,10 +4,11 @@ import type { D1Database } from '@cloudflare/workers-types';
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { BillDetail } from '../../components/bills/BillDetail';
 import { getDb } from '../../db';
-import { bills, billingPeriods, properties, meterReadings, tenancies, user, meterReadingEdits } from '../../db/schema';
+import { bills, billingPeriods, properties, meterReadings, tenancies, user, meterReadingEdits, editRequests } from '../../db/schema';
 import { authClient } from '../../lib/auth-client';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
+import type { BillEditHistory } from '../../hooks/use-bill-detail';
 
 const { id } = Astro.params;
 let billData = null;
@@ -39,8 +40,17 @@ if (id) {
       if (isOwner || isTenant) {
         // 4. Get submitter name for human-readable display
         let submitterName: string | null = null;
-        let editHistory: Record<string, unknown>[] = [];
+        let editHistory: BillEditHistory[] = [];
         
+        const safeParse = (val: string | null): Record<string, string | number> | null => {
+          if (!val) return null;
+          try {
+            return JSON.parse(val);
+          } catch {
+            return null;
+          }
+        };
+
         if (reading) {
           if (reading.submittedBy) {
             const [submitter] = await db.select({ name: user.name, email: user.email })
@@ -53,9 +63,12 @@ if (id) {
           // Fetch edit history if any
           const edits = await db.select({
             id: meterReadingEdits.id,
-            reason: meterReadingEdits.reason,
+            meterReadingId: meterReadingEdits.meterReadingId,
+            editedBy: meterReadingEdits.editedBy,
             oldValues: meterReadingEdits.oldValues,
             newValues: meterReadingEdits.newValues,
+            reason: meterReadingEdits.reason,
+            versionBefore: meterReadingEdits.versionBefore,
             versionAfter: meterReadingEdits.versionAfter,
             editedAt: meterReadingEdits.editedAt,
             editorName: user.name,
@@ -68,10 +81,43 @@ if (id) {
 
           editHistory = edits.map(e => ({
             ...e,
+            oldValues: safeParse(e.oldValues) ?? {},
+            newValues: safeParse(e.newValues) ?? {},
             editedAt: e.editedAt ? e.editedAt.toISOString() : new Date().toISOString(),
-            editorName: e.editorName ?? e.editorEmail ?? 'Unknown'
+            editedByName: e.editorName ?? e.editorEmail ?? 'Unknown'
           }));
         }
+
+        // Mirror the query logic from src/api/routes/bills.ts lines 67-93
+        const tenantUserId = tenancy.tenantId ?? null;
+
+        const pendingRequest = tenantUserId
+          ? await db
+              .select()
+              .from(editRequests)
+              .where(and(
+                eq(editRequests.billingPeriodId, period.id),
+                eq(editRequests.requestedBy, tenantUserId),
+                eq(editRequests.status, 'pending')
+              ))
+              .limit(1)
+              .then(rows => rows[0] || null)
+          : null;
+
+        let pendingEditRequestCount = 0;
+        if (tenantUserId) {
+          const [pendingResult] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(editRequests)
+            .where(and(
+              eq(editRequests.billingPeriodId, period.id),
+              eq(editRequests.requestedBy, tenantUserId),
+              eq(editRequests.status, 'pending')
+            ));
+          pendingEditRequestCount = Number(pendingResult?.count || 0);
+        }
+
+        const canRequestEdit = isTenant && period.status === 'confirmed';
 
         billData = {
           bill: {
@@ -90,6 +136,12 @@ if (id) {
             consumptionCost: bill.consumptionCost ?? 0,
             customChargesJson: bill.customChargesJson ?? '[]',
             customChargesTotal: bill.customChargesTotal ?? 0,
+            recalculationOf: null,
+            recalculationCount: bill.recalculationCount ?? 0,
+            billingPeriodId: bill.billingPeriodId,
+            tenancyId: bill.tenancyId,
+            markedPaidAt: bill.markedPaidAt ?? null,
+            markedPaidBy: bill.markedPaidBy ?? null,
           },
           period,
           property: {
@@ -102,9 +154,10 @@ if (id) {
             exportStart: reading.exportStart ?? 0,
             importStart: reading.importStart ?? 0,
             createdAt: reading.createdAt ? reading.createdAt.toISOString() : new Date().toISOString(),
+            submittedAt: reading.createdAt ? reading.createdAt.toISOString() : new Date().toISOString(),
             version: reading.version ?? 1,
-            history: editHistory
           } : {
+            id: 'dummy',
             importStart: 0,
             importEnd: 0,
             solarGenerationStart: 0,
@@ -113,8 +166,8 @@ if (id) {
             exportEnd: 0,
             submittedBy: '',
             createdAt: new Date().toISOString(),
+            submittedAt: new Date().toISOString(),
             version: 1,
-            history: []
           },
           tenancy: {
             ...tenancy,
@@ -123,6 +176,15 @@ if (id) {
           isOwner,
           isTenant,
           submitterName,
+          editHistory,
+          canRequestEdit,
+          pendingEditRequestCount,
+          pendingEditRequest: pendingRequest ? {
+            id: pendingRequest.id,
+            reason: pendingRequest.reason,
+            proposedValues: JSON.parse(pendingRequest.proposedValues || '{}'),
+            createdAt: pendingRequest.createdAt ? pendingRequest.createdAt.toISOString() : new Date().toISOString(),
+          } : null,
         };
       }
     }

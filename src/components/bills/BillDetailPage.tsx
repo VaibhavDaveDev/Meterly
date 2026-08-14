@@ -1,9 +1,29 @@
-import React from 'react';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { formatCurrency, formatUnits, formatMeterReading, formatMonth } from '../../lib/format';
-import { ChevronRight, Download, Edit3, ArrowRight, Info, History, Clock } from 'lucide-react';
-import { useBillDetail, type BillDetailData, type CustomCharge, type ProposedValues } from '../../hooks/use-bill-detail';
+import React from "react";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import {
+  formatCurrency,
+  formatUnits,
+  formatMeterReading,
+  formatMonth,
+  formatSafeDate,
+  formatSafeDateTime,
+} from "../../lib/format";
+import {
+  ChevronRight,
+  Download,
+  Edit3,
+  ArrowRight,
+  Info,
+  History,
+  Clock,
+} from "lucide-react";
+import {
+  useBillDetail,
+  type BillDetailData,
+  type CustomCharge,
+  type ProposedValues,
+} from "../../hooks/use-bill-detail";
 
 interface BillDetailPageProps {
   tenancyId: string;
@@ -28,7 +48,7 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
     cancelError,
     handleCancelEditRequest,
     handleMarkPaid,
-    handleSubmitEditRequest
+    handleSubmitEditRequest,
   } = useBillDetail(billId, tenancyId);
 
   if (loading) {
@@ -44,66 +64,108 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
   if (error || !data) {
     return (
       <div className="p-8 text-center text-destructive bg-destructive/10 rounded-xl border border-destructive/20">
-        {error || 'Failed to load data'}
+        {error || "Failed to load data"}
       </div>
     );
   }
 
-  const { bill, period, property, reading, editHistory, isOwner, isTenant, canRequestEdit, pendingEditRequestCount } = data;
-  const isSolar = period.calculationMode === 'solar';
+  const {
+    bill,
+    period,
+    property,
+    reading,
+    editHistory,
+    isOwner,
+    isTenant,
+    canRequestEdit,
+    pendingEditRequestCount,
+  } = data;
+  const isSolar = period.calculationMode === "solar";
 
   return (
     <div className="space-y-8 pb-12">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <a href={`/tenancies/${tenancyId}/bills`} className="hover:text-foreground transition-colors">My Bills</a>
+        <a
+          href={`/tenancies/${tenancyId}/bills`}
+          className="hover:text-foreground transition-colors"
+        >
+          My Bills
+        </a>
         <ChevronRight className="w-4 h-4" />
-        <span className="text-foreground font-medium">{formatMonth(period.periodMonth)}</span>
+        <span className="text-foreground font-medium">
+          {formatMonth(period.periodMonth)}
+        </span>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold font-heading mb-1">{formatMonth(period.periodMonth)} — {property.name}</h1>
-          
+          <h1 className="text-3xl font-bold font-heading mb-1">
+            {formatMonth(period.periodMonth)} — {property.name}
+          </h1>
+
           <div className="flex items-center gap-4 mt-6">
-            <div className="text-4xl font-bold font-numbers">{formatCurrency(bill.totalDue)}</div>
+            <div className="text-4xl font-bold font-numbers">
+              {formatCurrency(bill.totalDue)}
+            </div>
             <BillStatusBadge status={bill.status} />
           </div>
-          
+
           {bill.recalculationCount > 0 && (
             <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
               <History className="w-4 h-4" />
-              <span>This bill was recalculated {bill.recalculationCount} time(s). Last updated {new Date(bill.recalculatedAt || '').toLocaleDateString()}.</span>
+              <span>
+                This bill was recalculated {bill.recalculationCount} time(s).
+                Last updated {formatSafeDate(bill.recalculatedAt)}.
+              </span>
             </div>
           )}
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" onClick={() => window.print()} className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => window.print()}
+            className="gap-2"
+          >
             <Download className="w-4 h-4" /> Download PDF
           </Button>
-          
+
           {isTenant && canRequestEdit && pendingEditRequestCount === 0 && (
-            <Button variant="outline" onClick={() => setIsEditModalOpen(true)} className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditModalOpen(true)}
+              className="gap-2"
+            >
               <Edit3 className="w-4 h-4" /> Request Edit
             </Button>
           )}
-          
-          {isTenant && !canRequestEdit && pendingEditRequestCount > 0 && (
-            <Button variant="outline" disabled className="gap-2 opacity-50 cursor-not-allowed">
+
+          {isTenant && pendingEditRequestCount > 0 && (
+            <Button
+              variant="outline"
+              disabled
+              className="gap-2 opacity-50 cursor-not-allowed"
+            >
               <Clock className="w-4 h-4" /> Edit Pending Review
             </Button>
           )}
-          
-          {isOwner && bill.status === 'pending' && (
+
+          {isOwner && bill.status === "pending" && (
             <Button onClick={handleMarkPaid} className="gap-2">
-              <Badge variant="success" className="w-4 h-4 p-0 rounded-full flex items-center justify-center mr-1">✓</Badge> Mark as Received
+              <Badge
+                variant="success"
+                className="w-4 h-4 p-0 rounded-full flex items-center justify-center mr-1"
+              >
+                ✓
+              </Badge>{" "}
+              Mark as Received
             </Button>
           )}
         </div>
       </div>
 
       {isEditModalOpen && (
-        <EditRequestModal 
+        <EditRequestModal
           editSuccess={editSuccess}
           editReason={editReason}
           setEditReason={setEditReason}
@@ -122,38 +184,61 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
         <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400">Correction Request Pending</h4>
-              <p className="text-xs text-muted-foreground">Submitted on {new Date(data.pendingEditRequest.createdAt).toLocaleDateString()}</p>
+              <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                Correction Request Pending
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Submitted on {formatSafeDate(data.pendingEditRequest.createdAt)}
+              </p>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => handleCancelEditRequest(data.pendingEditRequest!.id)} 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                handleCancelEditRequest(data.pendingEditRequest!.id)
+              }
               disabled={isCancelling}
               className="text-xs border-blue-500/20 text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 shrink-0 h-8 gap-1.5"
             >
-              {isCancelling ? 'Cancelling...' : 'Cancel Request'}
+              {isCancelling ? "Cancelling..." : "Cancel Request"}
             </Button>
           </div>
-          {cancelError && <p className="text-xs text-destructive">{cancelError}</p>}
+          {cancelError && (
+            <p className="text-xs text-destructive">{cancelError}</p>
+          )}
           <div className="text-sm text-foreground bg-surface border border-border rounded-lg p-3">
-            <span className="font-semibold text-xs text-muted-foreground block mb-1">Reason:</span>
+            <span className="font-semibold text-xs text-muted-foreground block mb-1">
+              Reason:
+            </span>
             "{data.pendingEditRequest.reason}"
           </div>
           <div className="grid grid-cols-3 gap-4 text-xs font-mono">
             <div>
-              <span className="text-muted-foreground block font-sans">Import</span>
-              <span className="font-numbers font-medium text-foreground">{data.pendingEditRequest.proposedValues.importEnd ?? '—'}</span>
+              <span className="text-muted-foreground block font-sans">
+                Import
+              </span>
+              <span className="font-numbers font-medium text-foreground">
+                {data.pendingEditRequest.proposedValues.importEnd ?? "—"}
+              </span>
             </div>
             {isSolar && (
               <>
                 <div>
-                  <span className="text-muted-foreground block font-sans">Export</span>
-                  <span className="font-numbers font-medium text-foreground">{data.pendingEditRequest.proposedValues.exportEnd ?? '—'}</span>
+                  <span className="text-muted-foreground block font-sans">
+                    Export
+                  </span>
+                  <span className="font-numbers font-medium text-foreground">
+                    {data.pendingEditRequest.proposedValues.exportEnd ?? "—"}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground block font-sans">Solar Gen</span>
-                  <span className="font-numbers font-medium text-foreground">{data.pendingEditRequest.proposedValues.solarGenerationEnd ?? '—'}</span>
+                  <span className="text-muted-foreground block font-sans">
+                    Solar Gen
+                  </span>
+                  <span className="font-numbers font-medium text-foreground">
+                    {data.pendingEditRequest.proposedValues
+                      .solarGenerationEnd ?? "—"}
+                  </span>
                 </div>
               </>
             )}
@@ -169,45 +254,96 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-muted/50 border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 font-medium text-muted-foreground w-1/4">Meter</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">Start</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground w-1/4">
+                      Meter
+                    </th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground text-right">
+                      Start
+                    </th>
                     <th className="px-6 py-3 font-medium text-muted-foreground text-center w-12"></th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground text-left">End</th>
-                    <th className="px-6 py-3 font-medium text-muted-foreground text-right text-primary">Change</th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground text-left">
+                      End
+                    </th>
+                    <th className="px-6 py-3 font-medium text-muted-foreground text-right text-primary">
+                      Change
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border font-numbers">
                   {isSolar && (
                     <>
                       <tr className="hover:bg-muted/30 transition-colors">
-                        <td className="px-6 py-4 font-sans font-medium text-foreground">Solar Generation</td>
-                        <td className="px-6 py-4 text-right text-muted-foreground">{formatMeterReading(reading.solarGenerationStart)}</td>
-                        <td className="px-6 py-4 text-center text-muted-foreground"><ArrowRight className="w-4 h-4 mx-auto opacity-50" /></td>
-                        <td className="px-6 py-4 text-left">{formatMeterReading(reading.solarGenerationEnd)}</td>
-                        <td className="px-6 py-4 text-right text-primary font-bold">+ {formatUnits((reading.solarGenerationEnd || 0) - (reading.solarGenerationStart || 0))}</td>
+                        <td className="px-6 py-4 font-sans font-medium text-foreground">
+                          Solar Generation
+                        </td>
+                        <td className="px-6 py-4 text-right text-muted-foreground">
+                          {formatMeterReading(reading.solarGenerationStart)}
+                        </td>
+                        <td className="px-6 py-4 text-center text-muted-foreground">
+                          <ArrowRight className="w-4 h-4 mx-auto opacity-50" />
+                        </td>
+                        <td className="px-6 py-4 text-left">
+                          {formatMeterReading(reading.solarGenerationEnd)}
+                        </td>
+                        <td className="px-6 py-4 text-right text-primary font-bold">
+                          +{" "}
+                          {formatUnits(
+                            (reading.solarGenerationEnd || 0) -
+                              (reading.solarGenerationStart || 0)
+                          )}
+                        </td>
                       </tr>
                       <tr className="hover:bg-muted/30 transition-colors">
-                        <td className="px-6 py-4 font-sans font-medium text-foreground">Export to Grid</td>
-                        <td className="px-6 py-4 text-right text-muted-foreground">{formatMeterReading(reading.exportStart)}</td>
-                        <td className="px-6 py-4 text-center text-muted-foreground"><ArrowRight className="w-4 h-4 mx-auto opacity-50" /></td>
-                        <td className="px-6 py-4 text-left">{formatMeterReading(reading.exportEnd)}</td>
-                        <td className="px-6 py-4 text-right text-primary font-bold">+ {formatUnits((reading.exportEnd || 0) - (reading.exportStart || 0))}</td>
+                        <td className="px-6 py-4 font-sans font-medium text-foreground">
+                          Export to Grid
+                        </td>
+                        <td className="px-6 py-4 text-right text-muted-foreground">
+                          {formatMeterReading(reading.exportStart)}
+                        </td>
+                        <td className="px-6 py-4 text-center text-muted-foreground">
+                          <ArrowRight className="w-4 h-4 mx-auto opacity-50" />
+                        </td>
+                        <td className="px-6 py-4 text-left">
+                          {formatMeterReading(reading.exportEnd)}
+                        </td>
+                        <td className="px-6 py-4 text-right text-primary font-bold">
+                          +{" "}
+                          {formatUnits(
+                            (reading.exportEnd || 0) -
+                              (reading.exportStart || 0)
+                          )}
+                        </td>
                       </tr>
                     </>
                   )}
                   <tr className="hover:bg-muted/30 transition-colors bg-primary/5">
-                    <td className="px-6 py-4 font-sans font-medium text-foreground">Import from Grid</td>
-                    <td className="px-6 py-4 text-right text-muted-foreground">{formatMeterReading(reading.importStart)}</td>
-                    <td className="px-6 py-4 text-center text-muted-foreground"><ArrowRight className="w-4 h-4 mx-auto opacity-50" /></td>
-                    <td className="px-6 py-4 text-left">{formatMeterReading(reading.importEnd)}</td>
-                    <td className="px-6 py-4 text-right text-primary font-bold">+ {formatUnits(reading.importEnd - reading.importStart)}</td>
+                    <td className="px-6 py-4 font-sans font-medium text-foreground">
+                      Import from Grid
+                    </td>
+                    <td className="px-6 py-4 text-right text-muted-foreground">
+                      {formatMeterReading(reading.importStart)}
+                    </td>
+                    <td className="px-6 py-4 text-center text-muted-foreground">
+                      <ArrowRight className="w-4 h-4 mx-auto opacity-50" />
+                    </td>
+                    <td className="px-6 py-4 text-left">
+                      {formatMeterReading(reading.importEnd)}
+                    </td>
+                    <td className="px-6 py-4 text-right text-primary font-bold">
+                      + {formatUnits(reading.importEnd - reading.importStart)}
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
             <div className="px-6 py-3 bg-muted/30 border-t border-border text-xs text-muted-foreground flex justify-between items-center">
-              <span>Submitted by <span className="font-medium text-foreground">{data.submitterName || 'Unknown'}</span></span>
-              <span>{new Date(reading.submittedAt).toLocaleDateString()}</span>
+              <span>
+                Submitted by{" "}
+                <span className="font-medium text-foreground">
+                  {data.submitterName || "Unknown"}
+                </span>
+              </span>
+              <span>{formatSafeDate(reading.submittedAt)}</span>
             </div>
           </div>
         </div>
@@ -224,13 +360,21 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
           <div className="relative z-10 space-y-2">
             <div className="font-bold font-sans text-foreground flex items-center gap-2">
               <Info className="w-4 h-4 text-muted-foreground" />
-              Owner's Export Credit <span className="text-muted-foreground font-normal text-xs">(not your charge)</span>
+              Owner&apos;s Export Credit{" "}
+              <span className="text-muted-foreground font-normal text-xs">
+                (not your charge)
+              </span>
             </div>
             <div className="text-muted-foreground">
-              Exported ({formatUnits(bill.gridExported)}) x {formatCurrency(bill.exportRate)}/unit = <span className="text-foreground font-medium">{formatCurrency(bill.exportRefund)}</span>
+              Exported ({formatUnits(bill.gridExported)}) x{" "}
+              {formatCurrency(bill.exportRate)}/unit ={" "}
+              <span className="text-foreground font-medium">
+                {formatCurrency(bill.exportRefund)}
+              </span>
             </div>
             <div className="text-xs font-sans text-muted-foreground italic mt-2">
-              Your landlord earns this amount from the electricity grid for exporting solar power.
+              Your landlord earns this amount from the electricity grid for
+              exporting solar power.
             </div>
           </div>
         </div>
@@ -239,8 +383,11 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
       {editHistory && editHistory.length > 0 && (
         <div className="space-y-4 mt-12">
           <h2 className="text-lg font-bold font-heading flex items-center gap-2">
-            <History className="w-5 h-5 text-muted-foreground" /> 
-            Edit History <Badge variant="muted" className="ml-2">{editHistory.length}</Badge>
+            <History className="w-5 h-5 text-muted-foreground" />
+            Edit History{" "}
+            <Badge variant="muted" className="ml-2">
+              {editHistory.length}
+            </Badge>
           </h2>
           <div className="rounded-xl border border-border overflow-hidden bg-surface divide-y divide-border">
             {editHistory.map((history) => (
@@ -249,12 +396,16 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
                   <div>
                     <div className="font-medium flex items-center gap-2">
                       {history.editedByName} requested an edit
-                      <Badge variant="muted" className="text-xs font-mono">v{history.versionBefore} &rarr; v{history.versionAfter}</Badge>
+                      <Badge variant="muted" className="text-xs font-mono">
+                        v{history.versionBefore} &rarr; v{history.versionAfter}
+                      </Badge>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1 text-balance">"{history.reason}"</div>
+                    <div className="text-sm text-muted-foreground mt-1 text-balance">
+                      "{history.reason}"
+                    </div>
                   </div>
                   <div className="text-xs text-muted-foreground font-mono bg-muted/50 px-2 py-1 rounded">
-                    {new Date(history.editedAt).toLocaleString()}
+                    {formatSafeDateTime(history.editedAt)}
                   </div>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-4 font-mono text-xs overflow-x-auto">
@@ -263,22 +414,48 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
                       <tr className="text-muted-foreground border-b border-border/50">
                         <th className="pb-2 font-medium">Field</th>
                         <th className="pb-2 font-medium">Old Value</th>
-                        <th className="pb-2 font-medium text-primary">New Value</th>
+                        <th className="pb-2 font-medium text-primary">
+                          New Value
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50 font-numbers">
-                      {Object.entries(history.newValues).map(([key, newVal]) => {
-                        const oldVal = history.oldValues?.[key] ?? '—';
-                        if (oldVal === newVal) return null;
-                        
-                        return (
-                          <tr key={key} className="hover:bg-muted/50">
-                            <td className="py-2 text-foreground/80">{key}</td>
-                            <td className="py-2 text-muted-foreground">{oldVal}</td>
-                            <td className="py-2 text-primary font-medium">{newVal}</td>
-                          </tr>
-                        );
-                      })}
+                      {(() => {
+                        const rows = Object.entries(history.newValues ?? {})
+                          .map(([key, newVal]) => {
+                            const oldVal = history.oldValues?.[key] ?? "—";
+                            if (oldVal === newVal) return null;
+
+                            return (
+                              <tr key={key} className="hover:bg-muted/50">
+                                <td className="py-2 text-foreground/80">
+                                  {key}
+                                </td>
+                                <td className="py-2 text-muted-foreground">
+                                  {oldVal}
+                                </td>
+                                <td className="py-2 text-primary font-medium">
+                                  {newVal}
+                                </td>
+                              </tr>
+                            );
+                          })
+                          .filter(Boolean);
+
+                        if (rows.length === 0) {
+                          return (
+                            <tr>
+                              <td
+                                colSpan={3}
+                                className="px-4 py-3 text-sm text-muted-foreground text-center"
+                              >
+                                No field changes recorded for this edit.
+                              </td>
+                            </tr>
+                          );
+                        }
+                        return rows;
+                      })()}
                     </tbody>
                   </table>
                 </div>
@@ -291,25 +468,28 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
   );
 }
 
-function BillStatusBadge({ status }: { status: 'paid' | 'pending' }) {
+function BillStatusBadge({ status }: { status: "paid" | "pending" }) {
   return (
-    <Badge variant={status === 'paid' ? 'success' : 'warning'} className="text-sm px-3 py-1 uppercase tracking-wide">
-      {status === 'paid' ? 'PAID' : 'UNPAID'}
+    <Badge
+      variant={status === "paid" ? "success" : "warning"}
+      className="text-sm px-3 py-1 uppercase tracking-wide"
+    >
+      {status === "paid" ? "PAID" : "UNPAID"}
     </Badge>
   );
 }
 
-function EditRequestModal({ 
-  editSuccess, 
-  editReason, 
-  setEditReason, 
-  proposedValues, 
-  setProposedValues, 
-  isSolar, 
-  editError, 
-  isSubmittingEdit, 
-  onClose, 
-  onSubmit 
+function EditRequestModal({
+  editSuccess,
+  editReason,
+  setEditReason,
+  proposedValues,
+  setProposedValues,
+  isSolar,
+  editError,
+  isSubmittingEdit,
+  onClose,
+  onSubmit,
 }: {
   editSuccess: boolean;
   editReason: string;
@@ -320,91 +500,213 @@ function EditRequestModal({
   editError: string | null;
   isSubmittingEdit: boolean;
   onClose: () => void;
-  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void;
+  onSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
 }) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    containerRef.current
+      ?.querySelector<HTMLElement>(
+        "textarea, input, button, [href], [tabindex]:not([tabindex='-1'])"
+      )
+      ?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-request-modal-title"
+    >
       <div className="bg-surface border border-border rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-border">
-          <h2 className="text-xl font-bold font-heading">Request a Correction</h2>
-          <p className="text-sm text-muted-foreground mt-1">Submit correct meter readings to your landlord.</p>
+          <h2
+            id="edit-request-modal-title"
+            className="text-xl font-bold font-heading"
+          >
+            Request a Correction
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Submit correct meter readings to your landlord.
+          </p>
         </div>
-        
+
         <form onSubmit={onSubmit} className="p-6 overflow-y-auto space-y-6">
           {editSuccess ? (
             <div className="p-4 bg-success/10 text-success rounded-lg border border-success/20 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center shrink-0">✓</div>
+              <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                ✓
+              </div>
               <p>Your edit request has been submitted successfully.</p>
             </div>
           ) : (
             <>
               <div className="space-y-3">
-                <label className="block text-sm font-medium">Reason for edit <span className="text-destructive">*</span></label>
-                <textarea 
+                <label
+                  htmlFor="edit-reason"
+                  className="block text-sm font-medium"
+                >
+                  Reason for edit <span className="text-destructive">*</span>
+                </label>
+                <textarea
+                  id="edit-reason"
                   required
                   value={editReason}
-                  onChange={e => setEditReason(e.target.value)}
+                  onChange={(e) => setEditReason(e.target.value)}
                   className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[80px]"
                   placeholder="e.g., I misread the import meter, it should be 709 not 790."
                 />
               </div>
-              
+
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold border-b border-border pb-2">Proposed Readings</h3>
-                
+                <h3 className="text-sm font-semibold border-b border-border pb-2">
+                  Proposed Readings
+                </h3>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Import Start</label>
-                    <input 
-                      type="number" step="0.01" required
-                      value={proposedValues.importStart ?? ''} onChange={e => setProposedValues({...proposedValues, importStart: parseFloat(e.target.value)})}
+                    <label
+                      htmlFor="proposed-import-start"
+                      className="block text-xs font-medium text-muted-foreground mb-1"
+                    >
+                      Import Start
+                    </label>
+                    <input
+                      id="proposed-import-start"
+                      type="number"
+                      step="0.01"
+                      required
+                      value={proposedValues.importStart ?? ""}
+                      onChange={(e) =>
+                        setProposedValues({
+                          ...proposedValues,
+                          importStart: parseFloat(e.target.value),
+                        })
+                      }
                       className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Import End</label>
-                    <input 
-                      type="number" step="0.01" required
-                      value={proposedValues.importEnd ?? ''} onChange={e => setProposedValues({...proposedValues, importEnd: parseFloat(e.target.value)})}
+                    <label
+                      htmlFor="proposed-import-end"
+                      className="block text-xs font-medium text-muted-foreground mb-1"
+                    >
+                      Import End
+                    </label>
+                    <input
+                      id="proposed-import-end"
+                      type="number"
+                      step="0.01"
+                      required
+                      value={proposedValues.importEnd ?? ""}
+                      onChange={(e) =>
+                        setProposedValues({
+                          ...proposedValues,
+                          importEnd: parseFloat(e.target.value),
+                        })
+                      }
                       className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
-                
+
                 {isSolar && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Export Start</label>
-                        <input 
-                          type="number" step="0.01" required
-                          value={proposedValues.exportStart ?? ''} onChange={e => setProposedValues({...proposedValues, exportStart: parseFloat(e.target.value)})}
+                        <label
+                          htmlFor="proposed-export-start"
+                          className="block text-xs font-medium text-muted-foreground mb-1"
+                        >
+                          Export Start
+                        </label>
+                        <input
+                          id="proposed-export-start"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={proposedValues.exportStart ?? ""}
+                          onChange={(e) =>
+                            setProposedValues({
+                              ...proposedValues,
+                              exportStart: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Export End</label>
-                        <input 
-                          type="number" step="0.01" required
-                          value={proposedValues.exportEnd ?? ''} onChange={e => setProposedValues({...proposedValues, exportEnd: parseFloat(e.target.value)})}
+                        <label
+                          htmlFor="proposed-export-end"
+                          className="block text-xs font-medium text-muted-foreground mb-1"
+                        >
+                          Export End
+                        </label>
+                        <input
+                          id="proposed-export-end"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={proposedValues.exportEnd ?? ""}
+                          onChange={(e) =>
+                            setProposedValues({
+                              ...proposedValues,
+                              exportEnd: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Solar Gen Start</label>
-                        <input 
-                          type="number" step="0.01" required
-                          value={proposedValues.solarGenerationStart ?? ''} onChange={e => setProposedValues({...proposedValues, solarGenerationStart: parseFloat(e.target.value)})}
+                        <label
+                          htmlFor="proposed-solar-gen-start"
+                          className="block text-xs font-medium text-muted-foreground mb-1"
+                        >
+                          Solar Gen Start
+                        </label>
+                        <input
+                          id="proposed-solar-gen-start"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={proposedValues.solarGenerationStart ?? ""}
+                          onChange={(e) =>
+                            setProposedValues({
+                              ...proposedValues,
+                              solarGenerationStart: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Solar Gen End</label>
-                        <input 
-                          type="number" step="0.01" required
-                          value={proposedValues.solarGenerationEnd ?? ''} onChange={e => setProposedValues({...proposedValues, solarGenerationEnd: parseFloat(e.target.value)})}
+                        <label
+                          htmlFor="proposed-solar-gen-end"
+                          className="block text-xs font-medium text-muted-foreground mb-1"
+                        >
+                          Solar Gen End
+                        </label>
+                        <input
+                          id="proposed-solar-gen-end"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={proposedValues.solarGenerationEnd ?? ""}
+                          onChange={(e) =>
+                            setProposedValues({
+                              ...proposedValues,
+                              solarGenerationEnd: parseFloat(e.target.value),
+                            })
+                          }
                           className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -413,12 +715,16 @@ function EditRequestModal({
                 )}
               </div>
 
-              {editError && <div className="text-sm text-destructive">{editError}</div>}
-              
+              {editError && (
+                <div className="text-sm text-destructive">{editError}</div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
-                <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                <Button type="button" variant="ghost" onClick={onClose}>
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={isSubmittingEdit}>
-                  {isSubmittingEdit ? 'Submitting...' : 'Submit Request'}
+                  {isSubmittingEdit ? "Submitting..." : "Submit Request"}
                 </Button>
               </div>
             </>
@@ -429,77 +735,143 @@ function EditRequestModal({
   );
 }
 
-function CalculationBreakdown({ bill, reading, isSolar }: { bill: BillDetailData['bill'], reading: BillDetailData['reading'], isSolar: boolean }) {
+function CalculationBreakdown({
+  bill,
+  reading,
+  isSolar,
+}: {
+  bill: BillDetailData["bill"];
+  reading: BillDetailData["reading"];
+  isSolar: boolean;
+}) {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold font-heading">Calculation Breakdown</h2>
-      
+
       <div className="rounded-xl border border-border bg-surface p-6 font-mono text-sm space-y-8 leading-relaxed">
         {isSolar ? (
           <>
             <div className="space-y-2">
               <div className="font-bold font-sans text-foreground flex items-center gap-2">
-                <Badge variant="muted" className="px-2 py-0.5 rounded text-xs font-mono">1</Badge> 
+                <Badge
+                  variant="muted"
+                  className="px-2 py-0.5 rounded text-xs font-mono"
+                >
+                  1
+                </Badge>
                 Solar Generated
               </div>
               <div className="pl-9 text-muted-foreground">
-                Solar End ({formatMeterReading(reading.solarGenerationEnd)}) - Solar Start ({formatMeterReading(reading.solarGenerationStart)}) = <span className="text-foreground font-medium">{formatUnits(bill.solarGenerated)}</span>
+                Solar End ({formatMeterReading(reading.solarGenerationEnd)}) -
+                Solar Start ({formatMeterReading(reading.solarGenerationStart)})
+                ={" "}
+                <span className="text-foreground font-medium">
+                  {formatUnits(bill.solarGenerated)}
+                </span>
               </div>
-              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">Your panels generated this much electricity this month.</div>
+              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">
+                Your panels generated this much electricity this month.
+              </div>
             </div>
 
             <div className="space-y-2">
               <div className="font-bold font-sans text-foreground flex items-center gap-2">
-                <Badge variant="muted" className="px-2 py-0.5 rounded text-xs font-mono">2</Badge> 
+                <Badge
+                  variant="muted"
+                  className="px-2 py-0.5 rounded text-xs font-mono"
+                >
+                  2
+                </Badge>
                 Exported to Grid
               </div>
               <div className="pl-9 text-muted-foreground">
-                Export End ({formatMeterReading(reading.exportEnd)}) - Export Start ({formatMeterReading(reading.exportStart)}) = <span className="text-foreground font-medium">{formatUnits(bill.gridExported)}</span>
+                Export End ({formatMeterReading(reading.exportEnd)}) - Export
+                Start ({formatMeterReading(reading.exportStart)}) ={" "}
+                <span className="text-foreground font-medium">
+                  {formatUnits(bill.gridExported)}
+                </span>
               </div>
-              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">This much solar power went back to the electricity grid.</div>
+              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">
+                This much solar power went back to the electricity grid.
+              </div>
             </div>
 
             <div className="space-y-2">
               <div className="font-bold font-sans text-foreground flex items-center gap-2">
-                <Badge variant="muted" className="px-2 py-0.5 rounded text-xs font-mono">3</Badge> 
+                <Badge
+                  variant="muted"
+                  className="px-2 py-0.5 rounded text-xs font-mono"
+                >
+                  3
+                </Badge>
                 Solar Self-Consumed
               </div>
               <div className="pl-9 text-muted-foreground">
-                Generated ({formatUnits(bill.solarGenerated)}) - Exported ({formatUnits(bill.gridExported)}) = <span className="text-foreground font-medium">{formatUnits(bill.solarSelfConsumed)}</span>
+                Generated ({formatUnits(bill.solarGenerated)}) - Exported (
+                {formatUnits(bill.gridExported)}) ={" "}
+                <span className="text-foreground font-medium">
+                  {formatUnits(bill.solarSelfConsumed)}
+                </span>
               </div>
-              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">This is the solar power you actually used at home before the rest was exported.</div>
+              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">
+                This is the solar power you actually used at home before the
+                rest was exported.
+              </div>
             </div>
 
             <div className="space-y-2">
               <div className="font-bold font-sans text-foreground flex items-center gap-2">
-                <Badge variant="muted" className="px-2 py-0.5 rounded text-xs font-mono">4</Badge> 
+                <Badge
+                  variant="muted"
+                  className="px-2 py-0.5 rounded text-xs font-mono"
+                >
+                  4
+                </Badge>
                 Imported from Grid
               </div>
               <div className="pl-9 text-muted-foreground">
-                Import End ({formatMeterReading(reading.importEnd)}) - Import Start ({formatMeterReading(reading.importStart)}) = <span className="text-foreground font-medium">{formatUnits(bill.gridImported)}</span>
+                Import End ({formatMeterReading(reading.importEnd)}) - Import
+                Start ({formatMeterReading(reading.importStart)}) ={" "}
+                <span className="text-foreground font-medium">
+                  {formatUnits(bill.gridImported)}
+                </span>
               </div>
-              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">When solar wasn't enough, you drew this from the grid.</div>
+              <div className="pl-9 text-xs font-sans text-muted-foreground opacity-80 italic">
+                When solar wasn't enough, you drew this from the grid.
+              </div>
             </div>
 
             <div className="space-y-2 bg-primary/5 p-4 rounded-lg -mx-4 border border-primary/10">
               <div className="font-bold font-sans text-foreground flex items-center gap-2">
-                <Badge className="px-2 py-0.5 rounded text-xs font-mono">5</Badge> 
+                <Badge className="px-2 py-0.5 rounded text-xs font-mono">
+                  5
+                </Badge>
                 Total Consumption
               </div>
               <div className="pl-9 text-muted-foreground mt-2">
-                Imported ({formatUnits(bill.gridImported)}) + Self-Consumed ({formatUnits(bill.solarSelfConsumed)}) = <span className="text-primary font-bold">{formatUnits(bill.totalConsumption)}</span>
+                Imported ({formatUnits(bill.gridImported)}) + Self-Consumed (
+                {formatUnits(bill.solarSelfConsumed)}) ={" "}
+                <span className="text-primary font-bold">
+                  {formatUnits(bill.totalConsumption)}
+                </span>
               </div>
-              <div className="pl-9 text-xs font-sans text-primary/80 italic mt-1">Every unit you used this month, regardless of source.</div>
+              <div className="pl-9 text-xs font-sans text-primary/80 italic mt-1">
+                Every unit you used this month, regardless of source.
+              </div>
             </div>
           </>
         ) : (
           <div className="space-y-2 bg-primary/5 p-4 rounded-lg -mx-4 border border-primary/10">
             <div className="font-bold font-sans text-foreground flex items-center gap-2">
-              <Badge className="px-2 py-0.5 rounded text-xs font-mono">1</Badge> 
+              <Badge className="px-2 py-0.5 rounded text-xs font-mono">1</Badge>
               Total Consumption
             </div>
             <div className="pl-9 text-muted-foreground mt-2">
-              Import End ({formatMeterReading(reading.importEnd)}) - Import Start ({formatMeterReading(reading.importStart)}) = <span className="text-primary font-bold">{formatUnits(bill.totalConsumption)}</span>
+              Import End ({formatMeterReading(reading.importEnd)}) - Import
+              Start ({formatMeterReading(reading.importStart)}) ={" "}
+              <span className="text-primary font-bold">
+                {formatUnits(bill.totalConsumption)}
+              </span>
             </div>
           </div>
         )}
@@ -508,51 +880,93 @@ function CalculationBreakdown({ bill, reading, isSolar }: { bill: BillDetailData
   );
 }
 
-function BillLineItems({ bill, isSolar }: { bill: BillDetailData['bill'], isSolar: boolean }) {
-  const customCharges = bill.customChargesJson ? JSON.parse(bill.customChargesJson) : [];
-  
+function BillLineItems({
+  bill,
+  isSolar,
+}: {
+  bill: BillDetailData["bill"];
+  isSolar: boolean;
+}) {
+  let customCharges: CustomCharge[];
+  try {
+    customCharges = JSON.parse(
+      bill.customChargesJson || "[]"
+    ) as CustomCharge[];
+  } catch {
+    customCharges = [];
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold font-heading">Your Bill</h2>
       <div className="rounded-xl border border-border bg-surface p-6 font-mono text-sm">
-        
         <div className="mb-6 pb-6 border-b border-border border-dashed space-y-2">
-          <div className="text-foreground font-sans font-medium">Your share: {bill.splitPercentage}% of the property</div>
+          <div className="text-foreground font-sans font-medium">
+            Your share: {bill.splitPercentage}% of the property
+          </div>
           <div className="text-muted-foreground">
-            Total Consumption ({formatUnits(bill.totalConsumption)}) x {bill.splitPercentage}% = <span className="text-foreground font-medium">{formatUnits(bill.tenantConsumption)}</span>
+            Total Consumption ({formatUnits(bill.totalConsumption)}) x{" "}
+            {bill.splitPercentage}% ={" "}
+            <span className="text-foreground font-medium">
+              {formatUnits(bill.tenantConsumption)}
+            </span>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <div>Consumption <span className="text-muted-foreground text-xs ml-2">{formatUnits(bill.tenantConsumption)} x {formatCurrency(bill.consumptionRate)}/unit</span></div>
-            <div className="font-medium text-right w-24">{formatCurrency(bill.consumptionCost)}</div>
+            <div>
+              Consumption{" "}
+              <span className="text-muted-foreground text-xs ml-2">
+                {formatUnits(bill.tenantConsumption)} x{" "}
+                {formatCurrency(bill.consumptionRate)}/unit
+              </span>
+            </div>
+            <div className="font-medium text-right w-24">
+              {formatCurrency(bill.consumptionCost)}
+            </div>
           </div>
-          
-          {(customCharges as CustomCharge[]).map((charge, i) => (
+
+          {customCharges.map((charge, i) => (
             <div key={i} className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 {charge.name}
-                {charge.chargedToTenant && <Badge variant="muted" className="text-[10px] px-1.5 py-0">Tenant Share</Badge>}
+                {charge.chargedToTenant && (
+                  <Badge variant="muted" className="text-[10px] px-1.5 py-0">
+                    Tenant Share
+                  </Badge>
+                )}
               </div>
               <div className="font-medium text-right w-24">
-                {formatCurrency(charge.chargedToTenant ? (charge.amount * bill.splitPercentage / 100) : charge.amount)}
+                {formatCurrency(
+                  charge.chargedToTenant
+                    ? (charge.amount * bill.splitPercentage) / 100
+                    : charge.amount
+                )}
               </div>
             </div>
           ))}
-          
+
           <div className="pt-4 border-t border-border flex justify-between items-center text-base font-bold font-sans">
             <div>Total Due</div>
-            <div className="text-xl font-numbers text-primary">{formatCurrency(bill.totalDue)}</div>
+            <div className="text-xl font-numbers text-primary">
+              {formatCurrency(bill.totalDue)}
+            </div>
           </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-border border-dashed text-xs text-muted-foreground font-sans">
           <div className="font-medium text-foreground mb-2">Rates applied:</div>
           <ul className="space-y-1 list-disc list-inside">
-            <li>Consumption rate: {formatCurrency(bill.consumptionRate)}/unit</li>
-            {isSolar && <li>Export rate: {formatCurrency(bill.exportRate)}/unit (owner earns this, not charged to you)</li>}
-
+            <li>
+              Consumption rate: {formatCurrency(bill.consumptionRate)}/unit
+            </li>
+            {isSolar && (
+              <li>
+                Export rate: {formatCurrency(bill.exportRate)}/unit (owner earns
+                this, not charged to you)
+              </li>
+            )}
           </ul>
         </div>
       </div>
@@ -561,5 +975,26 @@ function BillLineItems({ bill, isSolar }: { bill: BillDetailData['bill'], isSola
 }
 
 const SunMedium = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2" />
+    <path d="M12 20v2" />
+    <path d="m4.93 4.93 1.41 1.41" />
+    <path d="m17.66 17.66 1.41 1.41" />
+    <path d="M2 12h2" />
+    <path d="M20 12h2" />
+    <path d="m6.34 17.66-1.41 1.41" />
+    <path d="m19.07 4.93-1.41 1.41" />
+  </svg>
 );

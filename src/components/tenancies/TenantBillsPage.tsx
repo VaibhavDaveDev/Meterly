@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { formatCurrency, formatUnits, formatMonth } from '../../lib/format';
-import { ChevronRight, FileText, Download, Edit3 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Badge } from "../ui/badge";
+import { formatCurrency, formatUnits, formatMonth } from "../../lib/format";
+import { ChevronRight, FileText, Download, Edit3 } from "lucide-react";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface TenantBillsPageProps {
   tenancyId: string;
@@ -15,7 +15,7 @@ interface TenantBillItem {
   totalConsumption: number;
   splitPercentage: number;
   totalDue: number;
-  status: 'pending' | 'paid';
+  status: "pending" | "paid";
   markedPaidAt?: string | null;
   billingPeriodId: string;
   hasPendingRequest: number;
@@ -31,13 +31,13 @@ interface TenantBillsData {
   bills: TenantBillItem[];
 }
 
-export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
+function TenantBillsPageInner({ tenancyId }: TenantBillsPageProps) {
   const [data, setData] = useState<TenantBillsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [year, setYear] = useState<string>(new Date().getFullYear().toString());
-  const [status, setStatus] = useState<'all' | 'pending' | 'paid'>('all');
+  const [status, setStatus] = useState<"all" | "pending" | "paid">("all");
 
   useEffect(() => {
     fetchBills();
@@ -46,10 +46,18 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
   const fetchBills = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/tenancies/${tenancyId}/bills?year=${year}&status=${status}`);
-      const json = await res.json() as TenantBillsData & { error?: { message: string } };
+      const res = await fetch(
+        `/api/tenancies/${tenancyId}/bills?year=${year}&status=${status}`
+      );
+      if (res.status === 401) {
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+      const json = (await res.json()) as TenantBillsData & {
+        error?: { message: string };
+      };
       if (!res.ok) {
-        throw new Error(json.error?.message || 'Failed to fetch bills');
+        throw new Error(json.error?.message || "Failed to fetch bills");
       }
       setData(json);
     } catch (err) {
@@ -61,12 +69,17 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
   };
 
   const handleDownloadCsv = () => {
-    window.open(`/api/tenancies/${tenancyId}/export/csv?year=${year}`, '_blank');
+    window.open(
+      `/api/tenancies/${tenancyId}/export/csv?year=${year}`,
+      "_blank"
+    );
   };
 
   // Generate an array of years from 2024 to current year + 1 for the dropdown
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - 2024 + 2 }, (_, i) => (2024 + i).toString()).reverse();
+  const years = Array.from({ length: currentYear - 2024 + 2 }, (_, i) =>
+    (2024 + i).toString()
+  ).reverse();
 
   if (error) {
     return (
@@ -81,22 +94,31 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold font-heading mb-6">
-          {data?.propertyName ? `${data.propertyName} — Bills` : 'Bills'}
+          {data?.propertyName ? `${data.propertyName} — Bills` : "Bills"}
         </h1>
-        
+
         {/* Stats Bar */}
         {data && (
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground bg-surface border border-border rounded-lg px-4 py-3">
             <div>
-              <span className="font-medium text-foreground font-numbers">{formatCurrency(data.yearlyStats.totalPaid)}</span> paid this year
+              <span className="font-medium text-foreground font-numbers">
+                {formatCurrency(data.yearlyStats.totalPaid)}
+              </span>{" "}
+              paid this year
             </div>
             <div className="w-px h-4 bg-border hidden sm:block"></div>
             <div>
-              <span className="font-medium text-foreground font-numbers">{formatCurrency(data.yearlyStats.totalPending)}</span> outstanding
+              <span className="font-medium text-foreground font-numbers">
+                {formatCurrency(data.yearlyStats.totalPending)}
+              </span>{" "}
+              outstanding
             </div>
             <div className="w-px h-4 bg-border hidden sm:block"></div>
             <div>
-              <span className="font-medium text-foreground font-numbers">{formatCurrency(data.yearlyStats.avgMonthlyBill)}</span> avg/month
+              <span className="font-medium text-foreground font-numbers">
+                {formatCurrency(data.yearlyStats.avgMonthlyBill)}
+              </span>{" "}
+              avg/month
             </div>
           </div>
         )}
@@ -105,46 +127,58 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
       {/* Controls Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <select 
+          <select
             value={year}
             onChange={(e) => setYear(e.target.value)}
             className="bg-surface border border-border rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
-            {years.map(y => (
-              <option key={y} value={y}>{y}</option>
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
-          
+
           <div className="flex bg-surface border border-border rounded-md p-1">
             <button
-              onClick={() => setStatus('all')}
-              className={`px-3 py-1 text-sm rounded-sm transition-colors ${status === 'all' ? 'bg-primary text-primary-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              type="button"
+              onClick={() => setStatus("all")}
+              aria-pressed={status === "all"}
+              className={`px-3 py-1 text-sm rounded-sm transition-colors ${status === "all" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
             >
               All
             </button>
             <button
-              onClick={() => setStatus('pending')}
-              className={`px-3 py-1 text-sm rounded-sm transition-colors ${status === 'pending' ? 'bg-primary text-primary-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              type="button"
+              onClick={() => setStatus("pending")}
+              aria-pressed={status === "pending"}
+              className={`px-3 py-1 text-sm rounded-sm transition-colors ${status === "pending" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
             >
               Unpaid
             </button>
             <button
-              onClick={() => setStatus('paid')}
-              className={`px-3 py-1 text-sm rounded-sm transition-colors ${status === 'paid' ? 'bg-primary text-primary-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+              type="button"
+              onClick={() => setStatus("paid")}
+              aria-pressed={status === "paid"}
+              className={`px-3 py-1 text-sm rounded-sm transition-colors ${status === "paid" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
             >
               Paid
             </button>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <Button variant="outline" onClick={handleDownloadCsv} className="gap-2">
+          <button
+            onClick={handleDownloadCsv}
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background hover:bg-muted text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <Download className="w-4 h-4" /> Download CSV
-          </Button>
-          <Button variant="outline" asChild className="gap-2">
-            <a href={`/tenancies/${tenancyId}/edit-requests/new`}>
-              <Edit3 className="w-4 h-4" /> Request Correction
-            </a>
-          </Button>
+          </button>
+          <a
+            href={`/tenancies/${tenancyId}/edit-requests/new`}
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-background hover:bg-muted text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Edit3 className="w-4 h-4" /> Request Correction
+          </a>
         </div>
       </div>
 
@@ -155,13 +189,13 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
           <div className="h-16 bg-surface rounded-xl border border-border"></div>
           <div className="h-16 bg-surface rounded-xl border border-border"></div>
         </div>
-      ) : (!data || data.bills.length === 0) ? (
+      ) : !data || data.bills.length === 0 ? (
         <div className="p-12 rounded-xl border border-border text-center bg-surface/50">
           <FileText className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
           <h3 className="text-lg font-medium mb-1">No bills found</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            {status !== 'all' 
-              ? `You don't have any ${status} bills for ${year}.` 
+            {status !== "all"
+              ? `You don't have any ${status} bills for ${year}.`
               : `Your landlord hasn't generated any bills for ${year} yet. When they do, they'll appear here.`}
           </p>
         </div>
@@ -169,55 +203,65 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
         <div className="rounded-xl border border-border overflow-hidden bg-surface">
           <div className="divide-y divide-border">
             {data.bills.map((bill) => (
-              <a 
-                key={bill.id} 
-                href={`/tenancies/${tenancyId}/bills/${bill.id}`}
+              <div
+                key={bill.id}
                 className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-muted/50 transition-colors group gap-4"
               >
-                <div className="flex items-center gap-5">
+                <a
+                  href={`/tenancies/${tenancyId}/bills/${bill.id}`}
+                  className="flex items-center gap-5 flex-1 min-w-0"
+                >
                   <div className="w-12 h-12 rounded-full bg-background border border-border flex items-center justify-center shrink-0">
                     <FileText className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <div className="font-semibold text-base mb-0.5">{formatMonth(bill.periodMonth).toUpperCase()}</div>
+                    <div className="font-semibold text-base mb-0.5">
+                      {formatMonth(bill.periodMonth).toUpperCase()}
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      {formatUnits(bill.tenantConsumption ?? (bill.totalConsumption * bill.splitPercentage / 100))}
+                      {formatUnits(
+                        bill.tenantConsumption ??
+                          (bill.totalConsumption * bill.splitPercentage) / 100
+                      )}
                     </div>
                   </div>
-                </div>
+                </a>
                 <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-1/2">
-                  <div className="text-right">
-                    <div className="font-bold text-lg font-numbers">{formatCurrency(bill.totalDue)}</div>
+                  <a
+                    href={`/tenancies/${tenancyId}/bills/${bill.id}`}
+                    className="text-right"
+                  >
+                    <div className="font-bold text-lg font-numbers">
+                      {formatCurrency(bill.totalDue)}
+                    </div>
                     {bill.markedPaidAt && (
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        Paid on {new Date(bill.markedPaidAt).toLocaleDateString()}
+                        Paid on{" "}
+                        {new Date(bill.markedPaidAt).toLocaleDateString()}
                       </div>
                     )}
-                  </div>
+                  </a>
                   <div className="flex items-center gap-3 shrink-0">
                     {bill.hasPendingRequest > 0 ? (
                       <Badge variant="info">Correction Pending</Badge>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          window.location.href = `/tenancies/${tenancyId}/edit-requests/new?periodId=${bill.billingPeriodId}`;
-                        }}
-                        className="h-8 text-xs gap-1.5 opacity-0 group-hover:opacity-100 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 opacity-100 transition-all hover:bg-muted hidden sm:inline-flex"
+                      <a
+                        href={`/tenancies/${tenancyId}/edit-requests/new?periodId=${bill.billingPeriodId}`}
+                        className="h-8 text-xs gap-1.5 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all hidden sm:inline-flex items-center px-3 rounded-md border border-input bg-background hover:bg-muted font-medium"
                       >
                         <Edit3 className="w-3.5 h-3.5" /> Request Edit
-                      </Button>
+                      </a>
                     )}
-                    <Badge variant={bill.status === 'paid' ? 'success' : 'warning'} className="uppercase">
-                      {bill.status === 'pending' ? 'Unpaid' : 'Paid'}
+                    <Badge
+                      variant={bill.status === "paid" ? "success" : "warning"}
+                      className="uppercase"
+                    >
+                      {bill.status === "pending" ? "Unpaid" : "Paid"}
                     </Badge>
                     <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </div>
                 </div>
-              </a>
+              </div>
             ))}
           </div>
         </div>
@@ -225,3 +269,5 @@ export function TenantBillsPage({ tenancyId }: TenantBillsPageProps) {
     </div>
   );
 }
+
+export const TenantBillsPage = withErrorBoundary(TenantBillsPageInner);

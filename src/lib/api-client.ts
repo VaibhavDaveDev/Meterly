@@ -33,6 +33,18 @@ async function apiFetch<T>(
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 
+    if (response.status === 401) {
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/login"
+      ) {
+        const next = encodeURIComponent(
+          window.location.pathname + window.location.search
+        );
+        window.location.href = `/login?next=${next}`;
+      }
+      return { data: null, error: { message: "Unauthorized" } };
+    }
     if (!response.ok) {
       const errorData = (await response.json()) as ApiResponse<never>;
       return {

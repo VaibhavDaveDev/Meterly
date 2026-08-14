@@ -70,10 +70,8 @@ export type Bindings = {
 };
 
 export type Variables = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: any; // Better Auth user type — replace with proper type once client is configured
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  session: any;
+  user: typeof schema.user.$inferSelect;
+  session: typeof schema.session.$inferSelect;
 };
 
 export const app = new OpenAPIHono<{
@@ -390,8 +388,8 @@ app.use("*", async (c, next) => {
   const auth = getAuth(c.env);
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (session) {
-    c.set("user", session.user);
-    c.set("session", session.session);
+    c.set("user", session.user as typeof schema.user.$inferSelect);
+    c.set("session", session.session as typeof schema.session.$inferSelect);
   }
   await next();
 });

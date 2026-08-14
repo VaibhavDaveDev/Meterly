@@ -307,6 +307,7 @@ export function BillPhotoUpload({
               {state.message}
             </p>
             <button
+              type="button"
               onClick={reset}
               className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 underline mt-2"
             >
@@ -332,7 +333,12 @@ export function BillPhotoUpload({
             </p>
             <p className="text-xs text-red-600/80">{state.message}</p>
           </div>
-          <button onClick={reset} className="p-1 hover:bg-red-500/10 rounded">
+          <button
+            type="button"
+            onClick={reset}
+            className="p-1 hover:bg-red-500/10 rounded"
+            aria-label="Dismiss error"
+          >
             <X className="w-4 h-4 text-red-500" />
           </button>
         </div>

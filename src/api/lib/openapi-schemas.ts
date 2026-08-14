@@ -1,18 +1,56 @@
 import { z } from "@hono/zod-openapi";
 
-export const SuccessResponse = z.object({
-  success: z.literal(true),
-  data: z.any(),
-});
+export const SuccessResponse = z
+  .object({
+    success: z.literal(true).openapi({ example: true }),
+    data: z
+      .any()
+      .openapi({ example: { id: "abc123uuid", name: "Example Item" } }),
+  })
+  .openapi({
+    example: {
+      success: true,
+      data: { id: "abc123uuid", name: "Example Item" },
+    },
+  });
 
-export const SimpleSuccessResponse = z.object({
-  success: z.literal(true),
-});
+export function createSuccessResponse<T extends z.ZodTypeAny>(
+  dataSchema: T,
+  exampleData?: z.infer<T>
+) {
+  const schema = z.object({
+    success: z.literal(true).openapi({ example: true }),
+    data: dataSchema,
+  });
 
-export const MessageResponse = z.object({
-  success: z.literal(true),
-  message: z.string(),
-});
+  if (exampleData !== undefined) {
+    return schema.openapi({
+      example: {
+        success: true,
+        data: exampleData,
+      },
+    });
+  }
+
+  return schema;
+}
+
+export const SimpleSuccessResponse = z
+  .object({
+    success: z.literal(true).openapi({ example: true }),
+  })
+  .openapi({ example: { success: true } });
+
+export const MessageResponse = z
+  .object({
+    success: z.literal(true).openapi({ example: true }),
+    message: z
+      .string()
+      .openapi({ example: "Operation completed successfully" }),
+  })
+  .openapi({
+    example: { success: true, message: "Operation completed successfully" },
+  });
 
 export const ErrorResponse = z.object({
   success: z.literal(false),

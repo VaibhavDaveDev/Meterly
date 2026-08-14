@@ -1,46 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Switch } from '../ui/switch';
-import { useToast } from '../../hooks/use-toast';
-import { apiClient } from '../../lib/api-client';
-import { Building2, MapPin, SunMedium, Zap, Activity, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Switch } from "../ui/switch";
+import { useToast } from "../../hooks/use-toast";
+import { apiClient } from "../../lib/api-client";
+import {
+  Building2,
+  MapPin,
+  SunMedium,
+  Zap,
+  Activity,
+  AlertCircle,
+} from "lucide-react";
 
 export function AddPropertyForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
+    name: "",
+    address: "",
     hasSolar: false,
   });
-  const [solarGenInitial, setSolarGenInitial] = useState('');
-  const [solarExportInitial, setSolarExportInitial] = useState('');
-  const [nameWarning, setNameWarning] = useState('');
+  const [solarGenInitial, setSolarGenInitial] = useState("");
+  const [solarExportInitial, setSolarExportInitial] = useState("");
+  const [nameWarning, setNameWarning] = useState("");
 
   useEffect(() => {
     const propertyName = formData.name.trim();
     if (!propertyName) {
-      setNameWarning('');
+      setNameWarning("");
       return;
     }
 
+    const controller = new AbortController();
+
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/properties/check-name?name=${encodeURIComponent(propertyName)}`);
+        const res = await fetch(
+          `/api/properties/check-name?name=${encodeURIComponent(propertyName)}`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) {
+          setNameWarning("");
+          return;
+        }
         const json = (await res.json()) as { exists: boolean };
         if (json.exists) {
-          setNameWarning(`You already have a property named "${propertyName}". You can still create this one, but consider using a different name to avoid confusion.`);
+          setNameWarning(
+            `You already have a property named "${propertyName}". You can still create this one, but consider using a different name to avoid confusion.`
+          );
         } else {
-          setNameWarning('');
+          setNameWarning("");
         }
       } catch (err) {
-        console.error('Error checking duplicate name:', err);
+        if (err instanceof Error && err.name === "AbortError") return;
+        console.error("Error checking duplicate name:", err);
+        setNameWarning("");
       }
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [formData.name]);
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -49,13 +72,17 @@ export function AddPropertyForm() {
 
     const payload = {
       ...formData,
+      name: formData.name.trim(),
       ...(formData.hasSolar && {
         solarGenInitial: parseFloat(solarGenInitial) || 0,
         solarExportInitial: parseFloat(solarExportInitial) || 0,
       }),
     };
 
-    const { data, error } = await apiClient.post<{ id: string }>('/properties', payload);
+    const { data, error } = await apiClient.post<{ id: string }>(
+      "/properties",
+      payload
+    );
 
     setIsLoading(false);
 
@@ -97,13 +124,15 @@ export function AddPropertyForm() {
             <Label htmlFor="name" className="flex items-center gap-2">
               Property Name <span className="text-red-500">*</span>
             </Label>
-            <Input 
-              id="name" 
-              placeholder="e.g. 14 Raj Nagar, Flat 2B" 
-              required 
+            <Input
+              id="name"
+              placeholder="e.g. 14 Raj Nagar, Flat 2B"
+              required
               maxLength={100}
               value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
             />
             {nameWarning && (
               <div className="text-sm text-amber-600 dark:text-amber-500 flex items-start gap-2 mt-1.5 font-medium">
@@ -111,19 +140,24 @@ export function AddPropertyForm() {
                 <span>{nameWarning}</span>
               </div>
             )}
-            <p className="text-sm text-muted-foreground">A recognizable name for your dashboard.</p>
+            <p className="text-sm text-muted-foreground">
+              A recognizable name for your dashboard.
+            </p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="address" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-muted-foreground" /> Address (Optional)
+              <MapPin className="w-4 h-4 text-muted-foreground" /> Address
+              (Optional)
             </Label>
-            <Input 
-              id="address" 
+            <Input
+              id="address"
               placeholder="Full address details"
               maxLength={200}
               value={formData.address}
-              onChange={e => setFormData({ ...formData, address: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, address: e.target.value })
+              }
             />
           </div>
         </div>
@@ -131,7 +165,10 @@ export function AddPropertyForm() {
         <div className="space-y-4 rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-base flex items-center gap-2">
+              <Label
+                htmlFor="hasSolar"
+                className="text-base flex items-center gap-2"
+              >
                 <SunMedium className="w-5 h-5 text-amber-500" />
                 Solar Installation
               </Label>
@@ -139,9 +176,12 @@ export function AddPropertyForm() {
                 Does this property have solar panels that export to the grid?
               </p>
             </div>
-            <Switch 
+            <Switch
+              id="hasSolar"
               checked={formData.hasSolar}
-              onCheckedChange={checked => setFormData({ ...formData, hasSolar: checked })}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, hasSolar: checked })
+              }
             />
           </div>
 
@@ -149,39 +189,50 @@ export function AddPropertyForm() {
             <div className="pt-4 border-t mt-4 space-y-4 animate-in fade-in slide-in-from-top-4">
               <div className="rounded-md bg-amber-500/10 p-4 border border-amber-500/20">
                 <p className="text-sm text-amber-600 dark:text-amber-400">
-                  Because this is a solar property, we need the <strong>current</strong> readings from your solar meters. These will act as the starting point (zero baseline) for your first bill.
+                  Because this is a solar property, we need the{" "}
+                  <strong>current</strong> readings from your solar meters.
+                  These will act as the starting point (zero baseline) for your
+                  first bill.
                 </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="solarGenInitial" className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-primary" /> Initial Solar Generation (Units)
+                  <Label
+                    htmlFor="solarGenInitial"
+                    className="flex items-center gap-2"
+                  >
+                    <Zap className="w-4 h-4 text-primary" /> Initial Solar
+                    Generation (Units)
                   </Label>
-                  <Input 
-                    id="solarGenInitial" 
+                  <Input
+                    id="solarGenInitial"
                     type="number"
                     min="0"
                     max={9999999}
                     step="0.01"
                     required={formData.hasSolar}
                     value={solarGenInitial}
-                    onChange={e => setSolarGenInitial(e.target.value)}
+                    onChange={(e) => setSolarGenInitial(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="solarExportInitial" className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-500" /> Initial Export to Grid (Units)
+                  <Label
+                    htmlFor="solarExportInitial"
+                    className="flex items-center gap-2"
+                  >
+                    <Activity className="w-4 h-4 text-emerald-500" /> Initial
+                    Export to Grid (Units)
                   </Label>
-                  <Input 
-                    id="solarExportInitial" 
+                  <Input
+                    id="solarExportInitial"
                     type="number"
                     min="0"
                     max={9999999}
                     step="0.01"
                     required={formData.hasSolar}
                     value={solarExportInitial}
-                    onChange={e => setSolarExportInitial(e.target.value)}
+                    onChange={(e) => setSolarExportInitial(e.target.value)}
                   />
                 </div>
               </div>
@@ -190,11 +241,15 @@ export function AddPropertyForm() {
         </div>
 
         <div className="flex justify-end space-x-4">
-          <Button variant="outline" type="button" onClick={() => window.history.back()}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => window.history.back()}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading || !formData.name}>
-            {isLoading ? 'Saving...' : 'Add Property'}
+          <Button type="submit" disabled={isLoading || !formData.name.trim()}>
+            {isLoading ? "Saving..." : "Add Property"}
           </Button>
         </div>
       </form>
