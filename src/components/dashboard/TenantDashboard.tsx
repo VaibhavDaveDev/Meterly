@@ -29,6 +29,12 @@ import { Badge } from "../ui/badge";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { ArchivePropertyModal } from "../tenant/ArchivePropertyModal";
 
+interface TenancyActionResponse {
+  success: boolean;
+  error?: { message: string };
+  data?: { warning?: string };
+}
+
 export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
   const [showPastTenancies, setShowPastTenancies] = useState(false);
   const { toast } = useToast();
@@ -42,27 +48,35 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
   } | null>(null);
 
   const [pastTenancies, setPastTenancies] = useState(stats.pastTenancies || []);
-  const [archivedTenancies, setArchivedTenancies] = useState(stats.archivedTenancies || []);
+  const [archivedTenancies, setArchivedTenancies] = useState(
+    stats.archivedTenancies || []
+  );
 
   const handleAction = async (
     tenancyId: string,
     action: "archive" | "unarchive"
   ) => {
     // Find tenancy for optimistic update and toast message
-    const tenancy = pastTenancies.find(t => t.tenancyId === tenancyId) || archivedTenancies.find(t => t.tenancyId === tenancyId);
-    
+    const tenancy =
+      pastTenancies.find((t) => t.tenancyId === tenancyId) ||
+      archivedTenancies.find((t) => t.tenancyId === tenancyId);
+
     // Optimistic UI Update
     if (action === "archive") {
-      const t = pastTenancies.find(t => t.tenancyId === tenancyId);
+      const t = pastTenancies.find((t) => t.tenancyId === tenancyId);
       if (t) {
-        setPastTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-        setArchivedTenancies(prev => [...prev, t]);
+        setPastTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
+        setArchivedTenancies((prev) => [...prev, t]);
       }
     } else {
-      const t = archivedTenancies.find(t => t.tenancyId === tenancyId);
+      const t = archivedTenancies.find((t) => t.tenancyId === tenancyId);
       if (t) {
-        setArchivedTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-        setPastTenancies(prev => [...prev, t]);
+        setArchivedTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
+        setPastTenancies((prev) => [...prev, t]);
       }
     }
 
@@ -70,19 +84,27 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
       const res = await fetch(`/api/tenancies/${tenancyId}/${action}`, {
         method: "PATCH",
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = (await res.json()) as any;
-      if (!res.ok) throw new Error(data.error?.message || "Failed to update");
-      
+      if (res.status === 401) {
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+      const isJson = res.headers
+        .get("content-type")
+        ?.includes("application/json");
+      const data = isJson
+        ? ((await res.json()) as TenancyActionResponse)
+        : null;
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to update");
+
       let description = "Action successful.";
       if (action === "archive") {
-        description = tenancy?.isPropertyDeleted 
-          ? "Records deleted and property hidden." 
+        description = tenancy?.isPropertyDeleted
+          ? "Records deleted and property hidden."
           : "Property hidden. Restore it anytime from 'Hidden Properties'.";
       } else {
         description = "Property restored to your history.";
       }
-      
+
       toast({
         title: "Success",
         description,
@@ -91,28 +113,42 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
       const err = e as Error;
       // Revert optimistic update
       if (action === "archive") {
-        const t = archivedTenancies.find(t => t.tenancyId === tenancyId) || tenancy;
+        const t =
+          archivedTenancies.find((t) => t.tenancyId === tenancyId) || tenancy;
         if (t) {
-          setArchivedTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-          setPastTenancies(prev => [...prev, t]);
+          setArchivedTenancies((prev) =>
+            prev.filter((p) => p.tenancyId !== tenancyId)
+          );
+          setPastTenancies((prev) => [...prev, t]);
         }
       } else {
-        const t = pastTenancies.find(t => t.tenancyId === tenancyId) || tenancy;
+        const t =
+          pastTenancies.find((t) => t.tenancyId === tenancyId) || tenancy;
         if (t) {
-          setPastTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-          setArchivedTenancies(prev => [...prev, t]);
+          setPastTenancies((prev) =>
+            prev.filter((p) => p.tenancyId !== tenancyId)
+          );
+          setArchivedTenancies((prev) => [...prev, t]);
         }
       }
 
-      if (err.message === "Not Found" || err.message.includes("permanently removed")) {
+      if (
+        err.message === "Not Found" ||
+        err.message.includes("permanently removed")
+      ) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "This record has been permanently removed and cannot be restored.",
+          description:
+            "This record has been permanently removed and cannot be restored.",
         });
         // Remove from UI completely
-        setArchivedTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
-        setPastTenancies(prev => prev.filter(p => p.tenancyId !== tenancyId));
+        setArchivedTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
+        setPastTenancies((prev) =>
+          prev.filter((p) => p.tenancyId !== tenancyId)
+        );
       } else {
         toast({
           variant: "destructive",
@@ -286,258 +322,7 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
       {momRows && <MomComparisonTable rows={momRows} />}
 
       {/* LEVEL 2 — Charts */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-        <ChartCard
-          id="tenant-consumption-trend"
-          title="Monthly Consumption Trend"
-          data={stats.unitsConsumed}
-        >
-          {(slicedData) => (
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              minHeight={0}
-            >
-              <AreaChart
-                data={slicedData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="var(--border)"
-                />
-                <XAxis
-                  dataKey="month"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={(val: unknown) => `${val} kWh`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="units"
-                  name="Units Consumed"
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  fillOpacity={0.08}
-                  fill="var(--primary)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        <ChartCard
-          id="tenant-bill-trend"
-          title="Monthly Bill Trend"
-          data={stats.monthlyTrend}
-        >
-          {(slicedData) => (
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              minHeight={0}
-            >
-              <BarChart
-                data={slicedData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="var(--border)"
-                />
-                <XAxis
-                  dataKey="month"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(val) => `₹${val}`}
-                />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={(val: unknown) => formatCurrency(Number(val))}
-                />
-                <Bar
-                  dataKey="amount"
-                  name="Bill Amount"
-                  fill="var(--primary)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        <ChartCard
-          id="tenant-consumption-vs-bill"
-          title="Consumption vs Bill"
-          data={stats.consumptionVsBill}
-        >
-          {(slicedData) => (
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              minHeight={0}
-            >
-              <ComposedChart
-                data={slicedData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="var(--border)"
-                />
-                <XAxis
-                  dataKey="month"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                  dy={10}
-                />
-                <YAxis
-                  yAxisId="left"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(v) => `${v}`}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                  tickFormatter={(v) => `₹${v}`}
-                />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={(val: unknown, name: unknown) =>
-                    name === "Bill Amount"
-                      ? formatCurrency(Number(val))
-                      : `${val} kWh`
-                  }
-                />
-                <Legend
-                  iconType="circle"
-                  wrapperStyle={{
-                    fontSize: "12px",
-                    color: "var(--foreground)",
-                  }}
-                />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="units"
-                  name="Units Consumed"
-                  stroke="var(--primary)"
-                  strokeWidth={2}
-                  dot={{ r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, strokeWidth: 0 }}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="amount"
-                  name="Bill Amount"
-                  stroke="#94a3b8"
-                  strokeWidth={2}
-                  dot={{ r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, strokeWidth: 0 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        {stats.solarSavings && stats.solarSavings.length > 0 && (
-          <ChartCard
-            id="tenant-solar-savings"
-            title="Solar Savings Impact"
-            data={stats.solarSavings}
-          >
-            {(slicedData) => (
-              <ResponsiveContainer
-                width="100%"
-                height="100%"
-                minWidth={0}
-                minHeight={0}
-              >
-                <AreaChart
-                  data={slicedData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    vertical={false}
-                    stroke="var(--border)"
-                  />
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                    dy={10}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
-                    tickFormatter={(val) => `₹${val}`}
-                  />
-                  <Tooltip
-                    contentStyle={TOOLTIP_STYLE}
-                    formatter={(val: unknown) => formatCurrency(Number(val))}
-                  />
-                  <Legend
-                    iconType="circle"
-                    wrapperStyle={{
-                      fontSize: "12px",
-                      color: "var(--foreground)",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="withoutSolar"
-                    name="Without Solar"
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    fill="none"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="actual"
-                    name="Actual Bill"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    fillOpacity={0}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
-        )}
-      </div>
+      <TenantCharts stats={stats} />
 
       {/* Past Tenancies Accordion */}
       {(pastTenancies.length > 0 || archivedTenancies.length > 0) && (
@@ -571,6 +356,264 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
   );
 }
 
+function TenantCharts({ stats }: { stats: TenantDashboardStats }) {
+  return (
+    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+      <ChartCard
+        id="tenant-consumption-trend"
+        title="Monthly Consumption Trend"
+        data={stats.unitsConsumed}
+      >
+        {(slicedData) => (
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+          >
+            <AreaChart
+              data={slicedData}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+              />
+              <XAxis
+                dataKey="month"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                dy={10}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+              />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                formatter={(val: unknown) => `${val} kWh`}
+              />
+              <Area
+                type="monotone"
+                dataKey="units"
+                name="Units Consumed"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                fillOpacity={0.08}
+                fill="var(--primary)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      <ChartCard
+        id="tenant-bill-trend"
+        title="Monthly Bill Trend"
+        data={stats.monthlyTrend}
+      >
+        {(slicedData) => (
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+          >
+            <BarChart
+              data={slicedData}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+              />
+              <XAxis
+                dataKey="month"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                dy={10}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                tickFormatter={(val) => `₹${val}`}
+              />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                formatter={(val: unknown) => formatCurrency(Number(val))}
+              />
+              <Bar
+                dataKey="amount"
+                name="Bill Amount"
+                fill="var(--primary)"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      <ChartCard
+        id="tenant-consumption-vs-bill"
+        title="Consumption vs Bill"
+        data={stats.consumptionVsBill}
+      >
+        {(slicedData) => (
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+          >
+            <ComposedChart
+              data={slicedData}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+              />
+              <XAxis
+                dataKey="month"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                dy={10}
+              />
+              <YAxis
+                yAxisId="left"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                tickFormatter={(v) => `${v}`}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                tickFormatter={(v) => `₹${v}`}
+              />
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                formatter={(val: unknown, name: unknown) =>
+                  name === "Bill Amount"
+                    ? formatCurrency(Number(val))
+                    : `${val} kWh`
+                }
+              />
+              <Legend
+                iconType="circle"
+                wrapperStyle={{
+                  fontSize: "12px",
+                  color: "var(--foreground)",
+                }}
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="units"
+                name="Units Consumed"
+                stroke="var(--primary)"
+                strokeWidth={2}
+                dot={{ r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, strokeWidth: 0 }}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="amount"
+                name="Bill Amount"
+                stroke="#94a3b8"
+                strokeWidth={2}
+                dot={{ r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, strokeWidth: 0 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+
+      {stats.solarSavings && stats.solarSavings.length > 0 && (
+        <ChartCard
+          id="tenant-solar-savings"
+          title="Solar Savings Impact"
+          data={stats.solarSavings}
+        >
+          {(slicedData) => (
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              minWidth={0}
+              minHeight={0}
+            >
+              <AreaChart
+                data={slicedData}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="var(--border)"
+                />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                  dy={10}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+                  tickFormatter={(val) => `₹${val}`}
+                />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(val: unknown) => formatCurrency(Number(val))}
+                />
+                <Legend
+                  iconType="circle"
+                  wrapperStyle={{
+                    fontSize: "12px",
+                    color: "var(--foreground)",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="withoutSolar"
+                  name="Without Solar"
+                  stroke="#94a3b8"
+                  strokeDasharray="4 4"
+                  fill="none"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="actual"
+                  name="Actual Bill"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  fillOpacity={0.08}
+                  fill="#10b981"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+      )}
+    </div>
+  );
+}
+
 function PastTenanciesAccordion({
   pastTenancies,
   archivedTenancies,
@@ -584,7 +627,12 @@ function PastTenanciesAccordion({
   showPastTenancies: boolean;
   setShowPastTenancies: (val: boolean) => void;
   onAction: (tenancyId: string, action: "archive" | "unarchive") => void;
-  onRequestModal: (tenancy: { tenancyId: string; propertyName: string; isPropertyDeleted: boolean; allPaid: boolean }) => void;
+  onRequestModal: (tenancy: {
+    tenancyId: string;
+    propertyName: string;
+    isPropertyDeleted: boolean;
+    allPaid: boolean;
+  }) => void;
 }) {
   const [inlineConfirmId, setInlineConfirmId] = useState<string | null>(null);
 
@@ -632,7 +680,9 @@ function PastTenanciesAccordion({
               </div>
               {inlineConfirmId === pt.tenancyId ? (
                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline-block">Hide this property from your history?</span>
+                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline-block">
+                    Hide this property from your history?
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setInlineConfirmId(null)}
@@ -684,7 +734,10 @@ function PastTenanciesAccordion({
                 <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Hidden Properties
                 </div>
-                <Badge variant="muted" className="text-[10px] font-numbers leading-none px-1.5 py-0.5">
+                <Badge
+                  variant="muted"
+                  className="text-[10px] font-numbers leading-none px-1.5 py-0.5"
+                >
                   {archivedTenancies.length}
                 </Badge>
               </div>

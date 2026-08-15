@@ -21,8 +21,6 @@ import { createNotification } from "../lib/notifications";
 import { formatCurrency } from "../../lib/format";
 import type { Bindings, Variables } from "../app";
 
-import type { Database } from "../../db";
-import type { Property, BillingPeriod } from "../../types/db";
 import {
   SuccessResponse,
   MessageResponse,
@@ -37,88 +35,7 @@ const readingsRouter = new OpenAPIHono<{
 
 readingsRouter.use("*", authMiddleware);
 
-async function resolveAndValidateStartValues(
-  db: Database,
-  property: Property,
-  period: BillingPeriod,
-  data: {
-    allowRollover?: boolean;
-    importEnd: number;
-    solarGenerationEnd?: number;
-    exportEnd?: number;
-  }
-) {
-  const [previousPeriod] = await db
-    .select()
-    .from(billingPeriods)
-    .where(
-      and(
-        eq(billingPeriods.propertyId, period.propertyId),
-        lt(billingPeriods.periodMonth, period.periodMonth)
-      )
-    )
-    .orderBy(desc(billingPeriods.periodMonth))
-    .limit(1);
-
-  let startValues = {
-    solarGenerationStart: property.solarGenInitial || 0,
-    exportStart: property.solarExportInitial || 0,
-    importStart: 0,
-  };
-
-  if (previousPeriod) {
-    const [prevReading] = await db
-      .select()
-      .from(meterReadings)
-      .where(eq(meterReadings.billingPeriodId, previousPeriod.id))
-      .limit(1);
-    if (prevReading) {
-      startValues = {
-        solarGenerationStart: prevReading.solarGenerationEnd,
-        exportStart: prevReading.exportEnd,
-        importStart: prevReading.importEnd,
-      };
-    }
-  }
-
-  if (!data.allowRollover) {
-    if (data.importEnd < startValues.importStart) {
-      return {
-        error: {
-          code: "READING_BELOW_PREVIOUS",
-          message: "Import reading cannot be lower than the previous reading",
-        },
-      };
-    }
-    if (property.hasSolar) {
-      if (
-        data.solarGenerationEnd !== undefined &&
-        data.solarGenerationEnd < startValues.solarGenerationStart
-      ) {
-        return {
-          error: {
-            code: "READING_BELOW_PREVIOUS",
-            message:
-              "Solar Generation reading cannot be lower than the previous reading",
-          },
-        };
-      }
-      if (
-        data.exportEnd !== undefined &&
-        data.exportEnd < startValues.exportStart
-      ) {
-        return {
-          error: {
-            code: "READING_BELOW_PREVIOUS",
-            message: "Export reading cannot be lower than the previous reading",
-          },
-        };
-      }
-    }
-  }
-
-  return { startValues };
-}
+import { resolveAndValidateStartValues } from "../lib/billing-engine";
 
 const SubmitReadingSchema = z.object({
   solarGenerationEnd: z.number().min(0).default(0),
@@ -620,14 +537,14 @@ readingsRouter.openapi(submitReadingsRoute, async (c) => {
     period,
     data
   );
-  if (startValidation.error) {
+  if (!startValidation.ok) {
     await db.run(
       sql`UPDATE reading_daily_count SET count = count - 1 WHERE id = ${counterId}`
     );
     return c.json(
       {
         success: false as const,
-        error: startValidation.error as { code: string; message: string },
+        error: startValidation.error,
       },
       400
     );
@@ -1047,11 +964,11 @@ readingsRouter.openapi(editReadingsRoute, async (c) => {
       exportEnd: newValues.exportEnd,
     }
   );
-  if (startValidation.error) {
+  if (!startValidation.ok) {
     return c.json(
       {
         success: false as const,
-        error: startValidation.error as { code: string; message: string },
+        error: startValidation.error,
       },
       400
     );

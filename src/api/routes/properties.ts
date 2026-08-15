@@ -24,6 +24,7 @@ import {
   SimpleSuccessResponse,
   ErrorResponse,
   IdParam,
+  createSuccessResponse,
 } from "../lib/openapi-schemas";
 import { csvCell } from "../lib/csv";
 
@@ -89,6 +90,72 @@ propertiesRouter.openapi(checkNameRoute, async (c) => {
   return c.json({ exists: !!existing }, 200);
 });
 
+const dateSchema = z.union([z.string(), z.date()]).nullable().optional();
+
+const PropertySchema = z.object({
+  id: z.string(),
+  ownerId: z.string(),
+  name: z.string(),
+  address: z.string().nullable(),
+  hasSolar: z.boolean().nullable(),
+  solarGenInitial: z.number().nullable(),
+  solarExportInitial: z.number().nullable(),
+  importInitial: z.number().nullable(),
+  solarActivatedAt: dateSchema,
+  readingsRequireApproval: z.boolean().nullable(),
+  soloMode: z.boolean().nullable(),
+  soloModeChangedAt: dateSchema,
+  createdAt: dateSchema,
+  updatedAt: dateSchema,
+  archivedAt: dateSchema,
+});
+
+const PropertyResponseSchema = createSuccessResponse(
+  PropertySchema.openapi({
+    example: {
+      id: "abc123uuid",
+      ownerId: "owner-uuid",
+      name: "Shop 1",
+      address: null,
+      hasSolar: false,
+      solarGenInitial: 0,
+      solarExportInitial: 0,
+      importInitial: 0,
+      solarActivatedAt: null,
+      readingsRequireApproval: false,
+      soloMode: false,
+      soloModeChangedAt: null,
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    },
+  })
+);
+
+const OwnedPropertySchema = PropertySchema.extend({
+  tenantCount: z.number(),
+  currentPeriodStatus: z.string().nullable(),
+  currentPeriodMonth: z.string().nullable(),
+  lastBillTotal: z.number().nullable(),
+  lastBillMonth: z.string().nullable(),
+  lastBillPaidCount: z.number().nullable(),
+  lastBillTenantCount: z.number().nullable(),
+});
+
+const TenantPropertySchema = PropertySchema.extend({
+  splitPercentage: z.number().nullable(),
+  tenantCount: z.number(),
+});
+
+const ListPropertiesResponseSchema = createSuccessResponse(
+  z
+    .object({
+      owned: z.array(OwnedPropertySchema),
+      tenant: z.array(TenantPropertySchema),
+      tenantPast: z.array(PropertySchema),
+    })
+    .openapi({ example: { owned: [], tenant: [], tenantPast: [] } })
+);
+
 const listPropertiesRoute = createRoute({
   method: "get",
   path: "/",
@@ -102,7 +169,7 @@ const listPropertiesRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SuccessResponse } },
+      content: { "application/json": { schema: ListPropertiesResponseSchema } },
       description: "Properties retrieved",
     },
   },
@@ -319,7 +386,7 @@ const getPropertyRoute = createRoute({
   },
   responses: {
     200: {
-      content: { "application/json": { schema: SuccessResponse } },
+      content: { "application/json": { schema: PropertyResponseSchema } },
       description: "Property retrieved",
     },
     400: {

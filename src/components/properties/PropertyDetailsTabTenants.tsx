@@ -1,12 +1,19 @@
-import { useState, useEffect } from 'react';
-import type { Tenancy } from '../../types/db';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { DataTable } from '../ui/data-table';
-import { apiClient } from '../../lib/api-client';
-import { useToast } from '../../hooks/use-toast';
-import { EmptyState } from '../common/LoadingStates';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { useState, useEffect } from "react";
+import type { Tenancy } from "../../types/db";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { DataTable } from "../ui/data-table";
+import { apiClient } from "../../lib/api-client";
+import { useToast } from "../../hooks/use-toast";
+import { EmptyState } from "../common/LoadingStates";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 
 interface PropertyDetailsTabTenantsProps {
   propertyId: string;
@@ -20,7 +27,7 @@ interface PropertyDetailsTabTenantsProps {
 function Avatar({ text }: { text: string | null }) {
   return (
     <span className="avatar-circle" aria-hidden="true">
-      {(text || '?').charAt(0).toUpperCase()}
+      {(text || "?").charAt(0).toUpperCase()}
     </span>
   );
 }
@@ -41,43 +48,54 @@ export function PropertyDetailsTabTenants({
 
   const [tenantToRemove, setTenantToRemove] = useState<TenancyRow | null>(null);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
-  const [removalReason, setRemovalReason] = useState('');
+  const [removalReason, setRemovalReason] = useState("");
   const [isRemoving, setIsRemoving] = useState(false);
 
-  const activeTenancies = tenancies.filter(t => t.status === 'active' || t.status === 'invited');
+  const activeTenancies = tenancies.filter(
+    (t) => t.status === "active" || t.status === "invited"
+  );
 
   const handleRemoveTenant = (tenancy: TenancyRow) => {
     setTenantToRemove(tenancy);
-    setRemovalReason('');
+    setRemovalReason("");
     setShowRemoveDialog(true);
   };
 
   const confirmRemoveTenant = async () => {
     if (!tenantToRemove) return;
     setIsRemoving(true);
-    
-    const { error } = await apiClient.patch(`/tenancies/${tenantToRemove.id}/remove`, {
-      removalReason: removalReason || undefined
-    });
-    
+
+    const { error } = await apiClient.patch(
+      `/tenancies/${tenantToRemove.id}/remove`,
+      {
+        removalReason: removalReason || undefined,
+      }
+    );
+
     setIsRemoving(false);
     setShowRemoveDialog(false);
-    
+
     if (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
       return;
     }
-    
-    toast({ title: 'Success', description: 'Tenant removed successfully.' });
+
+    toast({ title: "Success", description: "Tenant removed successfully." });
     window.location.reload();
   };
 
   useEffect(() => {
     if (!isEditing) {
       const initialSplits: Record<string, number> = {};
-      const equalShare = activeTenancies.length > 0 ? 100 / activeTenancies.length : 0;
-      activeTenancies.forEach(t => {
-        initialSplits[t.id] = t.splitPercentage ?? Number(equalShare.toFixed(2));
+      const equalShare =
+        activeTenancies.length > 0 ? 100 / activeTenancies.length : 0;
+      activeTenancies.forEach((t) => {
+        initialSplits[t.id] =
+          t.splitPercentage ?? Number(equalShare.toFixed(2));
       });
       setSplits(initialSplits);
     }
@@ -85,7 +103,7 @@ export function PropertyDetailsTabTenants({
 
   const handleSplitChange = (id: string, value: string) => {
     const num = parseFloat(value);
-    if (!isNaN(num)) setSplits(prev => ({ ...prev, [id]: num }));
+    if (!isNaN(num)) setSplits((prev) => ({ ...prev, [id]: num }));
   };
 
   const totalSplit = Object.values(splits).reduce((sum, val) => sum + val, 0);
@@ -94,46 +112,76 @@ export function PropertyDetailsTabTenants({
   const handleSaveSplits = async () => {
     if (!isValidSplit) return;
     setIsSaving(true);
-    const { error } = await apiClient.patch(`/properties/${propertyId}/tenancies/splits`, splits);
+    const { error } = await apiClient.patch(
+      `/properties/${propertyId}/tenancies/splits`,
+      splits
+    );
     setIsSaving(false);
     if (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
       return;
     }
-    toast({ title: 'Success', description: 'Splits updated successfully.' });
+    toast({ title: "Success", description: "Splits updated successfully." });
     setIsEditing(false);
     window.location.reload();
   };
 
   // Badge variant per status
-  function statusVariant(status: string): 'active' | 'invited' | 'muted' {
-    if (status === 'active') return 'active';
-    if (status === 'invited') return 'invited';
-    return 'muted';
+  function statusVariant(status: string): "active" | "invited" | "muted" {
+    if (status === "active") return "active";
+    if (status === "invited") return "invited";
+    return "muted";
   }
 
-  const tableRows: TenancyRow[] = tenancies.map(t => ({ ...t } as TenancyRow));
+  const tableRows: TenancyRow[] = tenancies.map(
+    (t) => ({ ...t }) as TenancyRow
+  );
 
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-surface overflow-hidden">
         {/* Card header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h3 className="text-base font-semibold text-foreground">Tenants &amp; Splits</h3>
+          <h3 className="text-base font-semibold text-foreground">
+            Tenants &amp; Splits
+          </h3>
           {isOwner && activeTenancies.length > 0 && (
             <div className="flex items-center gap-2">
               {isEditing ? (
                 <>
-                  <span className={`text-sm font-numbers ${isValidSplit ? 'text-emerald-500' : 'text-red-500 font-bold'}`}>
-                    {totalSplit.toFixed(2)}% {isValidSplit ? '✓' : '— must equal 100%'}
+                  <span
+                    className={`text-sm font-numbers ${isValidSplit ? "text-emerald-500" : "text-red-500 font-bold"}`}
+                  >
+                    {totalSplit.toFixed(2)}%{" "}
+                    {isValidSplit ? "✓" : "— must equal 100%"}
                   </span>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
-                  <Button size="sm" onClick={handleSaveSplits} disabled={!isValidSplit || isSaving}>
-                    {isSaving ? 'Saving...' : 'Save Splits'}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSplits}
+                    disabled={!isValidSplit || isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save Splits"}
                   </Button>
                 </>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>Edit Splits</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Edit Splits
+                </Button>
               )}
             </div>
           )}
@@ -142,7 +190,7 @@ export function PropertyDetailsTabTenants({
         {/* Table */}
         {isLoadingTenants ? (
           <div className="p-6 space-y-3">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="skeleton h-10 rounded-lg" />
             ))}
           </div>
@@ -151,7 +199,13 @@ export function PropertyDetailsTabTenants({
             <EmptyState
               title="No tenants yet"
               description="No tenants have been added to this property."
-              action={isOwner && <Button variant="outline" onClick={onInviteClick}>Invite your first tenant</Button>}
+              action={
+                isOwner && (
+                  <Button variant="outline" onClick={onInviteClick}>
+                    Invite your first tenant
+                  </Button>
+                )
+              }
             />
           </div>
         ) : (
@@ -159,19 +213,21 @@ export function PropertyDetailsTabTenants({
             data={tableRows}
             columns={[
               {
-                header: 'Tenant',
+                header: "Tenant",
                 accessor: (row) => {
-                  const displayName = row.tenantName ?? row.inviteEmail ?? '?';
+                  const displayName = row.tenantName ?? row.inviteEmail ?? "?";
                   return (
                     <div className="flex items-center gap-2.5">
                       <Avatar text={displayName} />
-                      <span className="text-sm font-medium truncate">{displayName}</span>
+                      <span className="text-sm font-medium truncate">
+                        {displayName}
+                      </span>
                     </div>
                   );
                 },
               },
               {
-                header: 'Status',
+                header: "Status",
                 accessor: (row) => (
                   <Badge variant={statusVariant(row.status)}>
                     {row.status}
@@ -179,24 +235,37 @@ export function PropertyDetailsTabTenants({
                 ),
               },
               {
-                header: 'Split',
+                header: "Split",
                 accessor: (row) => {
-                  if (isEditing && (row.status === 'active' || row.status === 'invited')) {
+                  if (
+                    isEditing &&
+                    (row.status === "active" || row.status === "invited")
+                  ) {
                     return (
                       <div className="flex items-center gap-2 justify-end">
                         <input
                           type="range"
-                          min="0" max="100" step="0.01"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          aria-label={`Split percentage for ${row.tenantName ?? row.inviteEmail ?? "tenant"}`}
                           value={splits[row.id] ?? 0}
-                          onChange={(e) => handleSplitChange(row.id, e.target.value)}
+                          onChange={(e) =>
+                            handleSplitChange(row.id, e.target.value)
+                          }
                           className="w-24 accent-primary h-1.5 bg-muted rounded-lg appearance-none cursor-pointer"
                         />
                         <input
                           type="number"
-                          min="0" max="100" step="0.01"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          aria-label={`Split percentage value for ${row.tenantName ?? row.inviteEmail ?? "tenant"}`}
                           className="w-16 h-7 text-right border border-border rounded px-2 text-sm bg-surface font-numbers"
                           value={splits[row.id] ?? 0}
-                          onChange={(e) => handleSplitChange(row.id, e.target.value)}
+                          onChange={(e) =>
+                            handleSplitChange(row.id, e.target.value)
+                          }
                         />
                         <span className="text-muted-foreground text-sm">%</span>
                       </div>
@@ -204,36 +273,45 @@ export function PropertyDetailsTabTenants({
                   }
                   return (
                     <span className="font-numbers font-medium">
-                      {splits[row.id] ?? row.splitPercentage ?? '—'}%
+                      {splits[row.id] ?? row.splitPercentage ?? "—"}%
                     </span>
                   );
                 },
-                align: 'right',
+                align: "right",
               },
               {
-                header: 'Joined',
+                header: "Joined",
                 accessor: (row) =>
-                row.invitedAt
-                  ? new Date(row.invitedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                  : '—',
-                className: 'text-muted-foreground',
+                  row.invitedAt
+                    ? new Date(row.invitedAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "—",
+                className: "text-muted-foreground",
               },
               {
-                header: '',
+                header: "",
                 accessor: (row) => {
                   if (!isOwner || isEditing) return null;
 
                   return (
                     <div className="flex items-center gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      {row.status === 'invited' && (
+                      {row.status === "invited" && (
                         <>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 text-xs"
                             onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/invite/${row.inviteToken}`);
-                              toast({ title: 'Copied', description: 'Invite link copied to clipboard.' });
+                              navigator.clipboard.writeText(
+                                `${window.location.origin}/invite/${row.inviteToken}`
+                              );
+                              toast({
+                                title: "Copied",
+                                description: "Invite link copied to clipboard.",
+                              });
                             }}
                           >
                             Copy link
@@ -243,11 +321,21 @@ export function PropertyDetailsTabTenants({
                             size="sm"
                             className="h-8 text-xs"
                             onClick={async () => {
-                              const { error } = await apiClient.post(`/tenancies/${row.id}/resend-invite`, {});
+                              const { error } = await apiClient.post(
+                                `/tenancies/${row.id}/resend-invite`,
+                                {}
+                              );
                               if (error) {
-                                toast({ variant: 'destructive', title: 'Error', description: error.message });
+                                toast({
+                                  variant: "destructive",
+                                  title: "Error",
+                                  description: error.message,
+                                });
                               } else {
-                                toast({ title: 'Sent', description: 'Invite email resent.' });
+                                toast({
+                                  title: "Sent",
+                                  description: "Invite email resent.",
+                                });
                               }
                             }}
                           >
@@ -256,7 +344,8 @@ export function PropertyDetailsTabTenants({
                         </>
                       )}
 
-                      {(row.status === 'active' || row.status === 'invited') && (
+                      {(row.status === "active" ||
+                        row.status === "invited") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -269,7 +358,7 @@ export function PropertyDetailsTabTenants({
                     </div>
                   );
                 },
-                align: 'right',
+                align: "right",
               },
             ]}
           />
@@ -278,7 +367,9 @@ export function PropertyDetailsTabTenants({
         {/* Invite another */}
         {isOwner && tenancies.length > 0 && (
           <div className="px-6 py-4 border-t border-border flex justify-end">
-            <Button variant="outline" size="sm" onClick={onInviteClick}>Invite another tenant</Button>
+            <Button variant="outline" size="sm" onClick={onInviteClick}>
+              Invite another tenant
+            </Button>
           </div>
         )}
       </div>
@@ -288,19 +379,32 @@ export function PropertyDetailsTabTenants({
           <DialogHeader>
             <DialogTitle>Remove Tenant</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove this tenant? Their active tenancy status will end.
+              Are you sure you want to remove{" "}
+              <strong>
+                {tenantToRemove
+                  ? (tenantToRemove.tenantName ??
+                    tenantToRemove.inviteEmail ??
+                    "this tenant")
+                  : "this tenant"}
+              </strong>{" "}
+              from this property? Their active tenancy will end. Past bills
+              remain on record.
             </DialogDescription>
           </DialogHeader>
 
-          {tenantToRemove && (Number(tenantToRemove.unpaidBills) > 0) && (
+          {tenantToRemove && Number(tenantToRemove.unpaidBills) > 0 && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-500 font-medium">
-              Warning: This tenant has {String(tenantToRemove.unpaidBills)} unpaid bill(s). 
-              Removing them will not delete the bills from your records.
+              Warning: This tenant has {String(tenantToRemove.unpaidBills)}{" "}
+              unpaid bill(s). Removing them will not delete the bills from your
+              records.
             </div>
           )}
 
           <div className="space-y-2 py-2">
-            <label htmlFor="removal-reason" className="text-sm font-medium text-foreground">
+            <label
+              htmlFor="removal-reason"
+              className="text-sm font-medium text-foreground"
+            >
               Removal Reason (Optional)
             </label>
             <textarea
@@ -317,9 +421,20 @@ export function PropertyDetailsTabTenants({
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setShowRemoveDialog(false)}>Cancel</Button>
-            <Button type="button" variant="destructive" onClick={confirmRemoveTenant} disabled={isRemoving}>
-              {isRemoving ? 'Removing...' : 'Remove Tenant'}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowRemoveDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmRemoveTenant}
+              disabled={isRemoving}
+            >
+              {isRemoving ? "Removing..." : "Remove Tenant"}
             </Button>
           </DialogFooter>
         </DialogContent>

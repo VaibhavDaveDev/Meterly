@@ -41,9 +41,7 @@ export const tenancies = sqliteTable(
     archivedByTenantAt: integer("archived_by_tenant_at", { mode: "timestamp" }),
 
     // Reason recorded when a tenant is removed by owner
-    removalReason: text("removal_reason", {
-      enum: ["moved_out", "lease_ended", "evicted", "other"],
-    }),
+    removalReason: text("removal_reason"),
   },
   (table) => [
     index("idx_tenancies_property_status").on(table.propertyId, table.status),

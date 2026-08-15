@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 export interface CustomCharge {
   name: string;
@@ -21,7 +21,7 @@ export interface BillDetailData {
   bill: {
     id: string;
     totalDue: string | number;
-    status: 'pending' | 'paid';
+    status: "pending" | "paid";
     recalculationCount: number;
     customChargesJson: string | null;
     splitPercentage: number;
@@ -47,12 +47,13 @@ export interface BillDetailData {
   period: {
     id: string;
     periodMonth: string;
-    calculationMode: 'standard' | 'solar';
-    status: 'draft' | 'confirmed';
+    calculationMode: "standard" | "solar" | "grid_only";
+    status: "draft" | "confirmed" | "pending_approval" | "submitted";
   };
   property: {
     id: string;
     name: string;
+    address?: string | null;
   };
   reading: {
     id: string;
@@ -63,8 +64,14 @@ export interface BillDetailData {
     solarGenerationStart: number | null;
     solarGenerationEnd: number | null;
     submittedAt: string | Date;
+    createdAt?: string | Date;
+    version?: number;
+    submittedBy?: string;
   };
-  submitterName?: string;
+  tenancy: {
+    inviteEmail: string;
+  };
+  submitterName?: string | null;
   editHistory: BillEditHistory[];
   isOwner: boolean;
   isTenant: boolean;
@@ -87,13 +94,19 @@ export interface ProposedValues {
   solarGenerationEnd?: number | null;
 }
 
+import { useAsyncResource } from "./use-async-resource";
+import { apiClient } from "../lib/api-client";
+
 export function useBillDetail(billId: string, tenancyId: string) {
-  const [data, setData] = useState<BillDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+  const {
+    data,
+    loading,
+    error,
+    refetch: fetchBillDetails,
+  } = useAsyncResource<BillDetailData>(`/bills/${billId}`);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editReason, setEditReason] = useState('');
+  const [editReason, setEditReason] = useState("");
   const [proposedValues, setProposedValues] = useState<ProposedValues>({});
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
@@ -101,42 +114,33 @@ export function useBillDetail(billId: string, tenancyId: string) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchBillDetails();
-  }, [billId]);
+  const successTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
-  const fetchBillDetails = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/bills/${billId}`);
-      const json = await res.json() as { data: BillDetailData, error?: { message: string } };
-      if (!res.ok) {
-        throw new Error(json.error?.message || 'Failed to fetch bill details');
-      }
-      setData(json.data);
-      
-      if (json.data.reading) {
-        setProposedValues({
-          importStart: json.data.reading.importStart,
-          importEnd: json.data.reading.importEnd,
-          exportStart: json.data.reading.exportStart,
-          exportEnd: json.data.reading.exportEnd,
-          solarGenerationStart: json.data.reading.solarGenerationStart,
-          solarGenerationEnd: json.data.reading.solarGenerationEnd,
-        });
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isEditModalOpen && data?.reading) {
+      setProposedValues({
+        importStart: data.reading.importStart,
+        importEnd: data.reading.importEnd,
+        exportStart: data.reading.exportStart,
+        exportEnd: data.reading.exportEnd,
+        solarGenerationStart: data.reading.solarGenerationStart,
+        solarGenerationEnd: data.reading.solarGenerationEnd,
+      });
     }
-  };
+  }, [isEditModalOpen, data?.reading]);
 
   const handleMarkPaid = async () => {
     try {
-      const res = await fetch(`/api/bills/${billId}/mark-paid`, { method: 'PATCH' });
-      if (res.ok) fetchBillDetails();
+      const { error } = await apiClient.patch(`/bills/${billId}/mark-paid`, {});
+      if (!error) fetchBillDetails();
     } catch (e) {
       console.error(e);
     }
@@ -146,12 +150,11 @@ export function useBillDetail(billId: string, tenancyId: string) {
     setIsCancelling(true);
     setCancelError(null);
     try {
-      // ponytail: direct fetch call to cancel edit requests
-      const res = await fetch(`/api/edit-requests/${requestId}/cancel`, {
-        method: 'PATCH',
-      });
-      const json = await res.json() as { error?: { message: string } };
-      if (!res.ok) throw new Error(json.error?.message || 'Failed to cancel request');
+      const { error } = await apiClient.patch(
+        `/edit-requests/${requestId}/cancel`,
+        {}
+      );
+      if (error) throw new Error(error.message || "Failed to cancel request");
       await fetchBillDetails();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -161,37 +164,33 @@ export function useBillDetail(billId: string, tenancyId: string) {
     }
   };
 
-  const handleSubmitEditRequest = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmitEditRequest = async (
+    e: React.SyntheticEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
     if (!editReason.trim()) {
-      setEditError('Please provide a reason for this edit.');
+      setEditError("Please provide a reason for this edit.");
       return;
     }
-    
+
     if (!data?.period.id) return;
-    
+
     setIsSubmittingEdit(true);
     setEditError(null);
     try {
-      // ponytail: fix POST route to /api/edit-requests instead of /api/periods/...
-      const res = await fetch('/api/edit-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          billingPeriodId: data.period.id,
-          reason: editReason,
-          proposedValues,
-          tenancyId
-        })
+      const { error } = await apiClient.post("/edit-requests", {
+        billingPeriodId: data.period.id,
+        reason: editReason,
+        proposedValues,
+        tenancyId,
       });
-      const json = await res.json() as { error?: { message: string } };
-      if (!res.ok) throw new Error(json.error?.message || 'Failed to submit request');
-      
+      if (error) throw new Error(error.message || "Failed to submit request");
+
       setEditSuccess(true);
-      setTimeout(() => {
+      successTimerRef.current = setTimeout(() => {
         setIsEditModalOpen(false);
         setEditSuccess(false);
-        setEditReason('');
+        setEditReason("");
         fetchBillDetails();
       }, 2000);
     } catch (err) {
@@ -219,6 +218,6 @@ export function useBillDetail(billId: string, tenancyId: string) {
     cancelError,
     handleCancelEditRequest,
     handleMarkPaid,
-    handleSubmitEditRequest
+    handleSubmitEditRequest,
   };
 }

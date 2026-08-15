@@ -41,7 +41,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.12.34",
+    "hono": "^4.13.1",
     "lucide-react": "^1.20.0",
     "pdfjs-dist": "^6.2.108",
     "piexifjs": "^1.0.6",
@@ -93,7 +93,7 @@
       "postcss": "^8.5.25",
       "undici": "^7.29.0",
       "js-yaml": "^4.3.1",
-      "nanoid": ">=3.3.17"
+      "nanoid": ">=3.3.17 <4"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"

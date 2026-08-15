@@ -8,7 +8,7 @@ overrides:
   postcss: ^8.5.25
   undici: ^7.29.0
   js-yaml: ^4.3.1
-  nanoid: ">=3.3.17"
+  nanoid: ">=3.3.17 <4"
 
 importers:
   .:
@@ -62,7 +62,7 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@cloudflare/workers-types@4.20260617.1)(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)(kysely@0.29.4)
       hono:
-        specifier: ^4.12.34
+        specifier: ^4.13.1
         version: 4.13.1
       lucide-react:
         specifier: ^1.20.0
@@ -7188,12 +7188,12 @@ packages:
       }
     engines: { node: ^20.17.0 || >=22.9.0 }
 
-  nanoid@6.0.1:
+  nanoid@3.3.18:
     resolution:
       {
-        integrity: sha512-3wVS3i51pE2pi1k5FFL/95BGfVS0kSsvDVuGXHOtxox/TywUmtgq+3qiTOTbs9J7KfHaXPiN171k/A6dBnaXFw==,
+        integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==,
       }
-    engines: { node: ^22 || ^24 || >=26 }
+    engines: { node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1 }
     hasBin: true
 
   nanostores@1.4.2:
@@ -13603,7 +13603,7 @@ snapshots:
 
   mute-stream@3.0.0: {}
 
-  nanoid@6.0.1: {}
+  nanoid@3.3.18: {}
 
   nanostores@1.4.2: {}
 
@@ -13801,7 +13801,7 @@ snapshots:
 
   postcss@8.5.25:
     dependencies:
-      nanoid: 6.0.1
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 

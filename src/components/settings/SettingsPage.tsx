@@ -1,9 +1,13 @@
-import { useState, useEffect, type SubmitEvent } from "react";
+import React, { useState, useEffect } from "react";
 import { authClient } from "../../lib/auth-client";
 import { useToast } from "../../hooks/use-toast";
 import { getGravatarUrl } from "../../api/lib/avatar";
-import { DiceBearPicker } from "./DiceBearPicker";
-
+import {
+  ProfileSection,
+  PasswordSection,
+  AppearanceSection,
+} from "./SettingsPageSections";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 type User = {
   id: string;
   name: string;
@@ -24,17 +28,10 @@ function parseDiceBearUrl(url: string | null | undefined): { seed: string } {
   }
 }
 
-const getInitials = (nameStr: string) => {
-  const parts = nameStr.trim().split(" ");
-  return parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : nameStr.slice(0, 2);
-};
-
 const buildDicebearUrl = (seed: string) =>
   `https://api.dicebear.com/8.x/lorelei/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f8fafc`;
 
-export function SettingsPage() {
+function SettingsPageInner() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -117,7 +114,7 @@ export function SettingsPage() {
     }
   }, [user?.email]);
 
-  const handleSave = async (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim()) {
       toast({
@@ -169,7 +166,9 @@ export function SettingsPage() {
     }
   };
 
-  const handleChangePassword = async (e: SubmitEvent<HTMLFormElement>) => {
+  const handleChangePassword = async (
+    e: React.SubmitEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
     if (!currentPassword) {
       toast({
@@ -300,416 +299,32 @@ export function SettingsPage() {
         </p>
       </div>
 
-      {/* Profile */}
-      <form
-        onSubmit={handleSave}
-        className="card"
-        style={{
-          padding: "24px",
-          display: "flex",
-          flexDirection: "row",
-          gap: "40px",
-          flexWrap: "wrap",
-        }}
-      >
-        {/* Left: Avatar Preview */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "16px",
-            minWidth: "160px",
-          }}
-        >
-          <div
-            style={{
-              width: "140px",
-              height: "140px",
-              borderRadius: "50%",
-              overflow: "hidden",
-              backgroundColor: "var(--color-surface-raised)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              border: "1px solid var(--color-border)",
-            }}
-          >
-            {avatarType === "initials" ? (
-              <span
-                style={{
-                  fontSize: "3rem",
-                  fontWeight: 700,
-                  color: "#fff",
-                  backgroundColor: "var(--color-accent)",
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  userSelect: "none",
-                }}
-              >
-                {getInitials(name || user?.name || "").toUpperCase()}
-              </span>
-            ) : (
-              <img
-                src={
-                  avatarType === "gravatar"
-                    ? gravatarUrl
-                    : buildDicebearUrl(dicebearSeed)
-                }
-                alt="Avatar preview"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            )}
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <h4 style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600 }}>
-              Avatar Preview
-            </h4>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "0.75rem",
-                color: "var(--color-text-muted)",
-                maxWidth: "140px",
-              }}
-            >
-              {avatarType === "initials" && "Using name initials fallback"}
-              {avatarType === "gravatar" &&
-                "Using your Gravatar profile picture"}
-              {avatarType === "dicebear" && "Using DiceBear avatar selection"}
-            </p>
-          </div>
-        </div>
+      <ProfileSection
+        user={user}
+        name={name}
+        setName={setName}
+        avatarType={avatarType}
+        setAvatarType={setAvatarType}
+        dicebearSeed={dicebearSeed}
+        setDicebearSeed={setDicebearSeed}
+        gravatarUrl={gravatarUrl}
+        isSaving={isSaving}
+        onSave={handleSave}
+      />
 
-        {/* Right: Info and Settings */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            gap: "20px",
-            minWidth: "280px",
-          }}
-        >
-          {/* Name input */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <label className="form-label" htmlFor="profile-name">
-              Name
-            </label>
-            <input
-              id="profile-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                backgroundColor: "var(--color-surface-raised)",
-                border: "1px solid var(--color-border)",
-                borderRadius: "6px",
-                color: "var(--color-text)",
-                fontSize: "0.9375rem",
-              }}
-              required
-              disabled={isSaving}
-            />
-          </div>
+      <PasswordSection
+        hasPasswordAccount={hasPasswordAccount}
+        currentPassword={currentPassword}
+        setCurrentPassword={setCurrentPassword}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        confirmPassword={confirmPassword}
+        setConfirmPassword={setConfirmPassword}
+        isChangingPassword={isChangingPassword}
+        onSubmit={handleChangePassword}
+      />
 
-          {/* Email read-only */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <div className="form-label">Email (cannot be changed)</div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "0.9375rem",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              {user?.email}
-            </p>
-          </div>
-
-          {/* Avatar Type buttons */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <span className="form-label">Avatar Options</span>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: "8px",
-              }}
-            >
-              {(["initials", "gravatar", "dicebear"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setAvatarType(type)}
-                  style={{
-                    padding: "10px 6px",
-                    borderRadius: "6px",
-                    border: `1px solid ${avatarType === type ? "var(--color-accent)" : "var(--color-border)"}`,
-                    backgroundColor:
-                      avatarType === type
-                        ? "rgba(99, 102, 241, 0.1)"
-                        : "var(--color-surface-raised)",
-                    color:
-                      avatarType === type
-                        ? "var(--color-text)"
-                        : "var(--color-text-muted)",
-                    fontSize: "0.8125rem",
-                    fontWeight: 550,
-                    cursor: "pointer",
-                    textAlign: "center",
-                    textTransform: "capitalize",
-                    transition:
-                      "background-color var(--transition-fast), border-color var(--transition-fast)",
-                  }}
-                >
-                  {type === "initials"
-                    ? "Initials"
-                    : type === "gravatar"
-                      ? "Gravatar"
-                      : "DiceBear"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* DiceBear settings */}
-          {avatarType === "dicebear" && (
-            <DiceBearPicker
-              seed={dicebearSeed}
-              isSaving={isSaving}
-              onSeedChange={setDicebearSeed}
-            />
-          )}
-
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ alignSelf: "flex-start", marginTop: "12px" }}
-            disabled={isSaving}
-          >
-            {isSaving ? "Saving changes..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
-
-      {/* Security Settings (Change Password) */}
-      <div
-        className="card"
-        style={{
-          padding: "24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        <div>
-          <h3
-            style={{
-              margin: "0 0 4px",
-              fontSize: "0.9375rem",
-              fontWeight: 600,
-            }}
-          >
-            Password
-          </h3>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.875rem",
-              color: "var(--color-text-muted)",
-            }}
-          >
-            {hasPasswordAccount === false
-              ? "You signed in with Google or Github. You do not have a password yet."
-              : "Update the password for your account."}
-          </p>
-        </div>
-
-        {/* OAuth-only user: no currentPassword — send them through forgot-password OTP flow */}
-        {hasPasswordAccount === false ? (
-          <div>
-            <p
-              style={{
-                margin: "0 0 12px",
-                fontSize: "0.875rem",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              To set a password, use the password reset flow. We will send a
-              one-time code to your email.
-            </p>
-            <a
-              href="/forgot-password"
-              className="btn btn-primary"
-              style={{ display: "inline-block", textDecoration: "none" }}
-            >
-              Set a Password
-            </a>
-          </div>
-        ) : (
-          <form
-            onSubmit={handleChangePassword}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              maxWidth: "360px",
-            }}
-          >
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-            >
-              <label className="form-label" htmlFor="current-password">
-                Current Password
-              </label>
-              <input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: "var(--color-surface-raised)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  color: "var(--color-text)",
-                  fontSize: "0.9375rem",
-                }}
-                required
-                disabled={isChangingPassword}
-              />
-            </div>
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-            >
-              <label className="form-label" htmlFor="new-password">
-                New Password
-              </label>
-              <input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: "var(--color-surface-raised)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  color: "var(--color-text)",
-                  fontSize: "0.9375rem",
-                }}
-                required
-                disabled={isChangingPassword}
-              />
-            </div>
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-            >
-              <label className="form-label" htmlFor="confirm-password">
-                Confirm New Password
-              </label>
-              <input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                style={{
-                  padding: "8px 12px",
-                  backgroundColor: "var(--color-surface-raised)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "6px",
-                  color: "var(--color-text)",
-                  fontSize: "0.9375rem",
-                }}
-                required
-                disabled={isChangingPassword}
-              />
-            </div>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ alignSelf: "flex-start", marginTop: "8px" }}
-              disabled={isChangingPassword}
-            >
-              {isChangingPassword ? "Updating password..." : "Update Password"}
-            </button>
-          </form>
-        )}
-      </div>
-
-      {/* Appearance Settings */}
-      <div
-        className="card"
-        style={{
-          padding: "24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        <div>
-          <h3
-            style={{
-              margin: "0 0 4px",
-              fontSize: "0.9375rem",
-              fontWeight: 600,
-            }}
-          >
-            Appearance
-          </h3>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "0.875rem",
-              color: "var(--color-text-muted)",
-            }}
-          >
-            Choose your interface theme.
-          </p>
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "8px",
-            maxWidth: "360px",
-          }}
-        >
-          {(["light", "dark", "system"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => handleThemeChange(t)}
-              style={{
-                padding: "10px 6px",
-                borderRadius: "6px",
-                border: `1px solid ${theme === t ? "var(--color-accent)" : "var(--color-border)"}`,
-                backgroundColor:
-                  theme === t
-                    ? "rgba(99, 102, 241, 0.1)"
-                    : "var(--color-surface-raised)",
-                color:
-                  theme === t ? "var(--color-text)" : "var(--color-text-muted)",
-                fontSize: "0.8125rem",
-                fontWeight: 550,
-                cursor: "pointer",
-                textAlign: "center",
-                textTransform: "capitalize",
-                transition:
-                  "background-color var(--transition-fast), border-color var(--transition-fast)",
-              }}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
+      <AppearanceSection theme={theme} onThemeChange={handleThemeChange} />
 
       {/* Sign out */}
       <div className="card" style={{ padding: "24px" }}>
@@ -738,3 +353,5 @@ export function SettingsPage() {
     </div>
   );
 }
+
+export const SettingsPage = withErrorBoundary(SettingsPageInner);
