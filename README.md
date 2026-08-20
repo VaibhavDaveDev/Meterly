@@ -9,23 +9,17 @@
 
 <p align="center">
   <a href="https://github.com/VaibhavDaveDev/Meterly/stargazers">
-    <img src="https://shieldcn.dev/github/stars/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="GitHub Stars" />
-  </a>
+    <img src="https://shieldcn.dev/github/stars/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="GitHub Stars" /></a>
   <a href="https://github.com/VaibhavDaveDev/Meterly/blob/main/LICENSE">
-    <img src="https://shieldcn.dev/github/license/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="License: AGPL-3.0" />
-  </a>
+    <img src="https://shieldcn.dev/github/license/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="License: AGPL-3.0" /></a>
   <a href="https://github.com/VaibhavDaveDev/Meterly/actions/workflows/ci.yml">
-    <img src="https://shieldcn.dev/github/ci/VaibhavDaveDev/Meterly.svg?variant=secondary&workflow=ci.yml" alt="CI" />
-  </a>
+    <img src="https://shieldcn.dev/github/ci/VaibhavDaveDev/Meterly.svg?variant=secondary&workflow=ci.yml" alt="CI" /></a>
   <a href="https://github.com/VaibhavDaveDev/Meterly/commits/main">
-    <img src="https://shieldcn.dev/github/last-commit/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="Last Commit" />
-  </a>
+    <img src="https://shieldcn.dev/github/last-commit/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="Last Commit" /></a>
   <a href="https://meterly.pages.dev">
-    <img src="https://shieldcn.dev/badge/Live-meterly.pages.dev-064E3B.svg?variant=secondary&logo=cloudflare&logoColor=white" alt="Live Demo" />
-  </a>
+    <img src="https://shieldcn.dev/badge/Live-meterly.pages.dev-064E3B.svg?variant=secondary&logo=cloudflare&logoColor=white" alt="Live Demo" /></a>
   <a href="https://liberapay.com/VaibhavDaveDev/donate">
-    <img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" />
-  </a>
+    <img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg" /></a>
 </p>
 
 # Meterly
