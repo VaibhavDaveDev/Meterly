@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+  vi,
+} from "vitest";
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 import { apiClient } from "./api-client";
@@ -101,6 +109,79 @@ describe("apiClient", () => {
     });
   });
 
+  describe("apiFetch — 403 handling", () => {
+    beforeEach(() => {
+      vi.stubGlobal("window", {
+        location: { pathname: "/dashboard", search: "", href: "/dashboard" },
+      });
+      server.use(
+        http.get("/api/forbidden-redirect", () =>
+          HttpResponse.json(
+            {
+              success: false,
+              error: { code: "FORBIDDEN", message: "Email not verified" },
+            },
+            { status: 403 }
+          )
+        ),
+        http.get("/api/forbidden-no-redirect", () =>
+          HttpResponse.json(
+            {
+              success: false,
+              error: {
+                code: "OWNERSHIP_REQUIRED",
+                message: "You do not own this resource",
+              },
+            },
+            { status: 403 }
+          )
+        ),
+        http.get("/api/forbidden-no-message", () =>
+          HttpResponse.json(
+            { success: false, error: { code: "OWNERSHIP_REQUIRED" } },
+            { status: 403 }
+          )
+        )
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("redirects to /verify-email when 403 with FORBIDDEN code", async () => {
+      const result = await apiClient.get("/forbidden-redirect");
+      expect(window.location.href).toBe("/verify-email");
+      expect(result.data).toBeNull();
+      expect(result.error?.message).toBe("Email verification required");
+    });
+
+    it("does not redirect to /verify-email when already on /verify-email", async () => {
+      vi.stubGlobal("window", {
+        location: {
+          pathname: "/verify-email",
+          search: "",
+          href: "/verify-email",
+        },
+      });
+      const result = await apiClient.get("/forbidden-redirect");
+      expect(window.location.href).toBe("/verify-email");
+      expect(result.error?.message).toBe("Email verification required");
+    });
+
+    it("returns generic error message when 403 is not FORBIDDEN code", async () => {
+      const result = await apiClient.get("/forbidden-no-redirect");
+      expect(window.location.href).toBe("/dashboard");
+      expect(result.data).toBeNull();
+      expect(result.error?.message).toBe("You do not own this resource");
+    });
+
+    it("returns fallback message when 403 body has no error message", async () => {
+      const result = await apiClient.get("/forbidden-no-message");
+      expect(result.error?.message).toBe("Forbidden");
+    });
+  });
+
   it("does not expose the removed archiveTenancy/unarchiveTenancy helpers", () => {
     expect(
       (apiClient as unknown as Record<string, unknown>).archiveTenancy
@@ -108,5 +189,54 @@ describe("apiClient", () => {
     expect(
       (apiClient as unknown as Record<string, unknown>).unarchiveTenancy
     ).toBeUndefined();
+  });
+
+  describe("defensive parsing", () => {
+    it("handles non-JSON / HTML 403 response gracefully without throwing", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          status: 403,
+          ok: false,
+          json: () =>
+            Promise.reject(new SyntaxError("Unexpected token < in JSON")),
+        })
+      );
+      const result = await apiClient.get("/protected");
+      expect(result.data).toBeNull();
+      expect(result.error?.message).toBe("Forbidden");
+      vi.unstubAllGlobals();
+    });
+
+    it("handles non-JSON / HTML 500 response gracefully without throwing", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          status: 500,
+          ok: false,
+          json: () =>
+            Promise.reject(new SyntaxError("Unexpected token < in JSON")),
+        })
+      );
+      const result = await apiClient.get("/error-endpoint");
+      expect(result.data).toBeNull();
+      expect(result.error?.message).toBe("API Error: 500");
+      vi.unstubAllGlobals();
+    });
+
+    it("handles 200 OK with unparseable JSON body gracefully", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          status: 200,
+          ok: true,
+          json: () => Promise.reject(new SyntaxError("Unexpected token")),
+        })
+      );
+      const result = await apiClient.get("/corrupted-data");
+      expect(result.data).toBeNull();
+      expect(result.error?.message).toBe("An unknown error occurred");
+      vi.unstubAllGlobals();
+    });
   });
 });

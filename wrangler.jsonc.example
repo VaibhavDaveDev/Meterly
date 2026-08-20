@@ -21,7 +21,7 @@
     {
       "binding": "BILL_PHOTOS",
       "bucket_name": "meterly-bills",
-      "preview_bucket_name": "meterly-bills"
+      "preview_bucket_name": "meterly-bills-preview"
     }
   ]
 }

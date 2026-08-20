@@ -3,13 +3,12 @@
  *
  * Environment notes:
  * - Vitest uses jsdom, which provides `document`, `File`, and `ArrayBuffer`.
- * - pdfjs-dist requires a Web Worker for rendering (workerSrc). jsdom does not
- *   support real Web Workers, so the worker is set to an empty string to force
- *   pdfjs into a no-worker (synchronous) mode. This is the same approach used
- *   in browser testing environments.
- * - The canvas API (used by the OCR fallback path) is not available in jsdom by
- *   default, so we only test the text-extraction path (extractFromText), plus
- *   the graceful error-handling paths of extractFromPdf for malformed inputs.
+ * - pdfjs-dist 6.x and the full OCR pipeline require `DOMMatrix`, `HTMLCanvasElement`,
+ *   and `Worker` support, which are not fully implemented in jsdom. The `extractFromPdf`
+ *   suite is skipped under headless/jsdom via the capability predicate below.
+ * - This file covers: (a) the pure regex logic via `extractFromText` (always
+ *   runs), and (b) the real pdfjs extraction path via `extractFromPdf` (runs
+ *   only in environments that provide DOMMatrix, Canvas, and Web Workers, e.g. a real browser).
  *
  * The minimal valid PDF used in these tests was hand-crafted following the
  * ISO 32000-1 specification. It contains a single page with one text object.
@@ -85,7 +84,13 @@ describe("extractFromText (smoke -- unmocked)", () => {
 // without pdfjs-dist. Error-path coverage for extractFromPdf is provided by the
 // existing mocked suite in pdf-extract.test.ts.
 
-describe.skipIf(typeof DOMMatrix === "undefined")(
+// Full browser environment predicate: requires DOMMatrix, Canvas, and Web Worker
+const hasFullBrowserPdfEnv =
+  typeof DOMMatrix !== "undefined" &&
+  typeof HTMLCanvasElement !== "undefined" &&
+  typeof Worker !== "undefined";
+
+describe.skipIf(!hasFullBrowserPdfEnv)(
   "extractFromPdf (smoke — real pdfjs, no mock)",
   () => {
     it("handles a truly empty ArrayBuffer as a corrupt PDF (graceful error)", async () => {

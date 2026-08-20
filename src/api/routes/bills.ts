@@ -336,11 +336,12 @@ billsRouter.openapi(markPaidRoute, async (c) => {
     );
   }
 
+  const markedPaidAt = new Date();
   await db
     .update(bills)
     .set({
       status: "paid",
-      markedPaidAt: new Date(),
+      markedPaidAt,
       markedPaidBy: user.id,
     })
     .where(eq(bills.id, billId));
@@ -354,7 +355,7 @@ billsRouter.openapi(markPaidRoute, async (c) => {
   const [tenancy] = await db
     .select()
     .from(tenancies)
-    .where(eq(tenancies.id, updatedBill.tenancyId))
+    .where(eq(tenancies.id, bill.tenancyId))
     .limit(1);
   if (tenancy && tenancy.tenantId) {
     c.executionCtx.waitUntil(
@@ -372,7 +373,12 @@ billsRouter.openapi(markPaidRoute, async (c) => {
   return c.json(
     {
       success: true as const,
-      data: updatedBill,
+      data: updatedBill ?? {
+        ...bill,
+        status: "paid" as const,
+        markedPaidAt,
+        markedPaidBy: user.id,
+      },
     },
     200
   );

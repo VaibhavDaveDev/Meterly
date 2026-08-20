@@ -1,15 +1,19 @@
 # Purpose
+
 Core business logic and utility functions for the Meterly API.
 
 # Ownership
+
 API and Backend developers.
 
 # Local Contracts
+
 - All files in this directory must be pure functions or stateless helpers where possible.
 - Complex logic (like billing) must be accompanied by comprehensive unit tests.
 
 # Work Guidance
-- `billing-engine.ts`: The source of truth for all meter-to-currency calculations. 100% unit test coverage required.
+
+- `billing-engine.ts`: The source of truth for all meter-to-currency calculations. 100% unit test coverage required. Start-value resolution resolves prior period readings using an `innerJoin` on `billingPeriods` (skipping periods with no submitted meter readings).
 - `auth.ts`: Better Auth instance — email+password primary, Google and GitHub OAuth secondary, emailOTP for password reset. Rolling sessions enabled (7-day expiry, 1-day roll window). Hooks: `onPasswordUpdate` sends security email; `after[/sign-up/email]` resolves avatar via `resolveAvatarAtSignup`.
 - `session-limit.ts`: FIFO session cleanup logic executed on login.
 - `email.ts`: Provider-agnostic email abstraction. Supports Resend (primary, `EMAIL_PROVIDER=resend`) and [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git) (fallback, `EMAIL_PROVIDER=atlas`). `RESEND_FROM` configures the sender address. All logic gated by `EMAIL_PROVIDER` env var — no hardcoded provider. See `MAILER.md`.
@@ -21,4 +25,5 @@ API and Backend developers.
   - Rate limits: `MAX_READINGS_PER_DAY` (default 20) and `MAX_UPLOADS_PER_DAY` (default 60) are read from env vars; max 3 photos per reading period per user.
 
 # Child DOX Index
+
 - [MAILER.md](./MAILER.md): Email provider integration contract (Resend + [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git)).
