@@ -74,33 +74,27 @@ describe("Bills API", () => {
     await testDb
       .insert(properties)
       .values({ id: "p1", name: "Prop", ownerId: "owner-id", hasSolar: false });
-    await testDb
-      .insert(billingPeriods)
-      .values({
-        id: "bp1",
-        propertyId: "p1",
-        periodMonth: "2024-01",
-        calculationMode: "solar",
-        status: "draft",
-      });
-    await testDb
-      .insert(tenancies)
-      .values({
-        id: "ten1",
-        propertyId: "p1",
-        tenantId: "tenant-id",
-        status: "active",
-      });
-    await testDb
-      .insert(meterReadings)
-      .values({
-        id: "mr1",
-        billingPeriodId: "bp1",
-        submittedBy: "owner-id",
-        solarGenerationEnd: 100,
-        exportEnd: 0,
-        importEnd: 0,
-      });
+    await testDb.insert(billingPeriods).values({
+      id: "bp1",
+      propertyId: "p1",
+      periodMonth: "2024-01",
+      calculationMode: "solar",
+      status: "draft",
+    });
+    await testDb.insert(tenancies).values({
+      id: "ten1",
+      propertyId: "p1",
+      tenantId: "tenant-id",
+      status: "active",
+    });
+    await testDb.insert(meterReadings).values({
+      id: "mr1",
+      billingPeriodId: "bp1",
+      submittedBy: "owner-id",
+      solarGenerationEnd: 100,
+      exportEnd: 0,
+      importEnd: 0,
+    });
 
     billId = "bill-1";
     await testDb.insert(bills).values({
@@ -135,5 +129,66 @@ describe("Bills API", () => {
     currentUser = { id: "tenant-id" };
     const res = await app.request(`/bills/${billId}`, {}, mockEnv as never);
     expect(res.status).toBe(200);
+  });
+
+  it("mark-paid: returns markedPaidAt and markedPaidBy on successful update", async () => {
+    // Tests the happy path where the post-update re-select succeeds.
+    currentUser = { id: "owner-id" };
+    const mockCtx = { waitUntil: vi.fn(), passThroughOnException: vi.fn() };
+    const res = await app.request(
+      `/bills/${billId}/mark-paid`,
+      {
+        method: "PATCH",
+      },
+      mockEnv as never,
+      mockCtx as never
+    );
+
+    const json = (await res.json()) as {
+      data: { status: string; markedPaidAt: string; markedPaidBy: string };
+    };
+    expect(res.status).toBe(200);
+    expect(json.data.status).toBe("paid");
+    expect(json.data.markedPaidAt).toBeTruthy();
+    expect(json.data.markedPaidBy).toBe("owner-id");
+  });
+
+  it("mark-paid: returns defensive fallback object if post-update re-select returns no row", async () => {
+    // Tests the fallback branch where the post-update query returns no row.
+    currentUser = { id: "owner-id" };
+    const mockCtx = { waitUntil: vi.fn(), passThroughOnException: vi.fn() };
+
+    // We add a temporary trigger to delete the bill as soon as it is updated.
+    // This perfectly intercepts the post-update select and forces it to return empty.
+    const { sql } = await import("drizzle-orm");
+    testDb.run(sql`
+      CREATE TRIGGER IF NOT EXISTS delete_bill_after_update
+      AFTER UPDATE ON bills
+      FOR EACH ROW
+      BEGIN
+        DELETE FROM bills WHERE id = NEW.id;
+      END;
+    `);
+
+    try {
+      const res = await app.request(
+        `/bills/${billId}/mark-paid`,
+        {
+          method: "PATCH",
+        },
+        mockEnv as never,
+        mockCtx as never
+      );
+
+      const json = (await res.json()) as {
+        data: { status: string; markedPaidAt: string; markedPaidBy: string };
+      };
+      expect(res.status).toBe(200);
+      expect(json.data.status).toBe("paid");
+      expect(json.data.markedPaidAt).toBeTruthy();
+      expect(json.data.markedPaidBy).toBe("owner-id");
+    } finally {
+      testDb.run(sql`DROP TRIGGER IF EXISTS delete_bill_after_update;`);
+    }
   });
 });

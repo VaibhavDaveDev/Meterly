@@ -9,7 +9,8 @@ Frontend and Fullstack developers.
 # Local Contracts
 
 - `auth-client.ts`: Better Auth client instance.
-- `api-client.ts`: Generic wrapper for Meterly API calls.
+- `api-client.ts`: Generic wrapper for Meterly API calls. Handles 401 (redirect to login) and 403 Forbidden (redirect to `/verify-email` for unverified users).
+- `format.ts`: Date and currency formatting. `parseDateInput` explicitly rejects out-of-range calendar dates by validating parsed date components.
 - `utils.ts`: General-purpose frontend utility functions.
 - `image-compress.ts`: Browser Canvas-based image compression to WebP.
 - `image-cache.ts`: IndexedDB cache for meter bill photos.

@@ -133,9 +133,18 @@ export async function resolveAndValidateStartValues(
   period: BillingPeriod,
   data: ResolveAndValidateStartValuesInput
 ): Promise<ResolveStartValuesResult> {
-  const [previousPeriod] = await db
-    .select()
-    .from(billingPeriods)
+  // Latest prior period that has a reading — skips draft/empty periods
+  const [prevReading] = await db
+    .select({
+      solarGenerationEnd: meterReadings.solarGenerationEnd,
+      exportEnd: meterReadings.exportEnd,
+      importEnd: meterReadings.importEnd,
+    })
+    .from(meterReadings)
+    .innerJoin(
+      billingPeriods,
+      eq(meterReadings.billingPeriodId, billingPeriods.id)
+    )
     .where(
       and(
         eq(billingPeriods.propertyId, period.propertyId),
@@ -145,26 +154,17 @@ export async function resolveAndValidateStartValues(
     .orderBy(desc(billingPeriods.periodMonth))
     .limit(1);
 
-  let startValues = {
-    solarGenerationStart: property.solarGenInitial || 0,
-    exportStart: property.solarExportInitial || 0,
-    importStart: 0,
-  };
-
-  if (previousPeriod) {
-    const [prevReading] = await db
-      .select()
-      .from(meterReadings)
-      .where(eq(meterReadings.billingPeriodId, previousPeriod.id))
-      .limit(1);
-    if (prevReading) {
-      startValues = {
+  const startValues = prevReading
+    ? {
         solarGenerationStart: prevReading.solarGenerationEnd,
         exportStart: prevReading.exportEnd,
         importStart: prevReading.importEnd,
+      }
+    : {
+        solarGenerationStart: property.solarGenInitial || 0,
+        exportStart: property.solarExportInitial || 0,
+        importStart: 0,
       };
-    }
-  }
 
   if (!data.allowRollover) {
     if (data.importEnd < startValues.importStart) {

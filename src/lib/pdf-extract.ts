@@ -2,8 +2,11 @@
 // Returns structured field values using regex patterns on the raw text.
 // Falls back gracefully if pdf.js is unavailable.
 //
-// IMPORTANT: pdfjs-dist must be lazy-imported so it doesn't inflate
-// the initial JS bundle for users who never upload a bill.
+// IMPORTANT: pdfjs-dist must be lazy-imported (using `await import("pdfjs-dist")`)
+// instead of a static top-level import. This serves two critical purposes:
+// 1. It prevents inflating the initial JS bundle for users who never upload a bill.
+// 2. It prevents crashes in the jsdom test runner. `pdfjs-dist` evaluates DOMMatrix
+//    at module evaluation time, which jsdom does not support, causing immediate test suite failures.
 
 export interface BillExtractResult {
   presentReadingImport: number | null;

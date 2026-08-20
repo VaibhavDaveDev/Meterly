@@ -131,16 +131,18 @@ readingsRouter.openapi(getPeriodContextRoute, async (c) => {
     );
   }
 
-  // Determine start values
-  let startValues = {
-    solarGenerationStart: property.solarGenInitial || 0,
-    exportStart: property.solarExportInitial || 0,
-    importStart: 0,
-  };
-
-  const [previousPeriod] = await db
-    .select()
-    .from(billingPeriods)
+  // Latest prior period that has a reading — matches billing-engine.ts resolution
+  const [prevReadingCtx] = await db
+    .select({
+      solarGenerationEnd: meterReadings.solarGenerationEnd,
+      exportEnd: meterReadings.exportEnd,
+      importEnd: meterReadings.importEnd,
+    })
+    .from(meterReadings)
+    .innerJoin(
+      billingPeriods,
+      eq(meterReadings.billingPeriodId, billingPeriods.id)
+    )
     .where(
       and(
         eq(billingPeriods.propertyId, period.propertyId),
@@ -150,20 +152,17 @@ readingsRouter.openapi(getPeriodContextRoute, async (c) => {
     .orderBy(desc(billingPeriods.periodMonth))
     .limit(1);
 
-  if (previousPeriod) {
-    const [prevReading] = await db
-      .select()
-      .from(meterReadings)
-      .where(eq(meterReadings.billingPeriodId, previousPeriod.id))
-      .limit(1);
-    if (prevReading) {
-      startValues = {
-        solarGenerationStart: prevReading.solarGenerationEnd,
-        exportStart: prevReading.exportEnd,
-        importStart: prevReading.importEnd,
+  const startValues = prevReadingCtx
+    ? {
+        solarGenerationStart: prevReadingCtx.solarGenerationEnd,
+        exportStart: prevReadingCtx.exportEnd,
+        importStart: prevReadingCtx.importEnd,
+      }
+    : {
+        solarGenerationStart: property.solarGenInitial || 0,
+        exportStart: property.solarExportInitial || 0,
+        importStart: 0,
       };
-    }
-  }
 
   // Determine current rates
   const [rate] = await db

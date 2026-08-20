@@ -1,6 +1,7 @@
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import type { Property } from "../../types/db";
 import { usePropertySettings } from "../../hooks/use-property-settings";
+import { parseDateInput } from "../../lib/format";
 import {
   GeneralSettings,
   SolarSettings,
@@ -76,11 +77,11 @@ export function PropertySettings({
       />
       <SolarSettings
         hasSolar={localProperty.hasSolar}
-        solarActivatedAt={
-          localProperty.solarActivatedAt
-            ? new Date(localProperty.solarActivatedAt).toISOString()
-            : null
-        }
+        solarActivatedAt={(() => {
+          if (!localProperty.solarActivatedAt) return null;
+          const { date } = parseDateInput(localProperty.solarActivatedAt);
+          return Number.isNaN(date.getTime()) ? null : date.toISOString();
+        })()}
         solarGenInitial={localProperty.solarGenInitial}
         solarExportInitial={localProperty.solarExportInitial}
         isSolarLoading={isSolarLoading}

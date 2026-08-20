@@ -21,6 +21,19 @@ import {
   IdParam,
 } from "../lib/openapi-schemas";
 
+// Proposed values schema — validated before any read/write
+const proposedValuesSchema = z
+  .object({
+    importEnd: z.number().optional(),
+    exportEnd: z.number().optional(),
+    solarGenerationEnd: z.number().optional(),
+  })
+  .refine((values) => Object.values(values).some((v) => v !== undefined), {
+    message: "At least one proposed value is required",
+  });
+
+type ProposedValues = z.infer<typeof proposedValuesSchema>;
+
 async function loadRequestContext(
   db: Database,
   requests: (typeof editRequests.$inferSelect)[]
@@ -135,11 +148,7 @@ const CreateEditRequestSchema = z.object({
       "Please explain why this reading needs to be corrected (at least 10 characters). Your landlord needs to understand what went wrong. Example: 'I read the meter incorrectly when I submitted — it should be 1150, not 1200.'"
     )
     .max(1000, "Reason too long (max 1000 characters)"),
-  proposedValues: z.object({
-    solarGenerationEnd: z.number().optional(),
-    exportEnd: z.number().optional(),
-    importEnd: z.number().optional(),
-  }),
+  proposedValues: proposedValuesSchema,
 });
 
 const createEditRequestRoute = createRoute({
@@ -345,13 +354,6 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
     )
     .limit(1);
 
-  if (existingRequest) {
-    await db
-      .update(editRequests)
-      .set({ status: "cancelled" })
-      .where(eq(editRequests.id, existingRequest.id));
-  }
-
   // Throttle check — scoped to this property only
   const [pendingCountResult] = await db
     .select({ val: count() })
@@ -368,7 +370,10 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
       )
     );
 
-  const pendingCount = pendingCountResult?.val || 0;
+  // Subtract the existing request that is being replaced — it shouldn't count
+  // against the limit since we are overwriting it, not adding a new one
+  const pendingCount =
+    (pendingCountResult?.val || 0) - (existingRequest ? 1 : 0);
   if (
     property.maxPendingEditRequests !== 0 &&
     pendingCount >= (property.maxPendingEditRequests || 3)
@@ -384,6 +389,14 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
       },
       429
     );
+  }
+
+  // Replace the tenant's previous pending request — only after throttle passes
+  if (existingRequest) {
+    await db
+      .update(editRequests)
+      .set({ status: "cancelled" })
+      .where(eq(editRequests.id, existingRequest.id));
   }
 
   const requestId = crypto.randomUUID();
@@ -722,7 +735,17 @@ requestsRouter.openapi(reviewRequestRoute, async (c) => {
       .where(eq(editRequests.id, requestId));
 
     // ponytail: fetch proposed/current readings to construct rejection message with context
-    const proposedValues = JSON.parse(request.proposedValues || "{}");
+    const proposedValuesRaw = (() => {
+      try {
+        return JSON.parse(request.proposedValues || "{}");
+      } catch {
+        return {};
+      }
+    })();
+    const parsedProposed = proposedValuesSchema.safeParse(proposedValuesRaw);
+    const proposedValues: Partial<ProposedValues> = parsedProposed.success
+      ? parsedProposed.data
+      : {};
     const [reading] = await db
       .select()
       .from(meterReadings)
@@ -787,7 +810,27 @@ If you believe this is an error, you can submit a new correction request with ad
   }
 
   // Approval flow
-  const proposedValues = JSON.parse(request.proposedValues || "{}");
+  const parsedProposed = (() => {
+    try {
+      return proposedValuesSchema.safeParse(JSON.parse(request.proposedValues));
+    } catch {
+      return null;
+    }
+  })();
+  if (!parsedProposed || !parsedProposed.success) {
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "INVALID_PROPOSED_VALUES",
+          message:
+            "Stored proposed values are malformed and cannot be applied.",
+        },
+      },
+      400
+    );
+  }
+  const proposedValues: ProposedValues = parsedProposed.data;
 
   // Update the actual reading
   const [reading] = await db

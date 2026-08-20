@@ -45,24 +45,53 @@ async function apiFetch<T>(
       }
       return { data: null, error: { message: "Unauthorized" } };
     }
-    if (!response.ok) {
-      const errorData = (await response.json()) as ApiResponse<never>;
+    if (response.status === 403) {
+      const errorData = (await response
+        .json()
+        .catch(() => null)) as ApiResponse<never> | null;
+
+      if (errorData?.error?.code === "FORBIDDEN") {
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== "/verify-email"
+        ) {
+          window.location.href = "/verify-email";
+        }
+        return {
+          data: null,
+          error: { message: "Email verification required" },
+        };
+      }
+
       return {
         data: null,
         error: {
-          message: errorData.error?.message || `API Error: ${response.status}`,
+          message: errorData?.error?.message || "Forbidden",
+        },
+      };
+    }
+    if (!response.ok) {
+      const errorData = (await response
+        .json()
+        .catch(() => null)) as ApiResponse<never> | null;
+      return {
+        data: null,
+        error: {
+          message: errorData?.error?.message || `API Error: ${response.status}`,
         },
       };
     }
 
-    const responseData = (await response.json()) as ApiResponse<T>;
-    if (responseData.success) {
+    const responseData = (await response
+      .json()
+      .catch(() => null)) as ApiResponse<T> | null;
+    if (responseData?.success) {
       return { data: responseData.data, error: null };
     } else {
       return {
         data: null,
         error: {
-          message: responseData.error?.message || "An unknown error occurred",
+          message: responseData?.error?.message || "An unknown error occurred",
         },
       };
     }

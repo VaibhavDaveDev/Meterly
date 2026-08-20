@@ -20,7 +20,7 @@ export function formatMeterReading(
   return Math.floor(num).toLocaleString("en-IN");
 }
 
-function parseDateInput(val: string | Date | null | undefined): {
+export function parseDateInput(val: string | Date | null | undefined): {
   date: Date;
   isCalendarDate: boolean;
 } {
@@ -31,10 +31,16 @@ function parseDateInput(val: string | Date | null | undefined): {
       const year = parseInt(match[1], 10);
       const month = parseInt(match[2], 10);
       const day = match[3] ? parseInt(match[3], 10) : 1;
-      return {
-        date: new Date(Date.UTC(year, month - 1, day)),
-        isCalendarDate: true,
-      };
+      const date = new Date(0);
+      date.setUTCFullYear(year, month - 1, day);
+      if (
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day
+      ) {
+        return { date, isCalendarDate: true };
+      }
+      return { date: new Date(NaN), isCalendarDate: true };
     }
   }
   return { date: new Date(val), isCalendarDate: false };
