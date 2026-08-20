@@ -1,28 +1,40 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { Hono } from 'hono';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Hono } from "hono";
 
-let currentUser: { id: string } | null = { id: 'test-user-id' };
+let currentUser: { id: string } | null = { id: "test-user-id" };
 
-vi.mock('../middleware/auth', () => ({
-  authMiddleware: async (c: { set: (k: string, v: unknown) => void }, next: () => Promise<void>) => {
-    c.set('user', currentUser);
+vi.mock("../middleware/auth", () => ({
+  authMiddleware: async (
+    c: { set: (k: string, v: unknown) => void },
+    next: () => Promise<void>
+  ) => {
+    c.set("user", currentUser);
     await next();
-  }
+  },
 }));
 
 // Mock recalculateChain and createNotification to avoid side-effects in testing
-vi.mock('../lib/recalculation', () => ({
-  recalculateChain: vi.fn().mockResolvedValue(undefined)
+vi.mock("../lib/recalculation", () => ({
+  recalculateChain: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../lib/notifications', () => ({
-  createNotification: vi.fn().mockResolvedValue(undefined)
+vi.mock("../lib/notifications", () => ({
+  createNotification: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { testDb } from '../../test/setup';
-import { eq } from 'drizzle-orm';
-import { properties, user, tenancies, billingPeriods, meterReadings, bills, propertyRates, editRequests } from '../../db/schema';
-import { requestsRouter } from './edit-requests';
+import { testDb } from "../../test/setup";
+import { eq } from "drizzle-orm";
+import {
+  properties,
+  user,
+  tenancies,
+  billingPeriods,
+  meterReadings,
+  bills,
+  propertyRates,
+  editRequests,
+} from "../../db/schema";
+import { requestsRouter } from "./edit-requests";
 
 interface SuccessResponse {
   success: boolean;
@@ -48,9 +60,9 @@ interface ListResponse {
   };
 }
 
-describe('Edit Requests API Routes', () => {
+describe("Edit Requests API Routes", () => {
   let app: Hono;
-  
+
   // Valid UUID strings generated dynamically
   let ownerId: string;
   let tenantId: string;
@@ -83,33 +95,47 @@ describe('Edit Requests API Routes', () => {
 
     // Insert database fixtures
     await testDb.insert(user).values([
-      { id: ownerId, name: 'Owner User', email: 'owner@example.com', emailVerified: true, createdAt: new Date(), updatedAt: new Date() },
-      { id: tenantId, name: 'Tenant User', email: 'tenant@example.com', emailVerified: true, createdAt: new Date(), updatedAt: new Date() }
+      {
+        id: ownerId,
+        name: "Owner User",
+        email: "owner@example.com",
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: tenantId,
+        name: "Tenant User",
+        email: "tenant@example.com",
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
 
     await testDb.insert(properties).values({
       id: propId,
-      name: 'Test Apartment',
+      name: "Test Apartment",
       ownerId: ownerId,
       hasSolar: false,
-      maxPendingEditRequests: 3
+      maxPendingEditRequests: 3,
     });
 
     await testDb.insert(tenancies).values({
       id: tenancyId,
       propertyId: propId,
       tenantId: tenantId,
-      status: 'active',
-      inviteEmail: 'tenant@example.com',
-      splitPercentage: 100
+      status: "active",
+      inviteEmail: "tenant@example.com",
+      splitPercentage: 100,
     });
 
     await testDb.insert(billingPeriods).values({
       id: periodId,
       propertyId: propId,
-      periodMonth: '2024-01-01',
-      calculationMode: 'grid_only',
-      status: 'confirmed'
+      periodMonth: "2024-01-01",
+      calculationMode: "grid_only",
+      status: "confirmed",
     });
 
     await testDb.insert(meterReadings).values({
@@ -121,189 +147,300 @@ describe('Edit Requests API Routes', () => {
       exportEnd: 0,
       solarGenerationStart: 0,
       solarGenerationEnd: 0,
-      submittedBy: ownerId
+      submittedBy: ownerId,
     });
 
     app = new Hono();
-    app.route('/api/edit-requests', requestsRouter);
+    app.route("/api/edit-requests", requestsRouter);
+    app.route("/api", requestsRouter);
   });
 
-  async function insertPendingEditRequest(id: string, options: { tenantId: string; periodId: string; reason?: string; proposedValues?: object }) {
+  async function insertPendingEditRequest(
+    id: string,
+    options: {
+      tenantId: string;
+      periodId: string;
+      reason?: string;
+      proposedValues?: object;
+    }
+  ) {
     await testDb.insert(editRequests).values({
       id,
       billingPeriodId: options.periodId,
       requestedBy: options.tenantId,
-      reason: options.reason ?? 'Please correct this reading.',
-      proposedValues: JSON.stringify(options.proposedValues ?? { importEnd: 1150 }),
-      status: 'pending'
+      reason: options.reason ?? "Please correct this reading.",
+      proposedValues: JSON.stringify(
+        options.proposedValues ?? { importEnd: 1150 }
+      ),
+      status: "pending",
     });
   }
 
-  describe('POST /api/edit-requests', () => {
-    it('successfully raises an edit request for a confirmed period', async () => {
-      const res = await app.request('/api/edit-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          billingPeriodId: periodId,
-          reason: 'The import reading was entered incorrectly.',
-          proposedValues: {
-            importEnd: 1150
-          }
-        })
-      }, { DB: {} as unknown }, { waitUntil: () => {} } as unknown as ExecutionContext);
+  describe("POST /api/edit-requests", () => {
+    it("successfully raises an edit request for a confirmed period", async () => {
+      const res = await app.request(
+        "/api/edit-requests",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            billingPeriodId: periodId,
+            reason: "The import reading was entered incorrectly.",
+            proposedValues: {
+              importEnd: 1150,
+            },
+          }),
+        },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
 
       if (res.status !== 200) {
         console.log("DEBUG POST FAILURE:", await res.text());
       }
       expect(res.status).toBe(200);
-      const body = await res.json() as SuccessResponse;
+      const body = (await res.json()) as SuccessResponse;
       expect(body.success).toBe(true);
       expect(body.data.id).toBeDefined();
 
-      const [dbReq] = await testDb.select().from(editRequests).where(eq(editRequests.id, body.data.id)).limit(1);
+      const [dbReq] = await testDb
+        .select()
+        .from(editRequests)
+        .where(eq(editRequests.id, body.data.id))
+        .limit(1);
       expect(dbReq).toBeDefined();
-      expect(dbReq?.reason).toBe('The import reading was entered incorrectly.');
+      expect(dbReq?.reason).toBe("The import reading was entered incorrectly.");
     });
 
-    it('rejects with 400 when reason is too short', async () => {
-      const res = await app.request('/api/edit-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          billingPeriodId: periodId,
-          reason: 'Short',
-          proposedValues: {
-            importEnd: 1150
-          }
-        })
-      }, { DB: {} as unknown }, { waitUntil: () => {} } as unknown as ExecutionContext);
+    it("rejects with 400 when reason is too short", async () => {
+      const res = await app.request(
+        "/api/edit-requests",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            billingPeriodId: periodId,
+            reason: "Short",
+            proposedValues: {
+              importEnd: 1150,
+            },
+          }),
+        },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
 
       expect(res.status).toBe(400);
     });
 
-    it('overwrites previous pending edit request for the same period', async () => {
+    it("overwrites previous pending edit request for the same period", async () => {
       const prevReqId = crypto.randomUUID();
       // Create first pending request
       await insertPendingEditRequest(prevReqId, {
         tenantId,
         periodId,
-        reason: 'Initial correction request for this period.',
-        proposedValues: { importEnd: 1180 }
+        reason: "Initial correction request for this period.",
+        proposedValues: { importEnd: 1180 },
       });
 
       // Submit new request
-      const res = await app.request('/api/edit-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          billingPeriodId: periodId,
-          reason: 'Updated correction explanation.',
-          proposedValues: {
-            importEnd: 1150
-          }
-        })
-      }, { DB: {} as unknown }, { waitUntil: () => {} } as unknown as ExecutionContext);
+      const res = await app.request(
+        "/api/edit-requests",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            billingPeriodId: periodId,
+            reason: "Updated correction explanation.",
+            proposedValues: {
+              importEnd: 1150,
+            },
+          }),
+        },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
 
       if (res.status !== 200) {
         console.log("DEBUG OVERWRITE FAILURE:", await res.text());
       }
       expect(res.status).toBe(200);
-      const body = await res.json() as SuccessResponse;
+      const body = (await res.json()) as SuccessResponse;
       expect(body.success).toBe(true);
 
       // Verify previous request is now cancelled
-      const [prev] = await testDb.select().from(editRequests).where(eq(editRequests.id, prevReqId)).limit(1);
-      expect(prev?.status).toBe('cancelled');
+      const [prev] = await testDb
+        .select()
+        .from(editRequests)
+        .where(eq(editRequests.id, prevReqId))
+        .limit(1);
+      expect(prev?.status).toBe("cancelled");
     });
   });
 
-  describe('GET /api/edit-requests', () => {
-    it('returns edit requests raised by tenant', async () => {
+  describe("GET /api/edit-requests", () => {
+    it("returns edit requests raised by tenant", async () => {
       await insertPendingEditRequest(reqId, { tenantId, periodId });
 
       currentUser = { id: ownerId };
 
-      const res = await app.request('/api/edit-requests', {}, { DB: {} as unknown }, { waitUntil: () => {} } as unknown as ExecutionContext);
+      const res = await app.request(
+        "/api/edit-requests",
+        {},
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
       if (res.status !== 200) {
         console.log("DEBUG GET FAILURE:", await res.text());
       }
       expect(res.status).toBe(200);
-      const body = await res.json() as ListResponse;
+      const body = (await res.json()) as ListResponse;
       expect(body.success).toBe(true);
       expect(body.data.pending).toHaveLength(1);
       expect(body.data.pending[0]?.id).toBe(reqId);
     });
   });
 
-  describe('PATCH /api/edit-requests/:id/review (Approve)', () => {
-    it('allows owner to approve edit request', async () => {
+  describe("PATCH /api/edit-requests/:id/review (Approve)", () => {
+    it("allows owner to approve edit request", async () => {
       await insertPendingEditRequest(reqId, { tenantId, periodId });
 
       // Switch context to owner
       currentUser = { id: ownerId };
 
-      const res = await app.request(`/api/edit-requests/${reqId}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'approve'
-        })
-      }, { DB: {} as unknown }, { waitUntil: () => {} } as unknown as ExecutionContext);
+      const res = await app.request(
+        `/api/edit-requests/${reqId}/review`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "approve",
+          }),
+        },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
 
       if (res.status !== 200) {
         console.log("DEBUG APPROVE FAILURE:", await res.text());
       }
       expect(res.status).toBe(200);
-      const body = await res.json() as { success: boolean };
+      const body = (await res.json()) as { success: boolean };
       expect(body.success).toBe(true);
 
-      const [dbReq] = await testDb.select().from(editRequests).where(eq(editRequests.id, reqId)).limit(1);
-      expect(dbReq?.status).toBe('approved');
+      const [dbReq] = await testDb
+        .select()
+        .from(editRequests)
+        .where(eq(editRequests.id, reqId))
+        .limit(1);
+      expect(dbReq?.status).toBe("approved");
     });
 
-    it('denies approval requests from the tenant', async () => {
+    it("denies approval requests from the tenant", async () => {
       await insertPendingEditRequest(reqId, { tenantId, periodId });
 
       // Context is tenant
       currentUser = { id: tenantId };
 
-      const res = await app.request(`/api/edit-requests/${reqId}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'approve'
-        })
-      }, { DB: {} as unknown }, { waitUntil: () => {} } as unknown as ExecutionContext);
+      const res = await app.request(
+        `/api/edit-requests/${reqId}/review`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "approve",
+          }),
+        },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
 
       expect(res.status).toBe(403);
     });
   });
 
-  describe('PATCH /api/edit-requests/:id/review (Reject)', () => {
-    it('allows owner to reject edit request with review note', async () => {
+  describe("PATCH /api/edit-requests/:id/review (Reject)", () => {
+    it("allows owner to reject edit request with review note", async () => {
       await insertPendingEditRequest(reqId, { tenantId, periodId });
 
       currentUser = { id: ownerId };
 
-      const res = await app.request(`/api/edit-requests/${reqId}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reject',
-          rejectionReason: 'Rejection reason explanation.'
-        })
-      }, { DB: {} as unknown }, { waitUntil: () => {} } as unknown as ExecutionContext);
+      const res = await app.request(
+        `/api/edit-requests/${reqId}/review`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reject",
+            rejectionReason: "Rejection reason explanation.",
+          }),
+        },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
 
       if (res.status !== 200) {
         console.log("DEBUG REJECT FAILURE:", await res.text());
       }
       expect(res.status).toBe(200);
-      const body = await res.json() as { success: boolean };
+      const body = (await res.json()) as { success: boolean };
       expect(body.success).toBe(true);
 
-      const [dbReq] = await testDb.select().from(editRequests).where(eq(editRequests.id, reqId)).limit(1);
-      expect(dbReq?.status).toBe('rejected');
+      const [dbReq] = await testDb
+        .select()
+        .from(editRequests)
+        .where(eq(editRequests.id, reqId))
+        .limit(1);
+      expect(dbReq?.status).toBe("rejected");
+    });
+  });
+
+  describe("GET /api/properties/:id/edit-requests/count", () => {
+    it("returns 403 when user is not the owner", async () => {
+      currentUser = { id: tenantId };
+      const res = await app.request(
+        `/api/properties/${propId}/edit-requests/count`,
+        { method: "GET" },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("returns pendingCount=0 when no pending requests exist", async () => {
+      currentUser = { id: ownerId };
+      const res = await app.request(
+        `/api/properties/${propId}/edit-requests/count`,
+        { method: "GET" },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as {
+        success: boolean;
+        data: { pendingCount: number };
+      };
+      expect(json.success).toBe(true);
+      expect(json.data.pendingCount).toBe(0);
+    });
+
+    it("returns pendingCount=N when pending requests exist", async () => {
+      await insertPendingEditRequest(reqId, { tenantId, periodId });
+      currentUser = { id: ownerId };
+
+      const res = await app.request(
+        `/api/properties/${propId}/edit-requests/count`,
+        { method: "GET" },
+        { DB: {} as unknown },
+        { waitUntil: () => {} } as unknown as ExecutionContext
+      );
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as {
+        success: boolean;
+        data: { pendingCount: number };
+      };
+      expect(json.success).toBe(true);
+      expect(json.data.pendingCount).toBe(1);
     });
   });
 });

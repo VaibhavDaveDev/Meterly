@@ -123,12 +123,26 @@ export function extractFromText(
   };
 }
 
+function configurePdfJsWorker(pdfjsLib: typeof import("pdfjs-dist")) {
+  // Only set workerSrc in browser environment when not running tests.
+  // In Node/test environments, leaving workerSrc unassigned lets pdfjs use its built-in in-process fake-worker.
+  if (
+    typeof window !== "undefined" &&
+    !(typeof process !== "undefined" && process.env.NODE_ENV === "test")
+  ) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
+  }
+}
+
 export async function extractFromPdf(file: File): Promise<BillExtractResult> {
   // Lazy-import pdf.js so it doesn't inflate the main bundle
   const pdfjsLib = await import("pdfjs-dist");
 
   // Set worker source (required by pdf.js)
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  configurePdfJsWorker(pdfjsLib);
 
   const arrayBuffer = await file.arrayBuffer();
 
@@ -319,7 +333,7 @@ export async function getPdfPageAsBlob(
 ): Promise<Blob | null> {
   try {
     const pdfjsLib = await import("pdfjs-dist");
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+    configurePdfJsWorker(pdfjsLib);
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 

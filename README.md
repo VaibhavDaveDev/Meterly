@@ -273,7 +273,7 @@ Meterly relies on Better Auth session cookies (`SameSite=Lax`, `HttpOnly`).
 
 This project uses the **DOX framework** — every domain directory has an `AGENTS.md` file that acts as a binding contract defining purpose, ownership, and architectural rules.
 
-```
+```text
 src/
 ├── api/          Hono backend routing and pure billing logic
 ├── components/   React interactive islands (auth, dashboard, properties, ui)

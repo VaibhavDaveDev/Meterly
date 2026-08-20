@@ -620,6 +620,71 @@ requestsRouter.openapi(getPropertyEditRequestsRoute, async (c) => {
   );
 });
 
+// ponytail: count-only query via billingPeriods join to avoid loading full request context
+const getPropertyPendingCountRoute = createRoute({
+  method: "get",
+  path: "/properties/{id}/edit-requests/count",
+  tags: ["Edit Requests"],
+  summary: "Count pending edit requests for a property",
+  security: [{ cookieAuth: [] }],
+  request: {
+    params: IdParam,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SuccessResponse } },
+      description: "Count returned",
+    },
+    403: {
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Unauthorized",
+    },
+  },
+});
+
+requestsRouter.openapi(getPropertyPendingCountRoute, async (c) => {
+  const { id: propertyId } = c.req.valid("param");
+  const user = c.get("user");
+  const db = getDb(c.env.DB);
+
+  // Authorization: must be owner
+  const [property] = await db
+    .select({ id: properties.id })
+    .from(properties)
+    .where(and(eq(properties.id, propertyId), eq(properties.ownerId, user.id)))
+    .limit(1);
+
+  if (!property) {
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Only the property owner can view these requests",
+        },
+      },
+      403
+    );
+  }
+
+  // Count pending requests via a JOIN through billing periods
+  const [{ pendingCount }] = await db
+    .select({ pendingCount: count() })
+    .from(editRequests)
+    .innerJoin(
+      billingPeriods,
+      eq(editRequests.billingPeriodId, billingPeriods.id)
+    )
+    .where(
+      and(
+        eq(billingPeriods.propertyId, propertyId),
+        eq(editRequests.status, "pending")
+      )
+    );
+
+  return c.json({ success: true as const, data: { pendingCount } }, 200);
+});
+
 const ReviewRequestSchema = z.object({
   action: z.enum(["approve", "reject"]),
   rejectionReason: z

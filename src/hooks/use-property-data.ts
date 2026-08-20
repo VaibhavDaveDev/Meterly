@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
-import type { Tenancy } from '../types/db';
-import { apiClient } from '../lib/api-client';
-import type { ActiveBillingPeriod } from '../components/properties/types';
+import { useState, useEffect } from "react";
+import type { Tenancy } from "../types/db";
+import { apiClient } from "../lib/api-client";
+import type { ActiveBillingPeriod } from "../components/properties/types";
 
 type PropertyBillsResponse = {
   bills: Array<{
     id: string;
     periodMonth: string;
-    calculationMode: 'solar' | 'grid_only';
+    calculationMode: "solar" | "grid_only";
     periodStatus: string;
     tenants: Array<{
       billId: string;
       tenantName: string;
       splitPercentage: number;
       totalDue: number;
-      status: 'pending' | 'paid';
+      status: "pending" | "paid";
       markedPaidAt: string | null;
     }>;
     totalConsumption: number;
@@ -36,15 +36,24 @@ export function usePropertyData(
   isOwner: boolean
 ) {
   const [tenancies, setTenancies] = useState<Tenancy[]>([]);
-  const [billsData, setBillsData] = useState<PropertyBillsResponse | null>(null);
+  const [billsData, setBillsData] = useState<PropertyBillsResponse | null>(
+    null
+  );
   const [isLoadingTenants, setIsLoadingTenants] = useState(false);
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [tenantCount, setTenantCount] = useState(initialTenantCount);
-  const [activePeriod, setActivePeriod] = useState<ActiveBillingPeriod | null>(null);
+  const [activePeriod, setActivePeriod] = useState<ActiveBillingPeriod | null>(
+    null
+  );
+  const [pendingEditRequestCount, setPendingEditRequestCount] = useState(0);
 
   const fetchTenancies = async () => {
     setIsLoadingTenants(true);
-    const { data } = await apiClient.get<{ active: Tenancy[]; invited: Tenancy[]; past: Tenancy[] }>(`/properties/${propertyId}/tenancies`);
+    const { data } = await apiClient.get<{
+      active: Tenancy[];
+      invited: Tenancy[];
+      past: Tenancy[];
+    }>(`/properties/${propertyId}/tenancies`);
     if (data) {
       const allTenancies = [...data.active, ...data.invited, ...data.past];
       setTenancies(allTenancies);
@@ -56,12 +65,25 @@ export function usePropertyData(
   const fetchBills = async () => {
     if (!isOwner) return;
     setIsLoadingBills(true);
-    const qs = activeTab === 'bills' ? `?year=${filterYear}&status=${filterStatus}` : '';
-    const { data } = await apiClient.get<PropertyBillsResponse>(`/properties/${propertyId}/bills${qs}`);
+    const qs =
+      activeTab === "bills" ? `?year=${filterYear}&status=${filterStatus}` : "";
+    const { data } = await apiClient.get<PropertyBillsResponse>(
+      `/properties/${propertyId}/bills${qs}`
+    );
     if (data) {
       setBillsData(data);
     }
     setIsLoadingBills(false);
+  };
+
+  const fetchPendingEditRequestCount = async () => {
+    if (!isOwner) return;
+    const { data } = await apiClient.get<{ pendingCount: number }>(
+      `/properties/${propertyId}/edit-requests/count`
+    );
+    if (data) {
+      setPendingEditRequestCount(data.pendingCount);
+    }
   };
 
   const fetchLatestPeriod = async () => {
@@ -80,16 +102,17 @@ export function usePropertyData(
   };
 
   useEffect(() => {
-    if (activeTab === 'tenants') {
+    if (activeTab === "tenants") {
       fetchTenancies();
-    } else if (activeTab === 'bills') {
+    } else if (activeTab === "bills") {
       if (isOwner) fetchBills();
     }
   }, [activeTab, propertyId, filterYear, filterStatus, isOwner]);
 
   useEffect(() => {
     fetchLatestPeriod();
-    if (activeTab === 'overview') {
+    fetchPendingEditRequestCount();
+    if (activeTab === "overview") {
       if (isOwner) fetchBills();
     }
   }, [propertyId, activeTab, isOwner]);
@@ -101,8 +124,10 @@ export function usePropertyData(
     isLoadingBills,
     tenantCount,
     activePeriod,
+    pendingEditRequestCount,
     refetchTenancies: fetchTenancies,
     refetchBills: fetchBills,
     refetchLatestPeriod: fetchLatestPeriod,
+    refetchPendingEditRequestCount: fetchPendingEditRequestCount,
   };
 }
