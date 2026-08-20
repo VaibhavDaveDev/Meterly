@@ -15,7 +15,7 @@
     <img src="https://shieldcn.dev/github/license/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="License: AGPL-3.0" />
   </a>
   <a href="https://github.com/VaibhavDaveDev/Meterly/actions/workflows/ci.yml">
-    <img src="https://shieldcn.dev/github/ci/VaibhavDaveDev/Meterly.svg?variant=secondary&workflow=CI" alt="CI" />
+    <img src="https://shieldcn.dev/github/ci/VaibhavDaveDev/Meterly.svg?variant=secondary&workflow=ci.yml" alt="CI" />
   </a>
   <a href="https://github.com/VaibhavDaveDev/Meterly/commits/main">
     <img src="https://shieldcn.dev/github/last-commit/VaibhavDaveDev/Meterly.svg?variant=secondary" alt="Last Commit" />
