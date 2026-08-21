@@ -50,7 +50,7 @@ pnpm exec wrangler d1 create meterly-db
 
 You will see output like this:
 
-```
+```text
 Successfully created DB 'meterly-db'
 
 [[d1_databases]]
@@ -265,7 +265,7 @@ The first time you run this, Wrangler will ask if you want to create a new Pages
 
 After a minute or two you will see:
 
-```
+```text
 Deployment complete! Take a peek over at https://YOUR-PROJECT-NAME.pages.dev
 ```
 
@@ -413,9 +413,9 @@ on the Workers Free plan and up to **30 days** on the paid plan.
 
 > **⚠️ Destructive Action:** Time Travel restore overwrites the database in place. Any writes made after the restore point will be lost. Always take a pre-restore export snapshot first.
 
-1. Find available bookmarks:
+1. Find the current bookmark:
    ```bash
-   pnpm exec wrangler d1 time-travel info meterly-db --remote
+   pnpm exec wrangler d1 time-travel info meterly-db
    ```
 2. **Safety Step — Export current state to an external backup directory:**
 
@@ -429,9 +429,9 @@ on the Workers Free plan and up to **30 days** on the paid plan.
 
 3. Restore to a specific timestamp or bookmark:
    ```bash
-   pnpm exec wrangler d1 time-travel restore meterly-db --remote --timestamp=<ISO-8601>
+   pnpm exec wrangler d1 time-travel restore meterly-db --timestamp="YOUR_RFC3339_TIMESTAMP"
    # or by bookmark ID:
-   pnpm exec wrangler d1 time-travel restore meterly-db --remote --bookmark=<bookmark-id>
+   pnpm exec wrangler d1 time-travel restore meterly-db --bookmark="BOOKMARK_ID"
    ```
 4. **Validate database integrity:**
    ```bash

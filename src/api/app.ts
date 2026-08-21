@@ -485,6 +485,7 @@ app.route("/api/properties", periodsRouter);
 app.route("/api/periods", readingsRouter);
 app.route("/api/bills", billsRouter);
 app.route("/api/edit-requests", requestsRouter);
+app.route("/api", requestsRouter);
 app.route("/api/notifications", notificationsRouter);
 app.route("/api/dashboard", dashboardRouter);
 app.route("/api/tenancies", tenancyActionsRouter);

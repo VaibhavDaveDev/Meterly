@@ -84,13 +84,29 @@ describe("extractFromText (smoke -- unmocked)", () => {
 // without pdfjs-dist. Error-path coverage for extractFromPdf is provided by the
 // existing mocked suite in pdf-extract.test.ts.
 
-// Full browser environment predicate: requires DOMMatrix, Canvas, and Web Worker
-const hasFullBrowserPdfEnv =
-  typeof DOMMatrix !== "undefined" &&
-  typeof HTMLCanvasElement !== "undefined" &&
-  typeof Worker !== "undefined";
+// Test environment predicate: requires DOMMatrix and usable 2D Canvas for fake-worker execution
+function isCanvas2dUsable(): boolean {
+  if (
+    typeof HTMLCanvasElement === "undefined" ||
+    typeof document === "undefined"
+  ) {
+    return false;
+  }
+  try {
+    const canvas = document.createElement("canvas");
+    return (
+      typeof canvas.getContext === "function" &&
+      canvas.getContext("2d") !== null
+    );
+  } catch {
+    return false;
+  }
+}
 
-describe.skipIf(!hasFullBrowserPdfEnv)(
+const hasPdfSmokeTestEnv =
+  typeof DOMMatrix !== "undefined" && isCanvas2dUsable();
+
+describe.skipIf(!hasPdfSmokeTestEnv)(
   "extractFromPdf (smoke — real pdfjs, no mock)",
   () => {
     it("handles a truly empty ArrayBuffer as a corrupt PDF (graceful error)", async () => {
