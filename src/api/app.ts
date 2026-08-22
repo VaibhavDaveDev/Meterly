@@ -220,11 +220,7 @@ app.post(
   async (c) => {
     const db = getDb(c.env.DB);
     const sendOtpBodySchema = z.object({
-      email: z
-        .string()
-        .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email")
-        .toLowerCase()
-        .trim(),
+      email: z.string().trim().toLowerCase().pipe(z.email("Invalid email")),
       type: z.enum(["forget-password", "email-verification"]),
     });
     let parsedBody;

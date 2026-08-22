@@ -594,3 +594,48 @@
     }
   }
 }
+
+/* ─── Settings page mobile responsive ─────────────────────────────── */
+.settings-profile-card {
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+  flex-wrap: wrap;
+  padding: 24px;
+}
+
+.settings-profile-avatar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 160px;
+}
+
+.settings-profile-fields-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+@media (max-width: 520px) {
+  .settings-profile-card {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .settings-profile-avatar-col {
+    flex-direction: row; /* avatar circle + label side by side */
+    flex-wrap: wrap;
+    align-items: flex-start;
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .settings-profile-fields-col {
+    min-width: 100%;
+    width: 100%;
+  }
+}

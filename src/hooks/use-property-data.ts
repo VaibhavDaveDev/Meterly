@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { Tenancy } from "../types/db";
 import { apiClient } from "../lib/api-client";
 import type { ActiveBillingPeriod } from "../components/properties/types";
@@ -47,75 +47,145 @@ export function usePropertyData(
   );
   const [pendingEditRequestCount, setPendingEditRequestCount] = useState(0);
 
-  const fetchTenancies = async () => {
+  // ── Four independent domain generation counters ──────────────────────────
+  const tenanciesGenRef = useRef(0);
+  const periodGenRef = useRef(0);
+  const billsGenRef = useRef(0);
+  const countGenRef = useRef(0);
+
+  // ── Internal guarded helpers ──────────────────────────────────────────────
+
+  const fetchTenanciesGuarded = async (gen: number) => {
     setIsLoadingTenants(true);
-    const { data } = await apiClient.get<{
-      active: Tenancy[];
-      invited: Tenancy[];
-      past: Tenancy[];
-    }>(`/properties/${propertyId}/tenancies`);
-    if (data) {
-      const allTenancies = [...data.active, ...data.invited, ...data.past];
-      setTenancies(allTenancies);
-      setTenantCount(data.active.length);
+    try {
+      const { data } = await apiClient.get<{
+        active: Tenancy[];
+        invited: Tenancy[];
+        past: Tenancy[];
+      }>(`/properties/${propertyId}/tenancies`);
+      if (gen !== tenanciesGenRef.current) return;
+      if (data) {
+        const allTenancies = [...data.active, ...data.invited, ...data.past];
+        setTenancies(allTenancies);
+        setTenantCount(data.active.length);
+      }
+    } finally {
+      if (gen === tenanciesGenRef.current) setIsLoadingTenants(false);
     }
-    setIsLoadingTenants(false);
   };
 
-  const fetchBills = async () => {
+  const fetchLatestPeriodGuarded = async (gen: number) => {
+    const { data } = await apiClient.get<{
+      activePeriod: ActiveBillingPeriod | null;
+      stats?: { totalTenants: number; paidThisPeriod: number } | null;
+    }>(`/properties/${propertyId}/periods?limit=1&context=current`);
+    if (gen !== periodGenRef.current) return;
+    setActivePeriod(data?.activePeriod ?? null);
+  };
+
+  const fetchBillsGuarded = async (gen: number) => {
     if (!isOwner) return;
     setIsLoadingBills(true);
     const qs =
       activeTab === "bills" ? `?year=${filterYear}&status=${filterStatus}` : "";
-    const { data } = await apiClient.get<PropertyBillsResponse>(
-      `/properties/${propertyId}/bills${qs}`
-    );
-    if (data) {
-      setBillsData(data);
+    try {
+      const { data } = await apiClient.get<PropertyBillsResponse>(
+        `/properties/${propertyId}/bills${qs}`
+      );
+      if (gen !== billsGenRef.current) return;
+      setBillsData(data ?? null);
+    } finally {
+      if (gen === billsGenRef.current) setIsLoadingBills(false);
     }
-    setIsLoadingBills(false);
   };
 
-  const fetchPendingEditRequestCount = async () => {
+  const fetchPendingEditRequestCountGuarded = async (gen: number) => {
     if (!isOwner) return;
     const { data } = await apiClient.get<{ pendingCount: number }>(
       `/properties/${propertyId}/edit-requests/count`
     );
-    if (data) {
-      setPendingEditRequestCount(data.pendingCount);
-    }
+    if (gen !== countGenRef.current) return;
+    setPendingEditRequestCount(data?.pendingCount ?? 0);
   };
 
-  const fetchLatestPeriod = async () => {
-    const { data } = await apiClient.get<{
-      activePeriod: ActiveBillingPeriod | null;
-      stats?: {
-        totalTenants: number;
-        paidThisPeriod: number;
-      } | null;
-    }>(`/properties/${propertyId}/periods?limit=1&context=current`);
-    if (data && data.activePeriod) {
-      setActivePeriod(data.activePeriod);
-    } else {
-      setActivePeriod(null);
-    }
-  };
+  // ── Public helpers (returned as refetch* callbacks) ───────────────────────
 
-  useEffect(() => {
-    if (activeTab === "tenants") {
-      fetchTenancies();
-    } else if (activeTab === "bills") {
-      if (isOwner) fetchBills();
-    }
+  const fetchTenancies = useCallback(async () => {
+    await fetchTenanciesGuarded(++tenanciesGenRef.current);
+  }, [propertyId]);
+
+  const fetchBills = useCallback(async () => {
+    await fetchBillsGuarded(++billsGenRef.current);
   }, [activeTab, propertyId, filterYear, filterStatus, isOwner]);
 
+  const fetchLatestPeriod = useCallback(async () => {
+    await fetchLatestPeriodGuarded(++periodGenRef.current);
+  }, [propertyId]);
+
+  const fetchPendingEditRequestCount = useCallback(async () => {
+    await fetchPendingEditRequestCountGuarded(++countGenRef.current);
+  }, [propertyId, isOwner]);
+
+  // ── Effects ───────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    fetchLatestPeriod();
-    fetchPendingEditRequestCount();
-    if (activeTab === "overview") {
-      if (isOwner) fetchBills();
+    const pGen = ++periodGenRef.current;
+    void fetchLatestPeriodGuarded(pGen).catch((err) =>
+      console.error("[usePropertyData] period fetch failed", err)
+    );
+    return () => {
+      periodGenRef.current++;
+    };
+  }, [propertyId]);
+
+  useEffect(() => {
+    const cGen = ++countGenRef.current;
+    if (isOwner) {
+      void fetchPendingEditRequestCountGuarded(cGen).catch((err) =>
+        console.error("[usePropertyData] count fetch failed", err)
+      );
+    } else {
+      setPendingEditRequestCount(0);
     }
-  }, [propertyId, activeTab, isOwner]);
+    return () => {
+      countGenRef.current++;
+    };
+  }, [propertyId, isOwner]);
+
+  // Reset tenancies state when the property changes so stale data from the
+  // previous property is never visible. Split from the fetch effect so that
+  // tab switches do not blank the list unnecessarily.
+  useEffect(() => {
+    setTenancies([]);
+  }, [propertyId]);
+
+  useEffect(() => {
+    const tGen = ++tenanciesGenRef.current;
+    if (activeTab === "tenants") {
+      void fetchTenanciesGuarded(tGen).catch((err) =>
+        console.error("[usePropertyData] tenancies fetch failed", err)
+      );
+    }
+    return () => {
+      tenanciesGenRef.current++;
+      setIsLoadingTenants(false);
+    };
+  }, [activeTab, propertyId]);
+
+  useEffect(() => {
+    const bGen = ++billsGenRef.current;
+    if ((activeTab === "bills" || activeTab === "overview") && isOwner) {
+      void fetchBillsGuarded(bGen).catch((err) =>
+        console.error("[usePropertyData] bills fetch failed", err)
+      );
+    } else if (!isOwner) {
+      setBillsData(null);
+    }
+    return () => {
+      billsGenRef.current++;
+      setIsLoadingBills(false);
+    };
+  }, [activeTab, propertyId, filterYear, filterStatus, isOwner]);
 
   return {
     tenancies,

@@ -156,7 +156,12 @@ function DashboardOverviewInner() {
       )}
 
       {(!isBoth || activeView === "owner") && ownerStats && (
-        <OwnerDashboard stats={ownerStats} onUpdate={setOwnerStats} />
+        <OwnerDashboard
+          stats={ownerStats}
+          onUpdate={(updater) =>
+            setOwnerStats((prev) => (prev ? updater(prev) : null))
+          }
+        />
       )}
 
       {(!isBoth || activeView === "tenant") && tenantStats && (

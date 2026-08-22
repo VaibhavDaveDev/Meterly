@@ -44,27 +44,9 @@ export function ProfileSection({
   onSave,
 }: ProfileSectionProps) {
   return (
-    <form
-      onSubmit={onSave}
-      className="card"
-      style={{
-        padding: "24px",
-        display: "flex",
-        flexDirection: "row",
-        gap: "40px",
-        flexWrap: "wrap",
-      }}
-    >
+    <form onSubmit={onSave} className="card settings-profile-card">
       {/* Left: Avatar Preview */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "16px",
-          minWidth: "160px",
-        }}
-      >
+      <div className="settings-profile-avatar-col">
         <div
           style={{
             width: "140px",
@@ -84,7 +66,7 @@ export function ProfileSection({
               style={{
                 fontSize: "3rem",
                 fontWeight: 700,
-                color: "#fff",
+                color: "var(--on-primary)",
                 backgroundColor: "var(--color-accent)",
                 width: "100%",
                 height: "100%",
@@ -131,15 +113,7 @@ export function ProfileSection({
       </div>
 
       {/* Right: Info and Settings */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-          minWidth: 0,
-        }}
-      >
+      <div className="settings-profile-fields-col">
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           <label className="form-label" htmlFor="profile-name">
             Name
@@ -223,7 +197,7 @@ export function ProfileSection({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "white",
+                color: "var(--on-primary)",
                 fontWeight: 600,
                 fontSize: "1.125rem",
                 overflow: "hidden",
