@@ -19,10 +19,7 @@ const tenanciesRouter = new OpenAPIHono<{
 tenanciesRouter.use("*", authMiddleware);
 
 const InviteTenantSchema = z.object({
-  email: z
-    .string()
-    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email")
-    .openapi({ example: "tenant@meterly.app" }),
+  email: z.email("Invalid email").openapi({ example: "tenant@meterly.app" }),
   splitPercentage: z.number().min(0).max(100).optional(),
 });
 
