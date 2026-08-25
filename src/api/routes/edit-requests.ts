@@ -254,7 +254,7 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
 
   // 1. Period must be confirmed
   if (period.status !== "confirmed") {
-    // ponytail: clear user guidance on why correction requests are rejected for open periods
+    // Clear user guidance on why correction requests are rejected for open periods
     return c.json(
       {
         success: false as const,
@@ -285,7 +285,7 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
       (pv.solarGenerationEnd !== undefined &&
         pv.solarGenerationEnd !== currentReading.solarGenerationEnd);
     if (!hasChange) {
-      // ponytail: display current readings so user knows what they submitted
+      // Display current readings so user knows what they submitted
       return c.json(
         {
           success: false as const,
@@ -305,7 +305,7 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
       currentReading.solarGenerationStart !== null &&
       pv.solarGenerationEnd < currentReading.solarGenerationStart
     ) {
-      // ponytail: meter reading rule (count up, never down) explanation
+      // Meter reading rule (count up, never down) explanation
       return c.json(
         {
           success: false as const,
@@ -326,7 +326,7 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
         (pv.exportEnd ?? currentReading.exportEnd) -
         (currentReading.exportStart || 0);
       if (gridExported > solarGenerated) {
-        // ponytail: physically impossible explanation
+        // Physically impossible explanation
         return c.json(
           {
             success: false as const,
@@ -378,7 +378,7 @@ requestsRouter.openapi(createEditRequestRoute, async (c) => {
     property.maxPendingEditRequests !== 0 &&
     pendingCount >= (property.maxPendingEditRequests || 3)
   ) {
-    // ponytail: actionable throttle notification reference
+    // Actionable throttle notification reference
     return c.json(
       {
         success: false as const,
@@ -620,7 +620,7 @@ requestsRouter.openapi(getPropertyEditRequestsRoute, async (c) => {
   );
 });
 
-// ponytail: count-only query via billingPeriods join to avoid loading full request context
+// Count-only query via billingPeriods join to avoid loading full request context
 const getPropertyPendingCountRoute = createRoute({
   method: "get",
   path: "/properties/{id}/edit-requests/count",
@@ -799,7 +799,7 @@ requestsRouter.openapi(reviewRequestRoute, async (c) => {
       })
       .where(eq(editRequests.id, requestId));
 
-    // ponytail: fetch proposed/current readings to construct rejection message with context
+    // Fetch proposed/current readings to construct rejection message with context
     const proposedValuesRaw = (() => {
       try {
         return JSON.parse(request.proposedValues || "{}");
@@ -989,7 +989,7 @@ If you believe this is an error, you can submit a new correction request with ad
   c.executionCtx.waitUntil(
     recalculateChain(db, period.id).catch((err) => {
       console.error("[Recalc failed]", period.id, err);
-      // ponytail: log-only error handling, add queue retry when failure rate >1%
+      // Log-only error handling, add queue retry when failure rate >1%
     })
   );
 
@@ -1086,8 +1086,6 @@ requestsRouter.openapi(cancelRequestRoute, async (c) => {
     .update(editRequests)
     .set({ status: "cancelled" })
     .where(eq(editRequests.id, requestId));
-
-  // ponytail: notification not required for cancellation since tenant performed action themselves
 
   return c.json({ success: true as const, message: "Request cancelled" }, 200);
 });

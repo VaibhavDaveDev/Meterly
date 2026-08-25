@@ -179,7 +179,7 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
         />
       )}
 
-      {/* ponytail: show active pending request details block if present */}
+      {/* show active pending request details block if present */}
       {isTenant && data.pendingEditRequest && (
         <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5 space-y-4">
           <div className="flex items-start justify-between gap-4">

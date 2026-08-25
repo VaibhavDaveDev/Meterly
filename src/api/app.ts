@@ -133,8 +133,6 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-// ponytail: KV-based rate limiting deferred to v1.1. Better Auth built-in is enough for v1 auth routes.
-
 // CORS middleware — dynamically allows the configured BETTER_AUTH_URL domain,
 // all *.pages.dev preview deployments, and localhost for dev.
 app.use(

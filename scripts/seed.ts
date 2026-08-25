@@ -230,7 +230,6 @@ async function run() {
     const readingId = `reading-2026-${p.m}`;
     const billId = `bill-2026-${p.m}`;
 
-    // ponytail: prop-001 has_solar = 1, so the correct mode is 'solar' rather than 'standard' (which fails CHECK constraint).
     insertPeriod.run(
       periodId,
       "prop-001",

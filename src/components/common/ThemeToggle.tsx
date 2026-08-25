@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
-// ponytail: single source of truth theme toggle with clean mounted check
+// Single source of truth theme toggle with clean mounted check
 export function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [mounted, setMounted] = useState(false);

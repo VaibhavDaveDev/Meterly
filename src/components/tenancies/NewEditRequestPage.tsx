@@ -87,7 +87,7 @@ export function NewEditRequestPage({
 
   const [loadError, setLoadError] = useState(false);
 
-  // ponytail: Simple API endpoints used directly instead of complicated abstractions
+  // Simple API endpoints used directly instead of complicated abstractions
   useEffect(() => {
     async function loadConfirmedPeriods() {
       setIsLoadingPeriods(true);
@@ -199,7 +199,7 @@ export function NewEditRequestPage({
     loadPeriodDetails();
   }, [selectedPeriodId, tenancyId]);
 
-  // ponytail: compute validation errors on-the-fly during render to prevent state-sync infinite loops
+  // compute validation errors on-the-fly during render to prevent state-sync infinite loops
   const getErrors = () => {
     const errors: ValidationErrors = {};
     if (!data) return { errors, hasErrors: false };
@@ -351,7 +351,7 @@ export function NewEditRequestPage({
   const { property, period, startValues } = data;
   const isSolar = property.hasSolar;
 
-  // ponytail: period status guard to prevent correction requests on open/draft periods
+  // period status guard to prevent correction requests on open/draft periods
   if (period.status === "draft" || period.status === "submitted") {
     return (
       <div className="space-y-6">

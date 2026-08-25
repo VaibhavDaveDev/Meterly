@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { eq, and, desc, ne, sql, like, count } from "drizzle-orm";
+import { eq, and, desc, ne, sql, like, count, isNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   tenancies,
@@ -311,7 +311,7 @@ tenancyActionsRouter.openapi(exportBillsRoute, async (c) => {
     .from(tenancies)
     .where(eq(tenancies.id, tenancyId))
     .limit(1);
-  if (!tenancy || tenancy.tenantId !== user.id) {
+  if (!tenancy || tenancy.tenantId !== user.id || tenancy.deletedByTenantAt) {
     return c.json(
       {
         success: false as const,
@@ -556,7 +556,7 @@ tenancyActionsRouter.openapi(archiveTenancyRoute, async (c) => {
     )
     .limit(1);
 
-  if (!tenancy) {
+  if (!tenancy || tenancy.deletedByTenantAt) {
     return c.json(
       {
         success: false as const,
@@ -586,11 +586,7 @@ tenancyActionsRouter.openapi(archiveTenancyRoute, async (c) => {
     .set({ archivedByTenantAt: new Date() })
     .where(eq(tenancies.id, tenancyId as string));
 
-  // If this was the last tenant to archive it, and the owner has deleted the property, sweep the data.
-  // This runs in the background so we don't block the response.
-  c.executionCtx.waitUntil(
-    sweepOrphanedPropertyData(db, c.env, tenancy.propertyId)
-  );
+  // Note: Hiding (archiving) is a visual preference only and never triggers data deletion.
 
   return c.json({ success: true as const }, 200);
 });
@@ -636,7 +632,7 @@ tenancyActionsRouter.openapi(unarchiveTenancyRoute, async (c) => {
     )
     .limit(1);
 
-  if (!tenancy) {
+  if (!tenancy || tenancy.deletedByTenantAt) {
     return c.json(
       {
         success: false as const,
@@ -650,6 +646,108 @@ tenancyActionsRouter.openapi(unarchiveTenancyRoute, async (c) => {
     .update(tenancies)
     .set({ archivedByTenantAt: null })
     .where(eq(tenancies.id, tenancyId as string));
+
+  return c.json({ success: true as const }, 200);
+});
+
+const deleteTenancyRoute = createRoute({
+  method: "delete",
+  path: "/{id}",
+  tags: ["Tenancy Actions"],
+  summary: "Tenant permanently deletes their tenancy record",
+  security: [{ cookieAuth: [] }],
+  request: {
+    params: IdParam,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: SimpleSuccessResponse } },
+      description: "Tenancy deleted",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Missing ID",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Tenancy not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponse } },
+      description: "Cannot delete an active tenancy",
+    },
+  },
+});
+
+tenancyActionsRouter.openapi(deleteTenancyRoute, async (c) => {
+  const user = c.get("user");
+  const { id: tenancyId } = c.req.valid("param");
+  const db = getDb(c.env.DB);
+
+  const [tenancy] = await db
+    .select()
+    .from(tenancies)
+    .where(
+      and(
+        eq(tenancies.id, tenancyId as string),
+        eq(tenancies.tenantId, user.id),
+        isNull(tenancies.deletedByTenantAt)
+      )
+    )
+    .limit(1);
+
+  if (!tenancy) {
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
+  }
+
+  // Cannot delete an active tenancy — tenant must leave first
+  if (tenancy.status === "active") {
+    return c.json(
+      {
+        success: false as const,
+        error: {
+          code: "ACTIVE_TENANCY",
+          message: "Cannot delete an active tenancy. Leave the property first.",
+        },
+      },
+      409
+    );
+  }
+
+  const result = await db
+    .update(tenancies)
+    .set({ deletedByTenantAt: new Date() })
+    .where(
+      and(
+        eq(tenancies.id, tenancyId as string),
+        eq(tenancies.tenantId, user.id),
+        isNull(tenancies.deletedByTenantAt)
+      )
+    )
+    .returning({ id: tenancies.id });
+
+  if (result.length === 0) {
+    // Another concurrent request already soft-deleted this tenancy
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
+  }
+
+  // Speculative sweep: if property is already deleted and all other real tenants
+  // have also deleted, this triggers the full historical data wipe.
+  c.executionCtx.waitUntil(
+    sweepOrphanedPropertyData(db, c.env, tenancy.propertyId)
+  );
 
   return c.json({ success: true as const }, 200);
 });
@@ -711,14 +809,47 @@ tenancyActionsRouter.openapi(getTenancyBillsRoute, async (c) => {
     );
   }
 
-  // Only the tenant themselves (or the property owner) can read these bills
+  // Only the tenant themselves (or the property owner) can read these bills.
+  // The property row may no longer exist after owner deletion, so ownership is
+  // resolved from the properties table first and falls back to the retained
+  // owner tenancy row (isOwnerTenancy=true) which is never purged until all
+  // real tenants have also deleted.
   const [property] = await db
     .select()
     .from(properties)
     .where(eq(properties.id, tenancy.propertyId))
     .limit(1);
-  const isOwner = property?.ownerId === user.id;
+
+  let isOwner = property?.ownerId === user.id;
+
+  if (!isOwner) {
+    // Property row gone — check for a retained owner tenancy for this user
+    const [ownerTenancy] = await db
+      .select({ id: tenancies.id })
+      .from(tenancies)
+      .where(
+        and(
+          eq(tenancies.propertyId, tenancy.propertyId),
+          eq(tenancies.tenantId, user.id),
+          eq(tenancies.isOwnerTenancy, true)
+        )
+      )
+      .limit(1);
+    isOwner = !!ownerTenancy;
+  }
+
   const isTenant = tenancy.tenantId === user.id;
+
+  // Tenant-deleted tenancies are hidden from non-owners (billing history retained for owners)
+  if (tenancy.deletedByTenantAt && !isOwner) {
+    return c.json(
+      {
+        success: false as const,
+        error: { code: "TENANCY_NOT_FOUND", message: "Tenancy not found" },
+      },
+      404
+    );
+  }
 
   if (!isOwner && !isTenant) {
     return c.json(
@@ -753,7 +884,7 @@ tenancyActionsRouter.openapi(getTenancyBillsRoute, async (c) => {
       totalConsumption: bills.totalConsumption,
       splitPercentage: bills.splitPercentage,
       billingPeriodId: bills.billingPeriodId,
-      // ponytail: simplified pending request count check per billing period
+      // simplified pending request count check per billing period
       hasPendingRequest: sql<number>`(
         SELECT count(*) FROM ${editRequests} 
         WHERE ${editRequests.billingPeriodId} = ${bills.billingPeriodId} 
@@ -859,7 +990,7 @@ tenancyActionsRouter.openapi(getTenancyRoute, async (c) => {
     )
     .limit(1);
 
-  if (!tenancyData) {
+  if (!tenancyData || tenancyData.tenancy.deletedByTenantAt) {
     return c.json(
       {
         success: false as const,
@@ -1029,7 +1160,7 @@ tenancyActionsRouter.openapi(getPendingEditRequestsRoute, async (c) => {
     .from(tenancies)
     .where(and(eq(tenancies.id, tenancyId), eq(tenancies.tenantId, user.id)))
     .limit(1);
-  if (!tenancy)
+  if (!tenancy || tenancy.deletedByTenantAt)
     return c.json(
       {
         success: false as const,
@@ -1094,7 +1225,7 @@ tenancyActionsRouter.openapi(getChartDataRoute, async (c) => {
     .from(tenancies)
     .where(and(eq(tenancies.id, tenancyId), eq(tenancies.tenantId, user.id)))
     .limit(1);
-  if (!tenancy)
+  if (!tenancy || tenancy.deletedByTenantAt)
     return c.json(
       {
         success: false as const,
@@ -1251,7 +1382,7 @@ tenancyActionsRouter.openapi(getConfirmedPeriodsRoute, async (c) => {
     )
     .limit(1);
 
-  if (!tenancy) {
+  if (!tenancy || tenancy.deletedByTenantAt) {
     return c.json(
       {
         success: false as const,

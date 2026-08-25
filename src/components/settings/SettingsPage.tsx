@@ -15,7 +15,7 @@ type User = {
   image?: string | null;
 };
 
-// ponytail: parse DiceBear seed from URL (lorelei only)
+// parse DiceBear seed from URL (lorelei only)
 function parseDiceBearUrl(url: string | null | undefined): { seed: string } {
   const fallback = { seed: "" };
   if (!url) return fallback;
@@ -236,7 +236,7 @@ function SettingsPageInner() {
     window.location.href = "/login";
   };
 
-  // ponytail: client-side theme switcher matching astro layouts
+  // client-side theme switcher matching astro layouts
   const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
     setTheme(newTheme);
     localStorage.setItem("meterly-theme", newTheme);

@@ -1,6 +1,6 @@
 /**
  * Sanitise a single value for CSV output.
- * ponytail: using single regex replace and minimal conditions.
+ * Using single regex replace and minimal conditions.
  */
 export function csvCell(value: string | number | null | undefined): string {
   if (value == null) return "";
