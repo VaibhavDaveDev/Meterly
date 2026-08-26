@@ -597,6 +597,8 @@ export async function getTenantDashboardStats(db: Database, tenantId: string) {
     );
 
   if (activeTenancies.length === 0) {
+    const { pastTenanciesList, archivedTenanciesList } =
+      await fetchPastTenancyData(db, tenantId);
     return {
       currentBill: null,
       lastBill: null,
@@ -609,7 +611,8 @@ export async function getTenantDashboardStats(db: Database, tenantId: string) {
       consumptionVsBill: [],
       momComparison: null,
       activeTenancies: [],
-      pastTenancies: [],
+      pastTenancies: pastTenanciesList,
+      archivedTenancies: archivedTenanciesList,
     };
   }
 

@@ -211,6 +211,16 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
       });
     } catch (e) {
       const err = e as Error;
+      const alreadyGone =
+        err.message === "Not Found" ||
+        err.message.includes("permanently removed");
+      if (alreadyGone) {
+        toast({
+          title: "Done",
+          description: "This record was already removed.",
+        });
+        return;
+      }
       // Delete failed — clear the guard and revert the optimistic removal.
       deletedIds.current.delete(tenancyId);
       // Revert optimistic update
