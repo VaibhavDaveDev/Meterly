@@ -367,6 +367,7 @@ function queryPastTenancies(db: Database, tenantId: string, archived: boolean) {
     .where(
       and(
         eq(tenancies.tenantId, tenantId),
+        isNull(tenancies.deletedByTenantAt),
         inArray(tenancies.status, ["inactive", "property_deleted"]),
         archived
           ? isNotNull(tenancies.archivedByTenantAt)
@@ -588,10 +589,16 @@ export async function getTenantDashboardStats(db: Database, tenantId: string) {
     .select()
     .from(tenancies)
     .where(
-      and(eq(tenancies.tenantId, tenantId), eq(tenancies.status, "active"))
+      and(
+        eq(tenancies.tenantId, tenantId),
+        eq(tenancies.status, "active"),
+        isNull(tenancies.deletedByTenantAt)
+      )
     );
 
   if (activeTenancies.length === 0) {
+    const { pastTenanciesList, archivedTenanciesList } =
+      await fetchPastTenancyData(db, tenantId);
     return {
       currentBill: null,
       lastBill: null,
@@ -604,7 +611,8 @@ export async function getTenantDashboardStats(db: Database, tenantId: string) {
       consumptionVsBill: [],
       momComparison: null,
       activeTenancies: [],
-      pastTenancies: [],
+      pastTenancies: pastTenanciesList,
+      archivedTenancies: archivedTenanciesList,
     };
   }
 

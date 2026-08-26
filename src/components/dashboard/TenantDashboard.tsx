@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "../../hooks/use-toast";
 import { formatCurrency } from "../../lib/format";
 import type { TenantDashboardStats } from "./types";
@@ -28,6 +28,7 @@ import {
 import { Badge } from "../ui/badge";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { ArchivePropertyModal } from "../tenant/ArchivePropertyModal";
+import { DeleteTenancyModal } from "../tenant/DeleteTenancyModal";
 
 interface TenancyActionResponse {
   success: boolean;
@@ -35,22 +36,33 @@ interface TenancyActionResponse {
   data?: { warning?: string };
 }
 
+type TenancySelection = {
+  tenancyId: string;
+  propertyName: string;
+  allPaid: boolean;
+};
+
 export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
   const [showPastTenancies, setShowPastTenancies] = useState(false);
   const { toast } = useToast();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedTenancy, setSelectedTenancy] = useState<{
-    tenancyId: string;
-    propertyName: string;
-    isPropertyDeleted: boolean;
-    allPaid: boolean;
-  } | null>(null);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [selectedTenancyForArchive, setSelectedTenancyForArchive] =
+    useState<TenancySelection | null>(null);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedTenancyForDelete, setSelectedTenancyForDelete] =
+    useState<TenancySelection | null>(null);
 
   const [pastTenancies, setPastTenancies] = useState(stats.pastTenancies || []);
   const [archivedTenancies, setArchivedTenancies] = useState(
     stats.archivedTenancies || []
   );
+
+  // Tracks tenancies whose deletion has been initiated. Any in-flight
+  // archive/unarchive PATCH that fails after deletion starts must not roll
+  // back the optimistic UI removal — the delete already won the race.
+  const deletedIds = useRef<Set<string>>(new Set());
 
   const handleAction = async (
     tenancyId: string,
@@ -98,9 +110,8 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
 
       let description = "Action successful.";
       if (action === "archive") {
-        description = tenancy?.isPropertyDeleted
-          ? "Records deleted and property hidden."
-          : "Property hidden. Restore it anytime from 'Hidden Properties'.";
+        description =
+          "Property hidden. Restore it anytime from 'Hidden Properties'.";
       } else {
         description = "Property restored to your history.";
       }
@@ -111,6 +122,11 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
       });
     } catch (e) {
       const err = e as Error;
+
+      // If deletion already started for this tenancy, the PATCH rejection is
+      // expected — do not roll back the optimistic removal.
+      if (deletedIds.current.has(tenancyId)) return;
+
       // Revert optimistic update
       if (action === "archive") {
         const t =
@@ -156,6 +172,69 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
           description: err.message || `Failed to ${action} tenancy.`,
         });
       }
+    }
+  };
+
+  const handleDelete = async (tenancyId: string) => {
+    // Mark deletion as started so any concurrent handleAction calls won't
+    // roll back their optimistic removals after this point.
+    deletedIds.current.add(tenancyId);
+
+    // Optimistic UI Update: remove from both lists
+    const pastT = pastTenancies.find((t) => t.tenancyId === tenancyId);
+    const archT = archivedTenancies.find((t) => t.tenancyId === tenancyId);
+
+    setPastTenancies((prev) => prev.filter((p) => p.tenancyId !== tenancyId));
+    setArchivedTenancies((prev) =>
+      prev.filter((p) => p.tenancyId !== tenancyId)
+    );
+
+    try {
+      const res = await fetch(`/api/tenancies/${tenancyId}`, {
+        method: "DELETE",
+      });
+      if (res.status === 401) {
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+      const isJson = res.headers
+        .get("content-type")
+        ?.includes("application/json");
+      const data = isJson
+        ? ((await res.json()) as TenancyActionResponse)
+        : null;
+      if (!res.ok) throw new Error(data?.error?.message || "Failed to delete");
+
+      toast({
+        title: "Done",
+        description: "Tenancy removed from your history.",
+      });
+    } catch (e) {
+      const err = e as Error;
+      const alreadyGone =
+        err.message === "Not Found" ||
+        err.message.includes("permanently removed");
+      if (alreadyGone) {
+        toast({
+          title: "Done",
+          description: "This record was already removed.",
+        });
+        return;
+      }
+      // Delete failed — clear the guard and revert the optimistic removal.
+      deletedIds.current.delete(tenancyId);
+      // Revert optimistic update
+      if (pastT) {
+        setPastTenancies((prev) => [...prev, pastT]);
+      }
+      if (archT) {
+        setArchivedTenancies((prev) => [...prev, archT]);
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to delete tenancy records.",
+      });
     }
   };
 
@@ -332,24 +411,40 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
           showPastTenancies={showPastTenancies}
           setShowPastTenancies={setShowPastTenancies}
           onAction={handleAction}
-          onRequestModal={(tenancy) => {
-            setSelectedTenancy(tenancy);
-            setModalOpen(true);
+          onRequestArchiveModal={(tenancy) => {
+            setSelectedTenancyForArchive(tenancy);
+            setArchiveModalOpen(true);
+          }}
+          onRequestDeleteModal={(tenancy) => {
+            setSelectedTenancyForDelete(tenancy);
+            setDeleteModalOpen(true);
           }}
         />
       )}
 
-      {selectedTenancy && (
+      {selectedTenancyForArchive && (
         <ArchivePropertyModal
-          isOpen={modalOpen}
-          propertyName={selectedTenancy.propertyName}
-          isPropertyDeleted={selectedTenancy.isPropertyDeleted}
-          allPaid={selectedTenancy.allPaid}
+          isOpen={archiveModalOpen}
+          propertyName={selectedTenancyForArchive.propertyName}
+          allPaid={selectedTenancyForArchive.allPaid}
           onConfirm={() => {
-            handleAction(selectedTenancy.tenancyId, "archive");
-            setModalOpen(false);
+            handleAction(selectedTenancyForArchive.tenancyId, "archive");
+            setArchiveModalOpen(false);
           }}
-          onCancel={() => setModalOpen(false)}
+          onCancel={() => setArchiveModalOpen(false)}
+        />
+      )}
+
+      {selectedTenancyForDelete && (
+        <DeleteTenancyModal
+          isOpen={deleteModalOpen}
+          propertyName={selectedTenancyForDelete.propertyName}
+          allPaid={selectedTenancyForDelete.allPaid}
+          onConfirm={() => {
+            handleDelete(selectedTenancyForDelete.tenancyId);
+            setDeleteModalOpen(false);
+          }}
+          onCancel={() => setDeleteModalOpen(false)}
         />
       )}
     </section>
@@ -620,19 +715,16 @@ function PastTenanciesAccordion({
   showPastTenancies,
   setShowPastTenancies,
   onAction,
-  onRequestModal,
+  onRequestArchiveModal,
+  onRequestDeleteModal,
 }: {
   pastTenancies: NonNullable<TenantDashboardStats["pastTenancies"]>;
   archivedTenancies: NonNullable<TenantDashboardStats["archivedTenancies"]>;
   showPastTenancies: boolean;
   setShowPastTenancies: (val: boolean) => void;
   onAction: (tenancyId: string, action: "archive" | "unarchive") => void;
-  onRequestModal: (tenancy: {
-    tenancyId: string;
-    propertyName: string;
-    isPropertyDeleted: boolean;
-    allPaid: boolean;
-  }) => void;
+  onRequestArchiveModal: (tenancy: TenancySelection) => void;
+  onRequestDeleteModal: (tenancy: TenancySelection) => void;
 }) {
   const [inlineConfirmId, setInlineConfirmId] = useState<string | null>(null);
 
@@ -702,13 +794,12 @@ function PastTenanciesAccordion({
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => {
-                      if (!pt.isPropertyDeleted && pt.allPaid) {
+                      if (pt.allPaid) {
                         setInlineConfirmId(pt.tenancyId);
                       } else {
-                        onRequestModal({
+                        onRequestArchiveModal({
                           tenancyId: pt.tenancyId,
                           propertyName: pt.propertyName,
-                          isPropertyDeleted: pt.isPropertyDeleted ?? false,
                           allPaid: pt.allPaid,
                         });
                       }
@@ -716,6 +807,18 @@ function PastTenanciesAccordion({
                     className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Hide
+                  </button>
+                  <button
+                    onClick={() =>
+                      onRequestDeleteModal({
+                        tenancyId: pt.tenancyId,
+                        propertyName: pt.propertyName,
+                        allPaid: pt.allPaid,
+                      })
+                    }
+                    className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                  >
+                    Delete
                   </button>
                   <a
                     href={`/tenancies/${pt.tenancyId}/bills`}
@@ -771,6 +874,18 @@ function PastTenanciesAccordion({
                         className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                       >
                         Restore
+                      </button>
+                      <button
+                        onClick={() =>
+                          onRequestDeleteModal({
+                            tenancyId: pt.tenancyId,
+                            propertyName: pt.propertyName,
+                            allPaid: pt.allPaid,
+                          })
+                        }
+                        className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                      >
+                        Delete
                       </button>
                       <a
                         href={`/tenancies/${pt.tenancyId}/bills`}

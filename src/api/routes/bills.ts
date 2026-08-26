@@ -171,7 +171,7 @@ billsRouter.openapi(getBillRoute, async (c) => {
     submitterName = submitter?.name || null;
   }
 
-  // ponytail: fetch active pending request if one exists for this tenant/period (guard null tenantId)
+  // Fetch active pending request if one exists for this tenant/period (guard null tenantId)
   const tenantUserId = tenancy.tenantId;
   const pendingRequests = tenantUserId
     ? await db
@@ -190,7 +190,7 @@ billsRouter.openapi(getBillRoute, async (c) => {
   const pendingRequest = pendingRequests[0] ?? null;
   const pendingEditRequestCount = pendingRequests.length;
 
-  // ponytail: query edit history with the editor name mapped
+  // Query edit history with the editor name mapped
   const editHistoryRows = reading
     ? await db
         .select({

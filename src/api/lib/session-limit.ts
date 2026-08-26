@@ -1,10 +1,10 @@
-import { eq } from 'drizzle-orm';
-import { getDb } from '../../db';
-import { session } from '../../db/schema';
-import { logger } from './logger';
+import { eq } from "drizzle-orm";
+import { getDb } from "../../db";
+import { session } from "../../db/schema";
+import { logger } from "./logger";
 
 /**
- * ponytail: simple FIFO deletion
+ * Simple FIFO deletion
  */
 export async function enforceSessionLimit(
   db: ReturnType<typeof getDb>,
@@ -20,11 +20,14 @@ export async function enforceSessionLimit(
     .orderBy(session.createdAt);
 
   const excessCount = userSessions.length - maxSessions;
-  
+
   if (excessCount > 0) {
     for (const s of userSessions.slice(0, excessCount)) {
       await db.delete(session).where(eq(session.id, s.id));
     }
-    logger.info({ userId, deletedCount: excessCount, event: 'session.fifo_cleanup' }, 'old sessions pruned');
+    logger.info(
+      { userId, deletedCount: excessCount, event: "session.fifo_cleanup" },
+      "old sessions pruned"
+    );
   }
 }

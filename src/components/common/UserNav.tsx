@@ -3,7 +3,7 @@ import { authClient } from "../../lib/auth-client";
 
 type User = { name: string; email: string; image?: string | null };
 
-// ponytail: initials avatar — no external dep needed
+// Initials avatar — no external dep needed
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(" ");
   const abbr =

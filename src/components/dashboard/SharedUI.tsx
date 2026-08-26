@@ -178,7 +178,7 @@ export function ChartCard<T>({
           </button>
         </div>
       </div>
-      {/* ponytail: in fullscreen, make chart-container flex-col and chart-area flex-1 with explicit min-height to prevent zero height resolution in ResponsiveContainer */}
+      {/* In fullscreen, make chart-container flex-col and chart-area flex-1 with explicit min-height to prevent zero height resolution in ResponsiveContainer */}
       <div
         className={`flex-1 w-full chart-container ${isFullscreen ? "min-h-0 flex-1 flex flex-col" : "min-h-[240px]"}`}
       >

@@ -39,6 +39,7 @@ export const tenancies = sqliteTable(
     leftAt: integer("left_at", { mode: "timestamp" }),
     declinedAt: integer("declined_at", { mode: "timestamp" }), // when tenant declined the invite
     archivedByTenantAt: integer("archived_by_tenant_at", { mode: "timestamp" }),
+    deletedByTenantAt: integer("deleted_by_tenant_at", { mode: "timestamp" }),
 
     // Reason recorded when a tenant is removed by owner
     removalReason: text("removal_reason"),

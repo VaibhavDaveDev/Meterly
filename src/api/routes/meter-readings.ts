@@ -1080,7 +1080,7 @@ readingsRouter.openapi(editReadingsRoute, async (c) => {
       })
       .catch((err) => {
         console.error("[Recalc failed]", periodId, err);
-        // ponytail: log-only error handling, add queue retry when failure rate >1%
+        // Log-only error handling, add queue retry when failure rate >1%
       })
   );
 
