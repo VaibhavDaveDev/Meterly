@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
 import { AppErrorBoundary } from "./AppErrorBoundary";
+import { QueryProvider } from "./QueryProvider";
 
 /**
- * Wraps a component in AppErrorBoundary.
+ * Wraps a component in AppErrorBoundary and QueryProvider.
  * Use at the client:load island boundary in Astro pages.
  *
  * Usage:
@@ -14,9 +15,11 @@ export function withErrorBoundary<P extends object>(
 ): ComponentType<P> {
   function BoundedComponent(props: P) {
     return (
-      <AppErrorBoundary>
-        <WrappedComponent {...props} />
-      </AppErrorBoundary>
+      <QueryProvider>
+        <AppErrorBoundary>
+          <WrappedComponent {...props} />
+        </AppErrorBoundary>
+      </QueryProvider>
     );
   }
   BoundedComponent.displayName = `withErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name || "Component"})`;

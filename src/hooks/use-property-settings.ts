@@ -1,11 +1,41 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "./use-toast";
 import { apiClient } from "../lib/api-client";
+import { queryKeys } from "../lib/query-keys";
 import type { Property } from "../types/db";
 import type {
   SolarInitialReadings,
   ActiveTenantSummary,
 } from "../components/properties/SettingsDialogs";
+
+interface TenantBillSummary {
+  billId: string;
+  tenantName: string;
+  splitPercentage: number;
+  totalDue: number;
+  status: "pending" | "paid";
+  markedPaidAt: string | null;
+}
+
+interface PeriodBillSummary {
+  id: string;
+  periodMonth: string;
+  calculationMode: "solar" | "grid_only";
+  periodStatus: "draft" | "pending_approval" | "submitted" | "confirmed";
+  tenants: TenantBillSummary[];
+  totalConsumption: number;
+  exportRefund: number | null;
+}
+
+interface BillsResponse {
+  bills: PeriodBillSummary[];
+  summary: {
+    totalBilled: number;
+    totalCollected: number;
+    totalOutstanding: number;
+  };
+}
 
 export function usePropertySettings(
   property: Property,
@@ -34,63 +64,35 @@ export function usePropertySettings(
   const [isArchiving, setIsArchiving] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showSoloWarningModal, setShowSoloWarningModal] = useState(false);
-  const [activeTenantsList, setActiveTenantsList] = useState<
-    ActiveTenantSummary[]
-  >([]);
-  const [unpaidBillsCount, setUnpaidBillsCount] = useState<number>(0);
 
-  useEffect(() => {
-    // Fetch danger zone stats
-    apiClient
-      .get<{
-        active: ActiveTenantSummary[];
-      }>(`/properties/${property.id}/tenancies`)
-      .then(({ data }) => {
-        if (data && data.active) {
-          setActiveTenantsList(data.active);
-        }
-      });
+  const tenanciesForSettingsQuery = useQuery({
+    queryKey: queryKeys.propertyTenancies(property.id),
+    queryFn: () =>
+      apiClient
+        .get<{
+          active: ActiveTenantSummary[];
+          invited: unknown[];
+          past: unknown[];
+        }>(`/properties/${property.id}/tenancies`)
+        .then((r) => r.data ?? { active: [], invited: [], past: [] }),
+    select: (d) => d.active,
+  });
+  const activeTenantsList = tenanciesForSettingsQuery.data ?? [];
 
-    interface TenantBillSummary {
-      billId: string;
-      tenantName: string;
-      splitPercentage: number;
-      totalDue: number;
-      status: "pending" | "paid";
-      markedPaidAt: string | null;
-    }
-
-    interface PeriodBillSummary {
-      id: string;
-      periodMonth: string;
-      calculationMode: "solar" | "grid_only";
-      periodStatus: "draft" | "pending_approval" | "submitted" | "confirmed";
-      tenants: TenantBillSummary[];
-      totalConsumption: number;
-      exportRefund: number | null;
-    }
-
-    interface BillsResponse {
-      bills: PeriodBillSummary[];
-      summary: {
-        totalBilled: number;
-        totalCollected: number;
-        totalOutstanding: number;
-      };
-    }
-
-    apiClient
-      .get<BillsResponse>(`/properties/${property.id}/bills?status=pending`)
-      .then(({ data }) => {
-        if (data && data.bills) {
-          const count = data.bills.reduce(
-            (acc: number, p: PeriodBillSummary) => acc + p.tenants.length,
-            0
-          );
-          setUnpaidBillsCount(count);
-        }
-      });
-  }, [property.id]);
+  const pendingBillsQuery = useQuery({
+    queryKey: queryKeys.propertyBills(property.id, "all", "pending"),
+    queryFn: () =>
+      apiClient
+        .get<BillsResponse>(`/properties/${property.id}/bills?status=pending`)
+        .then(
+          (r) =>
+            r.data?.bills?.reduce(
+              (acc: number, p: PeriodBillSummary) => acc + p.tenants.length,
+              0
+            ) ?? 0
+        ),
+  });
+  const unpaidBillsCount = pendingBillsQuery.data ?? 0;
 
   const confirmArchiveProperty = async () => {
     setIsArchiving(true);

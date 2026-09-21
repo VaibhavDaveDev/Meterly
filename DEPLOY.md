@@ -273,49 +273,69 @@ Future deploys are just: `pnpm run deploy`
 
 ---
 
-## Step 8 — Set Up the Daily Cron Job
+## Step 8 — Set Up the Daily Cron Jobs
 
-The cron endpoint `GET /api/cron/reading-reminders` needs to be called once per day by an external scheduler. It:
+Meterly has two cron endpoints that should be triggered on a daily schedule by an external scheduler. Both endpoints are protected by `Authorization: Bearer CRON_SECRET` (the secret configured in Step 6f). Any request without a valid header returns `401 Unauthorized`.
 
-1. Checks all properties where `reading_reminder_day` matches today's date
-2. Finds the previous month's billing period if it is still in `draft` status
-3. Creates in-app notifications for the property owner and active tenants
+1. **Reading Reminders (`GET /api/cron/reading-reminders`)**
+   - Runs daily (e.g. at 08:00 user local time or 03:00 UTC).
+   - Checks properties where `reading_reminder_day` matches today's date.
+   - Creates in-app notifications for owners and active tenants if the previous month's period is in `draft`.
 
-It is protected by `Authorization: Bearer CRON_SECRET`. Without the correct header, it returns 401.
+2. **Rate-Limit Cleanup (`GET /api/cron/cleanup-stale-rate-limits`)**
+   - Runs nightly (e.g. at 02:00 UTC).
+   - Purges stale D1 rate-limit tracking rows:
+     - `otp_rate_limit` rows older than 30 days.
+     - `password_change_limit` rows older than 30 days.
+     - `upload_daily_count` and `reading_daily_count` records older than 2 days.
+
+---
 
 ### Option A — cron-job.org (Free, Recommended)
 
 1. Go to https://cron-job.org and create a free account
-2. Dashboard → Create Cronjob
-3. Fill in:
-   - **Title:** Meterly Reading Reminders
+2. Create **Job 1: Reading Reminders**
    - **URL:** `https://YOUR-PROJECT-NAME.pages.dev/api/cron/reading-reminders`
-   - **Schedule:** Every day at 08:00 (or whatever time suits your users)
-   - **Request method:** GET
-4. Expand the **Headers** section and add one header:
-   - Name: `Authorization`
-   - Value: `Bearer YOUR-CRON-SECRET-VALUE` (the exact value you set in Step 6f)
-5. Save/Create
+   - **Schedule:** Daily at 08:00
+   - **Headers:** `Authorization: Bearer YOUR-CRON-SECRET-VALUE`
+3. Create **Job 2: Rate Limit Cleanup**
+   - **URL:** `https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits`
+   - **Schedule:** Daily at 02:00
+   - **Headers:** `Authorization: Bearer YOUR-CRON-SECRET-VALUE`
 
-The job will now run daily. You can check the execution log in cron-job.org to confirm it is hitting 200.
+---
 
 ### Option B — GitHub Actions (if repo is on GitHub)
 
-Create `.github/workflows/reading-reminders.yml` in your repository:
+Create `.github/workflows/cron-jobs.yml` in your repository:
 
 ```yaml
-name: Daily Reading Reminders
+name: Daily Cron Jobs
 on:
   schedule:
-    # Runs at 03:00 UTC every day (08:30 IST)
+    # 02:00 UTC: Rate limit DB cleanup
+    - cron: "0 2 * * *"
+    # 03:00 UTC (08:30 IST): Reading reminders
     - cron: "0 3 * * *"
   workflow_dispatch: # allows manual trigger
 
 jobs:
-  trigger-reminders:
+  cleanup-stale-rate-limits:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 2 * * *'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger reading reminders cron
+      - name: Trigger Cleanup Cron (02:00 UTC)
+        run: |
+          curl --fail --silent --show-error \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits
+
+  reading-reminders:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 3 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Reading Reminders Cron (03:00 UTC)
         run: |
           curl --fail --silent --show-error \
             -X GET \
@@ -328,16 +348,17 @@ Then add `CRON_SECRET` to your GitHub repository:
 1. GitHub → your repo → Settings → Secrets and variables → Actions
 2. New repository secret → Name: `CRON_SECRET`, Value: (the same value you set in Step 6f)
 
-### Option C — Verify the Endpoint is Working
+---
 
-Test it manually right now:
+### Option C — Verify the Endpoints Manually
+
+Test both endpoints locally or against your deployed URL:
 
 ```bash
-# In Bash / Zsh (prompts silently to keep secrets out of shell history):
+# In Bash / Zsh:
 read -s -p "Enter CRON_SECRET: " CRON_SECRET; echo
-curl -X GET \
-  -H "Authorization: Bearer $CRON_SECRET" \
-  https://YOUR-PROJECT-NAME.pages.dev/api/cron/reading-reminders
+curl -X GET -H "Authorization: Bearer $CRON_SECRET" https://YOUR-PROJECT-NAME.pages.dev/api/cron/reading-reminders
+curl -X GET -H "Authorization: Bearer $CRON_SECRET" https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits
 unset CRON_SECRET
 
 # Or in PowerShell:
@@ -345,15 +366,15 @@ $secret = Read-Host -AsSecureString "Enter CRON_SECRET"
 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
 $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 curl.exe -X GET -H "Authorization: Bearer $plain" https://YOUR-PROJECT-NAME.pages.dev/api/cron/reading-reminders
+curl.exe -X GET -H "Authorization: Bearer $plain" https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits
 ```
 
-Expected response:
+Expected responses:
 
 ```json
 { "success": true, "processed": 0, "notificationsSent": 0 }
+{ "success": true, "deleted": { "otpRateLimit": 0, "passwordChangeLimit": 0, "uploadDailyCount": 0, "readingDailyCount": 0 } }
 ```
-
-Zero is correct if no billing periods happen to match today's reminder day. The endpoint is working correctly.
 
 ---
 

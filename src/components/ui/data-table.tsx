@@ -1,4 +1,4 @@
-import { cn } from '../../lib/utils';
+import { cn } from "../../lib/utils";
 
 // ── Column definition ─────────────────────────────────────────────────────────
 
@@ -6,7 +6,7 @@ type ColumnDef<T> = {
   header: string;
   /** String key on row, or render function */
   accessor: keyof T | ((row: T) => React.ReactNode);
-  align?: 'left' | 'right' | 'center';
+  align?: "left" | "right" | "center";
   /** Extra classes on td */
   className?: string;
 };
@@ -36,7 +36,10 @@ function SkeletonRows({ cols, rows }: { cols: number; rows: number }) {
         <tr key={ri} className="border-b border-border">
           {Array.from({ length: cols }).map((_, ci) => (
             <td key={ci} className="px-4 py-3">
-              <div className="skeleton h-4 rounded" style={{ width: ci === 0 ? '60%' : '40%' }} />
+              <div
+                className="skeleton h-4 rounded"
+                style={{ width: ci === 0 ? "60%" : "40%" }}
+              />
             </td>
           ))}
         </tr>
@@ -60,19 +63,19 @@ export function DataTable<T extends Record<string, unknown>>({
   const colCount = columns.length + (rowActions ? 1 : 0);
 
   function getCellValue(row: T, col: ColumnDef<T>): React.ReactNode {
-    if (typeof col.accessor === 'function') return col.accessor(row);
+    if (typeof col.accessor === "function") return col.accessor(row);
     const val = row[col.accessor as keyof T];
     return val as React.ReactNode;
   }
 
-  function alignClass(align?: 'left' | 'right' | 'center') {
-    if (align === 'right') return 'text-right font-numbers';
-    if (align === 'center') return 'text-center';
-    return 'text-left';
+  function alignClass(align?: "left" | "right" | "center") {
+    if (align === "right") return "text-right font-numbers";
+    if (align === "center") return "text-center";
+    return "text-left";
   }
 
   return (
-    <div className={cn('overflow-x-auto', className)}>
+    <div className={cn("overflow-x-auto", className)}>
       <table className="w-full text-sm text-left">
         {/* Header */}
         <thead className="border-b border-border">
@@ -81,7 +84,7 @@ export function DataTable<T extends Record<string, unknown>>({
               <th
                 key={i}
                 className={cn(
-                  'px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground',
+                  "px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground",
                   alignClass(col.align)
                 )}
               >
@@ -99,8 +102,11 @@ export function DataTable<T extends Record<string, unknown>>({
             <SkeletonRows cols={colCount} rows={skeletonRows} />
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={colCount} className="px-4 py-10 text-center text-muted-foreground text-sm">
-                {emptyState ?? 'No data.'}
+              <td
+                colSpan={colCount}
+                className="px-4 py-10 text-center text-muted-foreground text-sm"
+              >
+                {emptyState ?? "No data."}
               </td>
             </tr>
           ) : (
@@ -109,16 +115,16 @@ export function DataTable<T extends Record<string, unknown>>({
                 key={ri}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={cn(
-                  'group transition-colors hover:bg-surface-raised/60',
-                  onRowClick && 'cursor-pointer',
-                  ri % 2 === 1 && 'bg-surface-raised/20'
+                  "group transition-colors hover:bg-surface-raised/60",
+                  onRowClick && "cursor-pointer",
+                  ri % 2 === 1 && "bg-surface-raised/20"
                 )}
               >
                 {columns.map((col, ci) => (
                   <td
                     key={ci}
                     className={cn(
-                      'px-4 py-3',
+                      "px-4 py-3",
                       alignClass(col.align),
                       col.className
                     )}

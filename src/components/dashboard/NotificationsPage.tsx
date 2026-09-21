@@ -1,6 +1,11 @@
-import { useState, useEffect } from "react";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { apiClient } from "../../lib/api-client";
+import { queryKeys } from "../../lib/query-keys";
 import { EmptyState } from "../common/LoadingStates";
 import {
   type Notification,
@@ -11,56 +16,98 @@ import {
 import { withErrorBoundary } from "../common/withErrorBoundary";
 
 function NotificationsPageInner() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const PAGE_SIZE = 20;
+  const qc = useQueryClient();
 
-  useEffect(() => {
-    loadNotifications(true);
-  }, []);
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.notifications(),
+    queryFn: async ({ pageParam }) => {
+      const url = `/notifications?limit=${PAGE_SIZE}${pageParam ? `&cursor=${pageParam}` : ""}`;
+      const r = await apiClient.get<Notification[]>(url);
+      if (r.error) throw new Error(r.error.message);
+      return r.data ?? [];
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.length === PAGE_SIZE
+        ? String(lastPage[lastPage.length - 1].createdAt)
+        : undefined,
+  });
 
-  const loadNotifications = async (reset = false) => {
-    if (reset) setCursor(null);
-    setIsLoading(true);
-    const url = `/notifications?limit=${PAGE_SIZE}${!reset && cursor ? `&cursor=${cursor}` : ""}`;
-    const response = await apiClient.get<Notification[]>(url);
-
-    if (response.error) {
-      setFetchError(response.error.message || "Could not load notifications.");
-      setIsLoading(false);
-      return;
-    }
-
-    setFetchError(null);
-    const list: Notification[] = response.data ?? [];
-    setNotifications((prev) => (reset ? list : [...prev, ...list]));
-    setHasMore(list.length === PAGE_SIZE);
-    if (list.length > 0) setCursor(String(list[list.length - 1].createdAt));
-    setIsLoading(false);
-  };
-
-  const markRead = async (id: string) => {
-    const response = await apiClient.patch(`/notifications/${id}/read`, {});
-    if (response.error) return;
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, readAt: new Date().toISOString() } : n
-      )
-    );
-  };
-
-  const markAllRead = async () => {
-    const response = await apiClient.post("/notifications/read-all", {});
-    if (response.error) return;
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, readAt: new Date().toISOString() }))
-    );
-  };
-
+  const notifications = data?.pages.flat() ?? [];
   const unreadCount = notifications.filter((n) => !n.readAt).length;
+  const fetchError = isError ? (error as Error).message : null;
+
+  const markReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await apiClient.patch(`/notifications/${id}/read`, {});
+      if (error) throw new Error(error.message || "Failed to mark as read");
+    },
+    onSuccess: (_res, id) => {
+      qc.setQueryData(
+        queryKeys.notifications(),
+        (
+          old:
+            | { pages: Notification[][]; pageParams: (string | null)[] }
+            | undefined
+        ) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((n) =>
+                n.id === id ? { ...n, readAt: new Date().toISOString() } : n
+              )
+            ),
+          };
+        }
+      );
+      qc.invalidateQueries({ queryKey: queryKeys.notifications(5) });
+    },
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.post("/notifications/read-all", {});
+      if (error) throw new Error(error.message || "Failed to mark all as read");
+    },
+    onSuccess: () => {
+      qc.setQueryData(
+        queryKeys.notifications(),
+        (
+          old:
+            | { pages: Notification[][]; pageParams: (string | null)[] }
+            | undefined
+        ) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) =>
+              page.map((n) => ({ ...n, readAt: new Date().toISOString() }))
+            ),
+          };
+        }
+      );
+      qc.invalidateQueries({ queryKey: queryKeys.notifications(5) });
+    },
+  });
+
+  const markRead = (id: string) => {
+    markReadMutation.mutate(id);
+  };
+
+  const markAllRead = () => {
+    markAllReadMutation.mutate();
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -87,7 +134,7 @@ function NotificationsPageInner() {
             <p className="font-medium">Failed to load notifications</p>
             <p className="text-sm mt-1">{fetchError}</p>
             <button
-              onClick={() => loadNotifications(true)}
+              onClick={() => refetch()}
               className="mt-4 text-sm underline hover:no-underline"
             >
               Try again
@@ -143,18 +190,18 @@ function NotificationsPageInner() {
         )}
       </div>
 
-      {(hasMore || (fetchError && notifications.length > 0)) && (
+      {(hasNextPage || (fetchError && notifications.length > 0)) && (
         <div className="text-center flex flex-col items-center gap-2">
           {fetchError && notifications.length > 0 && (
             <p className="text-sm text-destructive">{fetchError}</p>
           )}
-          {hasMore && (
+          {hasNextPage && (
             <button
-              onClick={() => loadNotifications(false)}
-              disabled={isLoading}
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors border rounded-md px-4 py-2 disabled:opacity-50"
             >
-              {isLoading ? "Loading..." : "Load more"}
+              {isFetchingNextPage ? "Loading..." : "Load more"}
             </button>
           )}
         </div>

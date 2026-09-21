@@ -59,7 +59,12 @@ export const turnstileMiddleware = async (
 
   const token =
     body["cf-turnstile-response"] || c.req.header("x-cf-turnstile-response");
-  if (!token || typeof token !== "string") {
+  if (
+    !token ||
+    typeof token !== "string" ||
+    token.length === 0 ||
+    token.length > 2048
+  ) {
     return c.json(
       {
         success: false,
@@ -87,25 +92,58 @@ export const turnstileMiddleware = async (
     );
   }
 
-  let verifyResult: { success: boolean; "error-codes"?: string[] };
+  interface SiteverifyResult {
+    success: boolean;
+    hostname?: string;
+    action?: string;
+    "error-codes"?: string[];
+  }
+
+  let verifyResult: SiteverifyResult;
+  // ponytail: standard 64 KB guard prevents isolate memory exhaustion on unexpected large responses
+  const MAX_SITEVERIFY_RESPONSE_BYTES = 64 * 1024;
+
   try {
     const res = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        signal: AbortSignal.timeout(10_000),
+        body: new URLSearchParams({
           secret: secretKey,
           response: token,
-          // Optionally bind the token to the user's IP for extra security
-          remoteip: c.req.header("CF-Connecting-IP"),
+          remoteip: c.req.header("CF-Connecting-IP") ?? "",
         }),
       }
     );
-    verifyResult = (await res.json()) as {
-      success: boolean;
-      "error-codes"?: string[];
-    };
+    if (!res.ok) throw new Error(`siteverify ${res.status}`);
+
+    const contentLength = Number(res.headers.get("content-length"));
+    if (contentLength && contentLength > MAX_SITEVERIFY_RESPONSE_BYTES) {
+      throw new Error("siteverify response exceeds size limit");
+    }
+
+    let text = "";
+    if (res.body) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let totalBytes = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_SITEVERIFY_RESPONSE_BYTES) {
+          await reader.cancel();
+          throw new Error("siteverify response exceeds size limit");
+        }
+        text += decoder.decode(value, { stream: true });
+      }
+      text += decoder.decode();
+    } else {
+      text = await res.text();
+    }
+    verifyResult = JSON.parse(text) as SiteverifyResult;
   } catch (err) {
     console.error("[Turnstile] siteverify request failed:", err);
     return c.json(
@@ -120,10 +158,22 @@ export const turnstileMiddleware = async (
     );
   }
 
-  if (!verifyResult.success) {
+  const expectedHostnames = (c.env.TURNSTILE_HOSTNAMES ?? "")
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean);
+
+  const hostnameOk =
+    expectedHostnames.length === 0 ||
+    (!!verifyResult.hostname &&
+      expectedHostnames.includes(verifyResult.hostname));
+
+  if (!verifyResult.success || !hostnameOk) {
     console.warn(
       "[Turnstile] Token rejected. Error codes:",
-      verifyResult["error-codes"]
+      verifyResult["error-codes"],
+      "hostname:",
+      verifyResult.hostname
     );
     return c.json(
       {

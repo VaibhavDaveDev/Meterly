@@ -1,6 +1,14 @@
-import React, { type SubmitEvent } from 'react';
-import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import React, { type SubmitEvent } from "react";
+import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
 
 interface TableActionDialogProps {
   open: boolean;
@@ -27,7 +35,7 @@ export function TableActionDialog({
   submittingLabel,
   isSubmitting,
   isSubmitDisabled,
-  children
+  children,
 }: TableActionDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -40,11 +48,15 @@ export function TableActionDialog({
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {children}
-          </div>
+          <div className="grid gap-4 py-4">{children}</div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting || isSubmitDisabled}>
               {isSubmitting ? submittingLabel : submitLabel}
             </Button>

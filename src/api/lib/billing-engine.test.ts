@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { calculateSolarBill, calculateGridOnlyBill } from './billing-engine';
+import { describe, it, expect } from "vitest";
+import { calculateSolarBill, calculateGridOnlyBill } from "./billing-engine";
 
-describe('calculateSolarBill', () => {
-  it('should calculate the bill correctly with 100% split', () => {
+describe("calculateSolarBill", () => {
+  it("should calculate the bill correctly with 100% split", () => {
     const input = {
       solarGenerationStart: 1000,
       solarGenerationEnd: 1100, // 100 generated
@@ -30,7 +30,7 @@ describe('calculateSolarBill', () => {
     expect(result.totalDue).toBeCloseTo(10.5); // consumptionCost
   });
 
-  it('should calculate the bill correctly with a 50% split', () => {
+  it("should calculate the bill correctly with a 50% split", () => {
     const input = {
       solarGenerationStart: 1000,
       solarGenerationEnd: 1100, // 100 generated
@@ -52,7 +52,7 @@ describe('calculateSolarBill', () => {
     expect(result.totalDue).toBeCloseTo(5.25); // consumptionCost
   });
 
-  it('should handle 0% split percentage', () => {
+  it("should handle 0% split percentage", () => {
     const input = {
       solarGenerationStart: 1000,
       solarGenerationEnd: 1100,
@@ -65,7 +65,7 @@ describe('calculateSolarBill', () => {
       consumptionRate: 0.15,
       exportRate: 0.05,
     };
-    
+
     const result = calculateSolarBill(input, rates, 0);
 
     expect(result.tenantConsumption).toBe(0);
@@ -73,9 +73,9 @@ describe('calculateSolarBill', () => {
     expect(result.totalDue).toBe(0);
   });
 
-  it('should handle negative solar generation due to meter reset', () => {
-    // If end is less than start, calculation will be negative initially 
-    // Plan.md says meter resets are handled by a soft warning, 
+  it("should handle negative solar generation due to meter reset", () => {
+    // If end is less than start, calculation will be negative initially
+    // Plan.md says meter resets are handled by a soft warning,
     // but the engine will process whatever inputs it receives.
     const input = {
       solarGenerationStart: 5000,
@@ -89,7 +89,7 @@ describe('calculateSolarBill', () => {
       consumptionRate: 0.15,
       exportRate: 0.05,
     };
-    
+
     const result = calculateSolarBill(input, rates, 100);
 
     expect(result.solarGenerated).toBe(-4900);
@@ -99,7 +99,7 @@ describe('calculateSolarBill', () => {
     expect(result.totalConsumption).toBe(20); // only grid imported
   });
 
-  it('should ensure solarSelfConsumed is never negative', () => {
+  it("should ensure solarSelfConsumed is never negative", () => {
     // A scenario where export > generated (physically impossible normally, but could be a bad manual entry)
     const input = {
       solarGenerationStart: 1000,
@@ -115,11 +115,11 @@ describe('calculateSolarBill', () => {
     };
 
     const result = calculateSolarBill(input, rates, 100);
-    
+
     expect(result.solarSelfConsumed).toBe(0); // rather than -40
     expect(result.totalConsumption).toBe(20);
   });
-  it('calculates solar bill: gen > export, tenant gets solar discount', () => {
+  it("calculates solar bill: gen > export, tenant gets solar discount", () => {
     const input = {
       solarGenerationStart: 0,
       solarGenerationEnd: 500, // 500 generated
@@ -132,9 +132,9 @@ describe('calculateSolarBill', () => {
       consumptionRate: 10,
       exportRate: 5,
     };
-    
+
     const result = calculateSolarBill(input, rates, 100);
-    
+
     expect(result.solarGenerated).toBe(500);
     expect(result.gridExported).toBe(100);
     expect(result.solarSelfConsumed).toBe(400);
@@ -145,7 +145,7 @@ describe('calculateSolarBill', () => {
     expect(result.totalDue).toBe(6000);
   });
 
-  it('calculates solar bill: no gen (pure grid period after solar enabled)', () => {
+  it("calculates solar bill: no gen (pure grid period after solar enabled)", () => {
     const input = {
       solarGenerationStart: 500,
       solarGenerationEnd: 500, // 0 generated
@@ -158,9 +158,9 @@ describe('calculateSolarBill', () => {
       consumptionRate: 10,
       exportRate: 5,
     };
-    
+
     const result = calculateSolarBill(input, rates, 100);
-    
+
     expect(result.solarGenerated).toBe(0);
     expect(result.gridExported).toBe(0);
     expect(result.solarSelfConsumed).toBe(0);
@@ -171,7 +171,7 @@ describe('calculateSolarBill', () => {
     expect(result.totalDue).toBe(2000);
   });
 
-  it('calculates solar bill with meter rollover', () => {
+  it("calculates solar bill with meter rollover", () => {
     const input = {
       solarGenerationStart: 9900,
       solarGenerationEnd: 50, // rolled over
@@ -183,7 +183,7 @@ describe('calculateSolarBill', () => {
     };
     const rates = { consumptionRate: 10, exportRate: 5 };
     const result = calculateSolarBill(input, rates, 100);
-    
+
     // Solar: (10000 - 9900) + 50 = 150
     expect(result.solarGenerated).toBe(150);
     // Export: 150 - 100 = 50
@@ -197,18 +197,18 @@ describe('calculateSolarBill', () => {
   });
 });
 
-describe('calculateGridOnlyBill', () => {
-  it('should calculate the grid only bill correctly', () => {
+describe("calculateGridOnlyBill", () => {
+  it("should calculate the grid only bill correctly", () => {
     const input = {
       importStart: 500,
       importEnd: 600, // 100 units
     };
     const rates = {
-      consumptionRate: 0.20,
+      consumptionRate: 0.2,
     };
-    
+
     const result = calculateGridOnlyBill(input, rates, 100);
-    
+
     expect(result.gridImported).toBe(100);
     expect(result.totalConsumption).toBe(100);
     expect(result.tenantConsumption).toBe(100);
@@ -218,32 +218,32 @@ describe('calculateGridOnlyBill', () => {
     expect(result.totalDue).toBe(20);
   });
 
-  it('should respect split percentage', () => {
+  it("should respect split percentage", () => {
     const input = {
       importStart: 500,
       importEnd: 600, // 100 units
     };
     const rates = {
-      consumptionRate: 0.20,
+      consumptionRate: 0.2,
     };
-    
+
     const result = calculateGridOnlyBill(input, rates, 25);
-    
+
     expect(result.tenantConsumption).toBe(25);
     expect(result.consumptionCost).toBe(5);
     expect(result.totalDue).toBe(5); // 5
   });
 
-  it('calculates grid only bill with meter rollover', () => {
+  it("calculates grid only bill with meter rollover", () => {
     const input = {
       importStart: 9950,
       importEnd: 25,
       meterMaxReading: 10000,
     };
-    const rates = { consumptionRate: 0.20 };
-    
+    const rates = { consumptionRate: 0.2 };
+
     const result = calculateGridOnlyBill(input, rates, 100);
-    
+
     // (10000 - 9950) + 25 = 75
     expect(result.gridImported).toBe(75);
     expect(result.totalConsumption).toBe(75);

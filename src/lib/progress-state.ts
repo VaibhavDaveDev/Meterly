@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 let activeFetches = 0;
 const listeners = new Set<(active: boolean) => void>();
@@ -15,7 +15,7 @@ export function stopProgress() {
 
 function notify() {
   const isFetching = activeFetches > 0;
-  listeners.forEach(l => l(isFetching));
+  listeners.forEach((l) => l(isFetching));
 }
 
 export function useProgressState() {

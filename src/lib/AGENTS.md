@@ -8,14 +8,16 @@ Frontend and Fullstack developers.
 
 # Local Contracts
 
+- `query-client.ts`: Singleton `QueryClient` factory for TanStack Query across React islands.
+- `query-keys.ts`: Centralized TanStack Query key factory. All query keys must be defined here.
 - `auth-client.ts`: Better Auth client instance.
 - `api-client.ts`: Generic wrapper for Meterly API calls. Handles 401 (redirect to login) and 403 Forbidden (redirect to `/verify-email` for unverified users).
 - `format.ts`: Date and currency formatting. `parseDateInput` explicitly rejects out-of-range calendar dates by validating parsed date components.
 - `utils.ts`: General-purpose frontend utility functions.
+- `cache.ts`: Generic IndexedDB TTL cache factory. Used by `image-cache.ts`.
 - `image-compress.ts`: Browser Canvas-based image compression to WebP.
 - `image-cache.ts`: IndexedDB cache for meter bill photos.
 - `ocr-worker.ts`: Web Worker for running Tesseract.js OCR without blocking the main thread.
-- `dashboard-cache.ts`: IndexedDB caching for dashboard data.
 - `pdf-extract.ts`: PDF text extraction via pdfjs-dist with OCR fallback. Exports `extractFromPdf` (browser-only, requires canvas + Web Worker), `extractFromText` (pure regex, Node-safe), and `getPdfPageAsBlob`.
 - `ocr-extraction.ts`: Higher-level orchestrator for processing bill uploads (PDF + image paths).
 

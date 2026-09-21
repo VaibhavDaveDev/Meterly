@@ -26,15 +26,15 @@ describe("openapi-schemas", () => {
     });
 
     it("accepts primitive, array, and null data payloads", () => {
-      expect(SuccessResponse.safeParse({ success: true, data: 42 }).success).toBe(
-        true
-      );
+      expect(
+        SuccessResponse.safeParse({ success: true, data: 42 }).success
+      ).toBe(true);
       expect(
         SuccessResponse.safeParse({ success: true, data: [1, 2, 3] }).success
       ).toBe(true);
-      expect(SuccessResponse.safeParse({ success: true, data: null }).success).toBe(
-        true
-      );
+      expect(
+        SuccessResponse.safeParse({ success: true, data: null }).success
+      ).toBe(true);
     });
 
     it("rejects a missing success field", () => {

@@ -57,7 +57,8 @@ export function SignupForm({
   const [isError, setIsError] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const turnstileRef = useTurnstile(turnstileSiteKey);
+  const { ref: turnstileRef, reset: resetTurnstile } =
+    useTurnstile(turnstileSiteKey);
 
   const handleSignUp = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -95,9 +96,7 @@ export function SignupForm({
     if (error) {
       setMessage(error.message || "Failed to create account. Try again.");
       setIsError(true);
-      if (window.turnstile && turnstileRef.current) {
-        window.turnstile.reset();
-      }
+      resetTurnstile();
     } else {
       setMessage("Account created! Redirecting to verification...");
       setIsSuccess(true);

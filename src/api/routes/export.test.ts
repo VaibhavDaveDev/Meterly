@@ -57,14 +57,12 @@ describe("Export API", () => {
   });
 
   it("GET /all includes owner-property entry for owned property", async () => {
-    await testDb
-      .insert(properties)
-      .values({
-        id: "p1",
-        name: "My House",
-        ownerId: "owner-id",
-        hasSolar: false,
-      });
+    await testDb.insert(properties).values({
+      id: "p1",
+      name: "My House",
+      ownerId: "owner-id",
+      hasSolar: false,
+    });
 
     const res = await app.request("/export/all", {}, mockEnv as never);
     const body = (await res.json()) as {
@@ -79,22 +77,18 @@ describe("Export API", () => {
 
   it("GET /all includes tenancy entry for tenant user", async () => {
     currentUser = { id: "tenant-id" };
-    await testDb
-      .insert(properties)
-      .values({
-        id: "p2",
-        name: "Rented",
-        ownerId: "owner-id",
-        hasSolar: false,
-      });
-    await testDb
-      .insert(tenancies)
-      .values({
-        id: "t1",
-        propertyId: "p2",
-        tenantId: "tenant-id",
-        status: "active",
-      });
+    await testDb.insert(properties).values({
+      id: "p2",
+      name: "Rented",
+      ownerId: "owner-id",
+      hasSolar: false,
+    });
+    await testDb.insert(tenancies).values({
+      id: "t1",
+      propertyId: "p2",
+      tenantId: "tenant-id",
+      status: "active",
+    });
 
     const res = await app.request("/export/all", {}, mockEnv as never);
     const body = (await res.json()) as {

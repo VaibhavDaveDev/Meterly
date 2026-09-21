@@ -1,8 +1,8 @@
-import { getDb } from '../../db';
-import { bills } from '../../db/schema';
-import { calculateSolarBill, calculateGridOnlyBill } from './billing-engine';
+import { getDb } from "../../db";
+import { bills } from "../../db/schema";
+import { calculateSolarBill, calculateGridOnlyBill } from "./billing-engine";
 
-import { logger } from './logger';
+import { logger } from "./logger";
 
 export async function generateAndSaveBills(
   db: ReturnType<typeof getDb>,
@@ -21,38 +21,47 @@ export async function generateAndSaveBills(
     consumptionRate: number;
     exportRate: number;
   },
-  activeTenancies: Array<{ id: string; splitPercentage: number | null; isOwnerTenancy: boolean; tenantId: string | null }>,
+  activeTenancies: Array<{
+    id: string;
+    splitPercentage: number | null;
+    isOwnerTenancy: boolean;
+    tenantId: string | null;
+  }>,
   activeCharges: Array<{ chargedToTenant: boolean; amount: number }>,
   isRecalculation: boolean = false
 ) {
   const generatedBills = [];
   const round2 = (n: number) => Math.round(n * 100) / 100;
 
-  const explicit = activeTenancies.filter(t => t.splitPercentage !== null);
+  const explicit = activeTenancies.filter((t) => t.splitPercentage !== null);
   const nullCount = activeTenancies.length - explicit.length;
-  const remaining = 100 - explicit.reduce((sum, t) => sum + (t.splitPercentage || 0), 0);
+  const remaining =
+    100 - explicit.reduce((sum, t) => sum + (t.splitPercentage || 0), 0);
   const autoSplit = nullCount === 0 ? 0 : remaining / nullCount;
 
   for (const tenancy of activeTenancies) {
     const splitPercentage = tenancy.splitPercentage ?? autoSplit;
-    
+
     let calculation;
-    if (calculationMode === 'solar') {
-      calculation = calculateSolarBill(
-        readings,
-        rates,
-        splitPercentage
-      );
+    if (calculationMode === "solar") {
+      calculation = calculateSolarBill(readings, rates, splitPercentage);
     } else {
       calculation = calculateGridOnlyBill(
-        { importStart: readings.importStart, importEnd: readings.importEnd, meterMaxReading: readings.meterMaxReading },
+        {
+          importStart: readings.importStart,
+          importEnd: readings.importEnd,
+          meterMaxReading: readings.meterMaxReading,
+        },
         rates,
         splitPercentage
       );
     }
 
-    const tenantCharges = activeCharges.filter(c => c.chargedToTenant);
-    const customChargesTotal = tenantCharges.reduce((sum, c) => sum + c.amount, 0);
+    const tenantCharges = activeCharges.filter((c) => c.chargedToTenant);
+    const customChargesTotal = tenantCharges.reduce(
+      (sum, c) => sum + c.amount,
+      0
+    );
 
     const billData = {
       id: crypto.randomUUID(),
@@ -72,25 +81,34 @@ export async function generateAndSaveBills(
       customChargesJson: JSON.stringify(tenantCharges),
       customChargesTotal: round2(customChargesTotal),
       totalDue: round2(calculation.totalDue + customChargesTotal),
-      status: 'pending' as const,
-      ...(isRecalculation ? { recalculatedAt: new Date() } : {})
+      status: "pending" as const,
+      ...(isRecalculation ? { recalculatedAt: new Date() } : {}),
     };
 
     try {
       await db.insert(bills).values(billData);
-      logger.info({ periodId, tenancyId: tenancy.id, event: 'bill.generated' }, 'bill generated');
+      logger.info(
+        { periodId, tenancyId: tenancy.id, event: "bill.generated" },
+        "bill generated"
+      );
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.error({ periodId, tenancyId: tenancy.id, error: errorMessage, event: 'bill.error' }, 'bill generation failed');
+      logger.error(
+        {
+          periodId,
+          tenancyId: tenancy.id,
+          error: errorMessage,
+          event: "bill.error",
+        },
+        "bill generation failed"
+      );
       throw err;
     }
-
-
 
     generatedBills.push({
       tenancy,
       billData,
-      totalDue: round2(calculation.totalDue + customChargesTotal)
+      totalDue: round2(calculation.totalDue + customChargesTotal),
     });
   }
 
