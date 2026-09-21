@@ -105,12 +105,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -155,9 +151,7 @@
       "indexes": {
         "otp_rate_limit_email_unique": {
           "name": "otp_rate_limit_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -229,17 +223,12 @@
       "indexes": {
         "session_token_unique": {
           "name": "session_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": true
         },
         "idx_session_user_created": {
           "name": "idx_session_user_created",
-          "columns": [
-            "user_id",
-            "created_at"
-          ],
+          "columns": ["user_id", "created_at"],
           "isUnique": false
         }
       },
@@ -248,12 +237,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -347,9 +332,7 @@
       "indexes": {
         "user_email_unique": {
           "name": "user_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -564,12 +547,8 @@
           "name": "properties_owner_id_user_id_fk",
           "tableFrom": "properties",
           "tableTo": "user",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -691,17 +670,12 @@
       "indexes": {
         "tenancies_invite_token_unique": {
           "name": "tenancies_invite_token_unique",
-          "columns": [
-            "invite_token"
-          ],
+          "columns": ["invite_token"],
           "isUnique": true
         },
         "idx_tenancies_property_status": {
           "name": "idx_tenancies_property_status",
-          "columns": [
-            "property_id",
-            "status"
-          ],
+          "columns": ["property_id", "status"],
           "isUnique": false
         }
       },
@@ -710,12 +684,8 @@
           "name": "tenancies_property_id_properties_id_fk",
           "tableFrom": "tenancies",
           "tableTo": "properties",
-          "columnsFrom": [
-            "property_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["property_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -723,12 +693,8 @@
           "name": "tenancies_tenant_id_user_id_fk",
           "tableFrom": "tenancies",
           "tableTo": "user",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -797,12 +763,8 @@
           "name": "property_rates_property_id_properties_id_fk",
           "tableFrom": "property_rates",
           "tableTo": "properties",
-          "columnsFrom": [
-            "property_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["property_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -810,12 +772,8 @@
           "name": "property_rates_created_by_user_id_fk",
           "tableFrom": "property_rates",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -886,12 +844,8 @@
           "name": "custom_charges_property_id_properties_id_fk",
           "tableFrom": "custom_charges",
           "tableTo": "properties",
-          "columnsFrom": [
-            "property_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["property_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -984,10 +938,7 @@
       "indexes": {
         "idx_billing_periods_property_month": {
           "name": "idx_billing_periods_property_month",
-          "columns": [
-            "property_id",
-            "period_month"
-          ],
+          "columns": ["property_id", "period_month"],
           "isUnique": false
         }
       },
@@ -996,12 +947,8 @@
           "name": "billing_periods_property_id_properties_id_fk",
           "tableFrom": "billing_periods",
           "tableTo": "properties",
-          "columnsFrom": [
-            "property_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["property_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1009,12 +956,8 @@
           "name": "billing_periods_submitted_by_user_id_fk",
           "tableFrom": "billing_periods",
           "tableTo": "user",
-          "columnsFrom": [
-            "submitted_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["submitted_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1022,12 +965,8 @@
           "name": "billing_periods_confirmed_by_user_id_fk",
           "tableFrom": "billing_periods",
           "tableTo": "user",
-          "columnsFrom": [
-            "confirmed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["confirmed_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1133,9 +1072,7 @@
       "indexes": {
         "meter_readings_billing_period_id_unique": {
           "name": "meter_readings_billing_period_id_unique",
-          "columns": [
-            "billing_period_id"
-          ],
+          "columns": ["billing_period_id"],
           "isUnique": true
         }
       },
@@ -1144,12 +1081,8 @@
           "name": "meter_readings_billing_period_id_billing_periods_id_fk",
           "tableFrom": "meter_readings",
           "tableTo": "billing_periods",
-          "columnsFrom": [
-            "billing_period_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["billing_period_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1157,12 +1090,8 @@
           "name": "meter_readings_submitted_by_user_id_fk",
           "tableFrom": "meter_readings",
           "tableTo": "user",
-          "columnsFrom": [
-            "submitted_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["submitted_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1252,12 +1181,8 @@
           "name": "meter_reading_edits_meter_reading_id_meter_readings_id_fk",
           "tableFrom": "meter_reading_edits",
           "tableTo": "meter_readings",
-          "columnsFrom": [
-            "meter_reading_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["meter_reading_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1265,12 +1190,8 @@
           "name": "meter_reading_edits_edited_by_user_id_fk",
           "tableFrom": "meter_reading_edits",
           "tableTo": "user",
-          "columnsFrom": [
-            "edited_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["edited_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1361,12 +1282,8 @@
           "name": "edit_requests_billing_period_id_billing_periods_id_fk",
           "tableFrom": "edit_requests",
           "tableTo": "billing_periods",
-          "columnsFrom": [
-            "billing_period_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["billing_period_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1374,12 +1291,8 @@
           "name": "edit_requests_requested_by_user_id_fk",
           "tableFrom": "edit_requests",
           "tableTo": "user",
-          "columnsFrom": [
-            "requested_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requested_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1387,12 +1300,8 @@
           "name": "edit_requests_reviewed_by_user_id_fk",
           "tableFrom": "edit_requests",
           "tableTo": "user",
-          "columnsFrom": [
-            "reviewed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reviewed_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1586,10 +1495,7 @@
       "indexes": {
         "idx_bills_tenancy_period": {
           "name": "idx_bills_tenancy_period",
-          "columns": [
-            "tenancy_id",
-            "billing_period_id"
-          ],
+          "columns": ["tenancy_id", "billing_period_id"],
           "isUnique": false
         }
       },
@@ -1598,12 +1504,8 @@
           "name": "bills_billing_period_id_billing_periods_id_fk",
           "tableFrom": "bills",
           "tableTo": "billing_periods",
-          "columnsFrom": [
-            "billing_period_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["billing_period_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1611,12 +1513,8 @@
           "name": "bills_tenancy_id_tenancies_id_fk",
           "tableFrom": "bills",
           "tableTo": "tenancies",
-          "columnsFrom": [
-            "tenancy_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenancy_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1624,12 +1522,8 @@
           "name": "bills_marked_paid_by_user_id_fk",
           "tableFrom": "bills",
           "tableTo": "user",
-          "columnsFrom": [
-            "marked_paid_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["marked_paid_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1702,10 +1596,7 @@
       "indexes": {
         "idx_notifications_user_created": {
           "name": "idx_notifications_user_created",
-          "columns": [
-            "user_id",
-            "created_at"
-          ],
+          "columns": ["user_id", "created_at"],
           "isUnique": false
         }
       },
@@ -1714,12 +1605,8 @@
           "name": "notifications_user_id_user_id_fk",
           "tableFrom": "notifications",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1808,25 +1695,17 @@
       "indexes": {
         "bill_photos_object_key_unique": {
           "name": "bill_photos_object_key_unique",
-          "columns": [
-            "object_key"
-          ],
+          "columns": ["object_key"],
           "isUnique": true
         },
         "idx_bill_photos_period_purpose_user": {
           "name": "idx_bill_photos_period_purpose_user",
-          "columns": [
-            "billing_period_id",
-            "purpose",
-            "uploaded_by"
-          ],
+          "columns": ["billing_period_id", "purpose", "uploaded_by"],
           "isUnique": false
         },
         "idx_bill_photos_property": {
           "name": "idx_bill_photos_property",
-          "columns": [
-            "property_id"
-          ],
+          "columns": ["property_id"],
           "isUnique": false
         }
       },
@@ -1835,12 +1714,8 @@
           "name": "bill_photos_billing_period_id_billing_periods_id_fk",
           "tableFrom": "bill_photos",
           "tableTo": "billing_periods",
-          "columnsFrom": [
-            "billing_period_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["billing_period_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1848,12 +1723,8 @@
           "name": "bill_photos_uploaded_by_user_id_fk",
           "tableFrom": "bill_photos",
           "tableTo": "user",
-          "columnsFrom": [
-            "uploaded_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["uploaded_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1861,12 +1732,8 @@
           "name": "bill_photos_edit_request_id_edit_requests_id_fk",
           "tableFrom": "bill_photos",
           "tableTo": "edit_requests",
-          "columnsFrom": [
-            "edit_request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["edit_request_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

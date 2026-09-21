@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { useToast } from "../../hooks/use-toast";
 import { formatCurrency } from "../../lib/format";
 import type { TenantDashboardStats } from "./types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../lib/query-keys";
 import {
   KpiCard,
   ChartCard,
@@ -45,6 +47,7 @@ type TenancySelection = {
 export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
   const [showPastTenancies, setShowPastTenancies] = useState(false);
   const { toast } = useToast();
+  const qc = useQueryClient();
 
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [selectedTenancyForArchive, setSelectedTenancyForArchive] =
@@ -64,41 +67,22 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
   // back the optimistic UI removal — the delete already won the race.
   const deletedIds = useRef<Set<string>>(new Set());
 
-  const handleAction = async (
-    tenancyId: string,
-    action: "archive" | "unarchive"
-  ) => {
-    // Find tenancy for optimistic update and toast message
-    const tenancy =
-      pastTenancies.find((t) => t.tenancyId === tenancyId) ||
-      archivedTenancies.find((t) => t.tenancyId === tenancyId);
-
-    // Optimistic UI Update
-    if (action === "archive") {
-      const t = pastTenancies.find((t) => t.tenancyId === tenancyId);
-      if (t) {
-        setPastTenancies((prev) =>
-          prev.filter((p) => p.tenancyId !== tenancyId)
-        );
-        setArchivedTenancies((prev) => [...prev, t]);
-      }
-    } else {
-      const t = archivedTenancies.find((t) => t.tenancyId === tenancyId);
-      if (t) {
-        setArchivedTenancies((prev) =>
-          prev.filter((p) => p.tenancyId !== tenancyId)
-        );
-        setPastTenancies((prev) => [...prev, t]);
-      }
-    }
-
-    try {
+  const archiveMutation = useMutation({
+    mutationFn: async ({
+      tenancyId,
+      action,
+    }: {
+      tenancyId: string;
+      action: "archive" | "unarchive";
+    }) => {
       const res = await fetch(`/api/tenancies/${tenancyId}/${action}`, {
         method: "PATCH",
       });
       if (res.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-        return;
+        window.location.href = `/login?next=${encodeURIComponent(
+          window.location.pathname + window.location.search
+        )}`;
+        return null;
       }
       const isJson = res.headers
         .get("content-type")
@@ -107,47 +91,41 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
         ? ((await res.json()) as TenancyActionResponse)
         : null;
       if (!res.ok) throw new Error(data?.error?.message || "Failed to update");
+      return data;
+    },
+    onMutate: async ({ tenancyId, action }) => {
+      const tenancy =
+        pastTenancies.find((t) => t.tenancyId === tenancyId) ||
+        archivedTenancies.find((t) => t.tenancyId === tenancyId);
+      const prevPast = [...pastTenancies];
+      const prevArchived = [...archivedTenancies];
 
-      let description = "Action successful.";
       if (action === "archive") {
-        description =
-          "Property hidden. Restore it anytime from 'Hidden Properties'.";
-      } else {
-        description = "Property restored to your history.";
-      }
-
-      toast({
-        title: "Success",
-        description,
-      });
-    } catch (e) {
-      const err = e as Error;
-
-      // If deletion already started for this tenancy, the PATCH rejection is
-      // expected — do not roll back the optimistic removal.
-      if (deletedIds.current.has(tenancyId)) return;
-
-      // Revert optimistic update
-      if (action === "archive") {
-        const t =
-          archivedTenancies.find((t) => t.tenancyId === tenancyId) || tenancy;
-        if (t) {
-          setArchivedTenancies((prev) =>
-            prev.filter((p) => p.tenancyId !== tenancyId)
-          );
-          setPastTenancies((prev) => [...prev, t]);
-        }
-      } else {
-        const t =
-          pastTenancies.find((t) => t.tenancyId === tenancyId) || tenancy;
+        const t = pastTenancies.find((t) => t.tenancyId === tenancyId);
         if (t) {
           setPastTenancies((prev) =>
             prev.filter((p) => p.tenancyId !== tenancyId)
           );
           setArchivedTenancies((prev) => [...prev, t]);
         }
+      } else {
+        const t = archivedTenancies.find((t) => t.tenancyId === tenancyId);
+        if (t) {
+          setArchivedTenancies((prev) =>
+            prev.filter((p) => p.tenancyId !== tenancyId)
+          );
+          setPastTenancies((prev) => [...prev, t]);
+        }
       }
 
+      return { prevPast, prevArchived, tenancy, tenancyId, action };
+    },
+    onError: (err: Error, { tenancyId, action }, ctx) => {
+      if (deletedIds.current.has(tenancyId)) return;
+      if (ctx) {
+        setPastTenancies(ctx.prevPast);
+        setArchivedTenancies(ctx.prevArchived);
+      }
       if (
         err.message === "Not Found" ||
         err.message.includes("permanently removed")
@@ -158,7 +136,6 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
           description:
             "This record has been permanently removed and cannot be restored.",
         });
-        // Remove from UI completely
         setArchivedTenancies((prev) =>
           prev.filter((p) => p.tenancyId !== tenancyId)
         );
@@ -172,30 +149,29 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
           description: err.message || `Failed to ${action} tenancy.`,
         });
       }
-    }
-  };
+    },
+    onSuccess: (_data, { action }) => {
+      toast({
+        title: "Success",
+        description:
+          action === "archive"
+            ? "Property hidden. Restore it anytime from 'Hidden Properties'."
+            : "Property restored to your history.",
+      });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboardTenant() });
+    },
+  });
 
-  const handleDelete = async (tenancyId: string) => {
-    // Mark deletion as started so any concurrent handleAction calls won't
-    // roll back their optimistic removals after this point.
-    deletedIds.current.add(tenancyId);
-
-    // Optimistic UI Update: remove from both lists
-    const pastT = pastTenancies.find((t) => t.tenancyId === tenancyId);
-    const archT = archivedTenancies.find((t) => t.tenancyId === tenancyId);
-
-    setPastTenancies((prev) => prev.filter((p) => p.tenancyId !== tenancyId));
-    setArchivedTenancies((prev) =>
-      prev.filter((p) => p.tenancyId !== tenancyId)
-    );
-
-    try {
+  const deleteMutation = useMutation({
+    mutationFn: async (tenancyId: string) => {
       const res = await fetch(`/api/tenancies/${tenancyId}`, {
         method: "DELETE",
       });
       if (res.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-        return;
+        window.location.href = `/login?next=${encodeURIComponent(
+          window.location.pathname + window.location.search
+        )}`;
+        return null;
       }
       const isJson = res.headers
         .get("content-type")
@@ -204,13 +180,21 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
         ? ((await res.json()) as TenancyActionResponse)
         : null;
       if (!res.ok) throw new Error(data?.error?.message || "Failed to delete");
+      return data;
+    },
+    onMutate: async (tenancyId) => {
+      deletedIds.current.add(tenancyId);
+      const pastT = pastTenancies.find((t) => t.tenancyId === tenancyId);
+      const archT = archivedTenancies.find((t) => t.tenancyId === tenancyId);
 
-      toast({
-        title: "Done",
-        description: "Tenancy removed from your history.",
-      });
-    } catch (e) {
-      const err = e as Error;
+      setPastTenancies((prev) => prev.filter((p) => p.tenancyId !== tenancyId));
+      setArchivedTenancies((prev) =>
+        prev.filter((p) => p.tenancyId !== tenancyId)
+      );
+
+      return { pastT, archT, tenancyId };
+    },
+    onError: (err: Error, tenancyId, ctx) => {
       const alreadyGone =
         err.message === "Not Found" ||
         err.message.includes("permanently removed");
@@ -221,21 +205,34 @@ export function TenantDashboard({ stats }: { stats: TenantDashboardStats }) {
         });
         return;
       }
-      // Delete failed — clear the guard and revert the optimistic removal.
       deletedIds.current.delete(tenancyId);
-      // Revert optimistic update
-      if (pastT) {
-        setPastTenancies((prev) => [...prev, pastT]);
+      if (ctx?.pastT) {
+        setPastTenancies((prev) => [...prev, ctx.pastT!]);
       }
-      if (archT) {
-        setArchivedTenancies((prev) => [...prev, archT]);
+      if (ctx?.archT) {
+        setArchivedTenancies((prev) => [...prev, ctx.archT!]);
       }
       toast({
         variant: "destructive",
         title: "Error",
         description: err.message || "Failed to delete tenancy records.",
       });
-    }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Done",
+        description: "Tenancy removed from your history.",
+      });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboardTenant() });
+    },
+  });
+
+  const handleAction = (tenancyId: string, action: "archive" | "unarchive") => {
+    archiveMutation.mutate({ tenancyId, action });
+  };
+
+  const handleDelete = (tenancyId: string) => {
+    deleteMutation.mutate(tenancyId);
   };
 
   const momRows: MomComparisonRow[] | null = stats.momComparison

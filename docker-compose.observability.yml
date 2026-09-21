@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   otel-collector:
@@ -8,7 +8,7 @@ services:
       - ./observability/otel-collector.yaml:/etc/otel/config.yaml
     ports:
       - "4317:4317"
-      - "4318:4318"   # ← app OTLP endpoint
+      - "4318:4318" # ← app OTLP endpoint
       - "8888:8888"
 
   loki:
@@ -33,8 +33,8 @@ services:
   prometheus:
     image: prom/prometheus:v2.55.0
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus

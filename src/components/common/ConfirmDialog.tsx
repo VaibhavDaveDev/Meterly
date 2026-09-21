@@ -1,6 +1,13 @@
-import React from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '../ui/dialog';
-import { Button } from '../ui/button';
+import React from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogHeader,
+  DialogFooter,
+} from "../ui/dialog";
+import { Button } from "../ui/button";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -10,7 +17,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   onConfirm: () => void;
-  variant?: 'default' | 'destructive';
+  variant?: "default" | "destructive";
 }
 
 export function ConfirmDialog({
@@ -18,10 +25,10 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
   onConfirm,
-  variant = 'default',
+  variant = "default",
 }: ConfirmDialogProps) {
   const handleConfirm = () => {
     onConfirm();

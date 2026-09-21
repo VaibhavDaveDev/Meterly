@@ -38,8 +38,8 @@ export function LoginForm({ turnstileSiteKey }: { turnstileSiteKey?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
-
-  const turnstileRef = useTurnstile(turnstileSiteKey);
+  const { ref: turnstileRef, reset: resetTurnstile } =
+    useTurnstile(turnstileSiteKey);
 
   const handleSignIn = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -75,9 +75,7 @@ export function LoginForm({ turnstileSiteKey }: { turnstileSiteKey?: string }) {
     if (error) {
       setMessage(error.message || "Failed to sign in. Check your credentials.");
       setIsError(true);
-      if (window.turnstile && turnstileRef.current) {
-        window.turnstile.reset();
-      }
+      resetTurnstile();
     } else {
       window.location.href = "/dashboard";
     }

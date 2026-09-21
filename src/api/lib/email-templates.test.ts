@@ -12,7 +12,11 @@ describe("email-templates", () => {
       const templates = [
         emailVerificationTemplate("123456"),
         passwordResetTemplate("654321"),
-        tenantInviteTemplate("Owner", "Property", "https://example.com/invite/abc"),
+        tenantInviteTemplate(
+          "Owner",
+          "Property",
+          "https://example.com/invite/abc"
+        ),
         passwordChangedTemplate("2026-01-01", "10:00 AM"),
       ];
 
@@ -26,7 +30,11 @@ describe("email-templates", () => {
       const templates = [
         emailVerificationTemplate("123456"),
         passwordResetTemplate("654321"),
-        tenantInviteTemplate("Owner", "Property", "https://example.com/invite/abc"),
+        tenantInviteTemplate(
+          "Owner",
+          "Property",
+          "https://example.com/invite/abc"
+        ),
         passwordChangedTemplate("2026-01-01", "10:00 AM"),
       ];
 

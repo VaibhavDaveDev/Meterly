@@ -1,10 +1,10 @@
-import { eq } from 'drizzle-orm';
-import { getDb } from '../../db';
-import { otpRateLimit } from '../../db/schema';
+import { eq } from "drizzle-orm";
+import { getDb } from "../../db";
+import { otpRateLimit } from "../../db/schema";
 
 /**
  * Calculates the required cooldown in milliseconds based on the number of attempts.
- * 
+ *
  * attempts = 1 (1st email sent, waiting for 2nd email): 5 minutes
  * attempts = 2 (2nd email sent, waiting for 3rd email): 15 minutes
  * attempts = 3 (3rd email sent, waiting for 4th email): 30 minutes
@@ -12,16 +12,16 @@ import { otpRateLimit } from '../../db/schema';
  */
 export function getOtpCooldown(attempts: number): number {
   if (attempts <= 0) return 0;
-  if (attempts === 1) return 5 * 60 * 1000;    // 5 minutes
-  if (attempts === 2) return 15 * 60 * 1000;   // 15 minutes
-  if (attempts === 3) return 30 * 60 * 1000;   // 30 minutes
-  return 60 * 60 * 1000;                       // 60 minutes (1 hour max)
+  if (attempts === 1) return 5 * 60 * 1000; // 5 minutes
+  if (attempts === 2) return 15 * 60 * 1000; // 15 minutes
+  if (attempts === 3) return 30 * 60 * 1000; // 30 minutes
+  return 60 * 60 * 1000; // 60 minutes (1 hour max)
 }
 
 /**
  * Checks if sending an OTP to the given email address is currently allowed,
  * and if so, records the new attempt.
- * 
+ *
  * If blocked, returns { allowed: false, waitTimeMs: X } with the remaining cooldown.
  * If allowed, returns { allowed: true, waitTimeMs: 0 } and updates database state.
  */

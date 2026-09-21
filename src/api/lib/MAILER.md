@@ -6,6 +6,7 @@ The active provider is selected via the `EMAIL_PROVIDER` environment variable.
 ## Providers
 
 ### Resend (primary — recommended)
+
 - Set `EMAIL_PROVIDER=resend`
 - Requires `RESEND_API_KEY` (from https://resend.com/api-keys)
 - Requires `RESEND_FROM` — the verified sender, e.g. `Meterly <noreply@yourdomain.com>`
@@ -14,6 +15,7 @@ The active provider is selected via the `EMAIL_PROVIDER` environment variable.
   (Resend's official test address). OTP is also printed to terminal.
 
 ### [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git) (fallback — no custom domain required)
+
 - Set `EMAIL_PROVIDER=atlas`
 - Requires `ATLAS_MAILER_URL` and `ATLAS_MAILER_SECRET`
 - Atlas Mailer is a standalone Cloudflare Worker that relays via Gmail SMTP
@@ -21,15 +23,18 @@ The active provider is selected via the `EMAIL_PROVIDER` environment variable.
 - Use when no custom sending domain is available
 
 ## API Contract ([Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git))
+
 `POST /send`
 
 ### Headers
+
 ```
 Authorization: Bearer <ATLAS_MAILER_SECRET>
 Content-Type: application/json
 ```
 
 ### Request Body
+
 ```json
 {
   "to": "recipient@example.com",
@@ -40,11 +45,13 @@ Content-Type: application/json
 ```
 
 ### Success Response (202 Accepted — email queued)
+
 ```json
 { "success": true, "id": "<uuid>", "status": "queued" }
 ```
 
 ### Error Responses
+
 - `400` — Validation failure
 - `401` — Invalid API key
 - `429` — Daily limit exceeded (500 emails/day)
@@ -53,5 +60,6 @@ Content-Type: application/json
 Meterly uses fire-and-forget delivery. It does not poll `/status/:id`.
 
 ## No Provider (development only)
+
 If `EMAIL_PROVIDER` is not set and `ENVIRONMENT !== 'production'`, email sending is skipped.
 The OTP is printed to the terminal. This is intentional for local dev without credentials.

@@ -1,4 +1,4 @@
-import { validateReading } from '../lib/validate-reading';
+import { validateReading } from "../lib/validate-reading";
 
 function processFieldValidation(
   endValue: string,
@@ -10,7 +10,7 @@ function processFieldValidation(
   const result = validateReading(endValue, startValue, label, allowRollover);
   let hasHardError = false;
 
-  if (!result.valid && endValue.trim() !== '') {
+  if (!result.valid && endValue.trim() !== "") {
     hasHardError = !!result.error;
     if (result.error) errors.push(result.error);
   } else if (!result.valid) {
@@ -47,7 +47,7 @@ export function useReadingValidation({
   acknowledgedWarning,
   existingReading,
   canEdit,
-  reason
+  reason,
 }: ValidationParams) {
   let hasHardError = false;
   let hasWarning = false;
@@ -58,19 +58,44 @@ export function useReadingValidation({
     if (res.hasWarning) hasWarning = true;
   };
 
-  updateState(processFieldValidation(importEnd, startValues.importStart, 'Import from Grid', allowRollover, validationErrors));
+  updateState(
+    processFieldValidation(
+      importEnd,
+      startValues.importStart,
+      "Import from Grid",
+      allowRollover,
+      validationErrors
+    )
+  );
 
   if (isSolar) {
-    updateState(processFieldValidation(solarGenerationEnd, startValues.solarGenerationStart, 'Solar Generation', allowRollover, validationErrors));
-    updateState(processFieldValidation(exportEnd, startValues.exportStart, 'Export to Grid', allowRollover, validationErrors));
+    updateState(
+      processFieldValidation(
+        solarGenerationEnd,
+        startValues.solarGenerationStart,
+        "Solar Generation",
+        allowRollover,
+        validationErrors
+      )
+    );
+    updateState(
+      processFieldValidation(
+        exportEnd,
+        startValues.exportStart,
+        "Export to Grid",
+        allowRollover,
+        validationErrors
+      )
+    );
   }
 
   const numericSolar = parseFloat(solarGenerationEnd);
   const numericExport = parseFloat(exportEnd);
   const numericImport = parseFloat(importEnd);
 
-  const canSave = !hasHardError && 
-    (isSolar ? (!isNaN(numericSolar) && !isNaN(numericExport)) : true) && 
+  const canSave =
+    !hasHardError &&
+    (isSolar ? !isNaN(numericSolar) && !isNaN(numericExport) : true) &&
     !isNaN(numericImport) &&
     (hasWarning ? acknowledgedWarning : true) &&
     (existingReading && canEdit ? reason.length >= 10 : true);
@@ -82,6 +107,6 @@ export function useReadingValidation({
     canSave,
     numericSolar,
     numericExport,
-    numericImport
+    numericImport,
   };
 }

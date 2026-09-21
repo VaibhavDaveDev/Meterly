@@ -15,19 +15,19 @@
  *      (which has pages_build_output_dir: dist/client)
  */
 
-import { rmSync, cpSync, writeFileSync } from 'fs';
+import { rmSync, cpSync, writeFileSync } from "fs";
 
 // 1. Copy entire dist/server/ into dist/client/server/
-cpSync('dist/server', 'dist/client/server', { recursive: true });
-console.log('✅ Copied dist/server → dist/client/server');
+cpSync("dist/server", "dist/client/server", { recursive: true });
+console.log("✅ Copied dist/server → dist/client/server");
 
 // 2. Create the _worker.js entry point that Pages will detect
 writeFileSync(
-  'dist/client/_worker.js',
+  "dist/client/_worker.js",
   `// Cloudflare Pages SSR worker entry\nexport { default } from './server/entry.mjs';\n`
 );
-console.log('✅ Created dist/client/_worker.js');
+console.log("✅ Created dist/client/_worker.js");
 
 // 3. Remove the redirect pointer so Cloudflare reads root wrangler.jsonc
-rmSync('.wrangler/deploy/config.json', { force: true });
-console.log('✅ Removed .wrangler/deploy/config.json redirect pointer.');
+rmSync(".wrangler/deploy/config.json", { force: true });
+console.log("✅ Removed .wrangler/deploy/config.json redirect pointer.");

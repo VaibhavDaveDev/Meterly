@@ -1,5 +1,5 @@
 {
-  "name": "Meterly2",
+  "name": "Meterly",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,6 +10,8 @@
     "build:ci": "astro build && node scripts/fix-wrangler.mjs",
     "deploy": "astro build && node -e \"require('fs').rmSync('dist/server/wrangler.json',{force:true}); require('fs').rmSync('.wrangler/deploy/config.json',{force:true})\" && wrangler pages deploy --project-name meterly",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "astro check",
@@ -36,6 +38,7 @@
     "@radix-ui/react-switch": "^1.3.1",
     "@radix-ui/react-toast": "^1.2.17",
     "@radix-ui/react-tooltip": "^1.2.10",
+    "@tanstack/react-query": "^5.103.1",
     "astro": "^7.1.6",
     "better-auth": "^1.6.25",
     "class-variance-authority": "^0.7.1",

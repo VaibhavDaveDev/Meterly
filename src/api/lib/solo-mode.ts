@@ -1,6 +1,6 @@
-import { eq, and } from 'drizzle-orm';
-import { getDb } from '../../db';
-import { tenancies } from '../../db/schema';
+import { eq, and } from "drizzle-orm";
+import { getDb } from "../../db";
+import { tenancies } from "../../db/schema";
 
 /**
  * Ensures an owner tenancy exists for a solo-mode property.
@@ -26,11 +26,11 @@ export async function ensureOwnerTenancy(
     .limit(1);
 
   if (existing) {
-    if (existing.status !== 'active') {
+    if (existing.status !== "active") {
       // Reactivate it
       await db
         .update(tenancies)
-        .set({ status: 'active', leftAt: null, joinedAt: new Date() })
+        .set({ status: "active", leftAt: null, joinedAt: new Date() })
         .where(eq(tenancies.id, existing.id));
     }
     return existing.id;
@@ -42,7 +42,7 @@ export async function ensureOwnerTenancy(
     id,
     propertyId,
     tenantId: ownerId,
-    status: 'active',
+    status: "active",
     splitPercentage: 100, // owner gets 100% of their own bill
     isOwnerTenancy: true,
     joinedAt: new Date(),
@@ -62,13 +62,13 @@ export async function deactivateOwnerTenancy(
 ): Promise<void> {
   await db
     .update(tenancies)
-    .set({ status: 'inactive', leftAt: new Date() })
+    .set({ status: "inactive", leftAt: new Date() })
     .where(
       and(
         eq(tenancies.propertyId, propertyId),
         eq(tenancies.tenantId, ownerId),
         eq(tenancies.isOwnerTenancy, true),
-        eq(tenancies.status, 'active')
+        eq(tenancies.status, "active")
       )
     );
 }
@@ -88,14 +88,14 @@ export async function reconcileSplitsAfterRemoval(
     .where(
       and(
         eq(tenancies.propertyId, propertyId),
-        eq(tenancies.status, 'active'),
+        eq(tenancies.status, "active"),
         eq(tenancies.isOwnerTenancy, false)
       )
     );
 
   if (active.length === 0) return false;
 
-  const allHaveExplicit = active.every(t => t.splitPercentage !== null);
+  const allHaveExplicit = active.every((t) => t.splitPercentage !== null);
   if (!allHaveExplicit) return false; // already using auto-split, nothing to fix
 
   const total = active.reduce((sum, t) => sum + (t.splitPercentage ?? 0), 0);

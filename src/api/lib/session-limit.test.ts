@@ -1,18 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import * as schema from '../../db/schema';
-import { eq } from 'drizzle-orm';
-import { enforceSessionLimit } from './session-limit';
+import { describe, it, expect, beforeEach } from "vitest";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
+import * as schema from "../../db/schema";
+import { eq } from "drizzle-orm";
+import { enforceSessionLimit } from "./session-limit";
 
-describe('enforceSessionLimit', () => {
+describe("enforceSessionLimit", () => {
   let db: ReturnType<typeof drizzle>;
 
   beforeEach(() => {
-    const sqlite = new Database(':memory:');
+    const sqlite = new Database(":memory:");
     db = drizzle(sqlite, { schema });
-    
+
     // Create tables (simplified for test)
     sqlite.exec(`
       CREATE TABLE user (
@@ -41,18 +41,18 @@ describe('enforceSessionLimit', () => {
     `);
   });
 
-  it('should delete oldest sessions when limit exceeded', async () => {
-    const userId = 'user-1';
-    
+  it("should delete oldest sessions when limit exceeded", async () => {
+    const userId = "user-1";
+
     await db.insert(schema.user).values({
       id: userId,
-      email: 'test@example.com',
-      name: 'Test',
+      email: "test@example.com",
+      name: "Test",
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     } as any);
-    
+
     const now = Date.now();
     for (let i = 0; i < 5; i++) {
       await db.insert(schema.session).values({
@@ -64,27 +64,34 @@ describe('enforceSessionLimit', () => {
         updatedAt: new Date(now + i * 1000),
       } as any);
     }
-    
+
     await enforceSessionLimit(db as any, userId, 3);
-    
-    const remaining = await db.select().from(schema.session).where(eq(schema.session.userId, userId));
-    
+
+    const remaining = await db
+      .select()
+      .from(schema.session)
+      .where(eq(schema.session.userId, userId));
+
     expect(remaining.length).toBe(3);
-    expect(remaining.map(s => s.id)).toEqual(['session-2', 'session-3', 'session-4']);
+    expect(remaining.map((s) => s.id)).toEqual([
+      "session-2",
+      "session-3",
+      "session-4",
+    ]);
   });
 
-  it('should do nothing when unlimited', async () => {
-    const userId = 'user-2';
-    
+  it("should do nothing when unlimited", async () => {
+    const userId = "user-2";
+
     await db.insert(schema.user).values({
       id: userId,
-      email: 'test2@example.com',
-      name: 'Test 2',
+      email: "test2@example.com",
+      name: "Test 2",
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     } as any);
-    
+
     for (let i = 0; i < 5; i++) {
       await db.insert(schema.session).values({
         id: `session-${i}`,
@@ -95,10 +102,13 @@ describe('enforceSessionLimit', () => {
         updatedAt: new Date(),
       } as any);
     }
-    
+
     await enforceSessionLimit(db as any, userId, 0);
-    
-    const remaining = await db.select().from(schema.session).where(eq(schema.session.userId, userId));
+
+    const remaining = await db
+      .select()
+      .from(schema.session)
+      .where(eq(schema.session.userId, userId));
     expect(remaining.length).toBe(5);
   });
 });

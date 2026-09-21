@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../lib/api-client";
+import { QueryProvider } from "./QueryProvider";
+import { queryKeys } from "../../lib/query-keys";
 import {
   type Notification,
   formatNotificationTime,
@@ -7,12 +10,63 @@ import {
   iconColorClass,
 } from "./NotificationHelpers";
 
-export function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+function NotificationBellInner() {
+  const qc = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: queryKeys.notifications(5),
+    queryFn: () =>
+      apiClient
+        .get<Notification[]>("/notifications?limit=5")
+        .then((r) => r.data ?? []),
+  });
+
+  const unreadCount = notifications.filter((n) => !n.readAt).length;
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiClient.patch(`/notifications/${id}/read`, {}),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: queryKeys.notifications(5) });
+      const prev = qc.getQueryData<Notification[]>(queryKeys.notifications(5));
+      qc.setQueryData<Notification[]>(queryKeys.notifications(5), (old) =>
+        old?.map((n) =>
+          n.id === id ? { ...n, readAt: new Date().toISOString() } : n
+        )
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.notifications(5), ctx.prev);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"], exact: false });
+    },
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => apiClient.post("/notifications/read-all", {}),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: queryKeys.notifications(5) });
+      const prev = qc.getQueryData<Notification[]>(queryKeys.notifications(5));
+      qc.setQueryData<Notification[]>(queryKeys.notifications(5), (old) =>
+        old?.map((n) => ({ ...n, readAt: new Date().toISOString() }))
+      );
+      return { prev };
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.notifications(5), ctx.prev);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"], exact: false });
+    },
+  });
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -30,38 +84,12 @@ export function NotificationBell() {
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
-    setIsLoading(true);
-    const { data } = await apiClient.get<Notification[]>(
-      "/notifications?limit=5"
-    );
-    if (data) {
-      setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.readAt).length);
-    }
-    setIsLoading(false);
+  const markAllRead = () => {
+    markAllReadMutation.mutate();
   };
 
-  const markAllRead = async () => {
-    await apiClient.post("/notifications/read-all", {});
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, readAt: new Date().toISOString() }))
-    );
-    setUnreadCount(0);
-  };
-
-  const markRead = async (id: string) => {
-    await apiClient.patch(`/notifications/${id}/read`, {});
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, readAt: new Date().toISOString() } : n
-      )
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+  const markRead = (id: string) => {
+    markReadMutation.mutate(id);
   };
 
   return (
@@ -368,5 +396,13 @@ export function NotificationBell() {
         </div>
       )}
     </div>
+  );
+}
+
+export function NotificationBell() {
+  return (
+    <QueryProvider>
+      <NotificationBellInner />
+    </QueryProvider>
   );
 }

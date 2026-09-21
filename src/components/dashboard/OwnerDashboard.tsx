@@ -28,44 +28,57 @@ import {
 import { DataTable } from "../ui/data-table";
 import { useToast } from "../../hooks/use-toast";
 import { apiClient } from "../../lib/api-client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../lib/query-keys";
 
-export function OwnerDashboard({
-  stats,
-  onUpdate,
-}: {
-  stats: OwnerDashboardStats;
-  onUpdate: (
-    updater: (prev: OwnerDashboardStats) => OwnerDashboardStats
-  ) => void;
-}) {
+export function OwnerDashboard({ stats }: { stats: OwnerDashboardStats }) {
+  const qc = useQueryClient();
   const { toast } = useToast();
 
-  const handleMarkPaid = async (billId: string) => {
-    const { error: err } = await apiClient.patch(
-      `/bills/${billId}/mark-paid`,
-      {}
-    );
-    if (err) {
+  const markPaidMutation = useMutation({
+    mutationFn: async (billId: string) => {
+      const { error } = await apiClient.patch(`/bills/${billId}/mark-paid`, {});
+      if (error) throw new Error(error.message || "Failed to mark bill paid");
+    },
+    onMutate: async (billId) => {
+      await qc.cancelQueries({ queryKey: queryKeys.dashboardOwner() });
+      const prev = qc.getQueryData<OwnerDashboardStats>(
+        queryKeys.dashboardOwner()
+      );
+      if (prev) {
+        const paidBill = prev.outstandingBills.find(
+          (bill) => bill.id === billId
+        );
+        qc.setQueryData<OwnerDashboardStats>(queryKeys.dashboardOwner(), {
+          ...prev,
+          outstandingAmount: prev.outstandingAmount - (paidBill?.amount ?? 0),
+          outstandingBills: prev.outstandingBills.filter(
+            (bill) => bill.id !== billId
+          ),
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _billId, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(queryKeys.dashboardOwner(), ctx.prev);
+      }
       toast({
         variant: "destructive",
         title: "Error",
-        description: err.message,
+        description: "Failed to mark bill as paid.",
       });
-      return;
-    }
-    toast({ title: "Success", description: "Bill marked as paid." });
-    onUpdate((prev) => {
-      const paidBill = prev.outstandingBills.find((bill) => bill.id === billId);
-      if (!paidBill) return prev;
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Bill marked as paid." });
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.dashboardOwner() });
+    },
+  });
 
-      return {
-        ...prev,
-        outstandingAmount: prev.outstandingAmount - paidBill.amount,
-        outstandingBills: prev.outstandingBills.filter(
-          (bill) => bill.id !== billId
-        ),
-      };
-    });
+  const handleMarkPaid = (billId: string) => {
+    markPaidMutation.mutate(billId);
   };
 
   // Convert consumption list to recharts friendly format

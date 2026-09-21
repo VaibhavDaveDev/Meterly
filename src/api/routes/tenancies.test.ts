@@ -58,14 +58,12 @@ describe("Tenancies API", () => {
     ]);
 
     propertyId = "prop-" + Math.random();
-    await testDb
-      .insert(properties)
-      .values({
-        id: propertyId,
-        name: "Prop",
-        ownerId: "owner-id",
-        hasSolar: false,
-      });
+    await testDb.insert(properties).values({
+      id: propertyId,
+      name: "Prop",
+      ownerId: "owner-id",
+      hasSolar: false,
+    });
 
     await testDb.insert(tenancies).values({
       id: "tenancy-1",

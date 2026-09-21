@@ -1,4 +1,4 @@
-import type { ResolveConfigFn } from '@microlabs/otel-cf-workers';
+import type { ResolveConfigFn } from "@microlabs/otel-cf-workers";
 
 export type OtelBindings = {
   OBSERVABILITY_ENABLED?: string;
@@ -9,11 +9,11 @@ export type OtelBindings = {
 };
 
 export const resolveOtelConfig: ResolveConfigFn = (env: OtelBindings) => {
-  const endpoint = env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318';
+  const endpoint = env.OTEL_EXPORTER_OTLP_ENDPOINT ?? "http://localhost:4318";
 
   const headers: Record<string, string> = {};
   if (env.GRAFANA_CLOUD_INSTANCE_ID && env.GRAFANA_CLOUD_API_KEY) {
-    headers['Authorization'] =
+    headers["Authorization"] =
       `Basic ${btoa(`${env.GRAFANA_CLOUD_INSTANCE_ID}:${env.GRAFANA_CLOUD_API_KEY}`)}`;
   }
 
@@ -32,8 +32,8 @@ export const resolveOtelConfig: ResolveConfigFn = (env: OtelBindings) => {
       headers,
     },
     service: {
-      name: 'meterly-api',
-      version: '1.0.0',
+      name: "meterly-api",
+      version: "1.0.0",
     },
     // Intercept console.log/error calls and forward as OTLP logs
     logs: {

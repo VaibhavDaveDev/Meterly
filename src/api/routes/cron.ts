@@ -5,8 +5,12 @@ import {
   tenancies,
   billingPeriods,
   notifications,
+  otpRateLimit,
+  passwordChangeLimit,
+  uploadDailyCount,
+  readingDailyCount,
 } from "../../db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import type { Bindings } from "../app";
 import { logger } from "../lib/logger";
 
@@ -149,6 +153,99 @@ cronRouter.openapi(readingRemindersRoute, async (c) => {
     },
     200
   );
+});
+
+const cleanupRateLimitsRoute = createRoute({
+  method: "get",
+  path: "/cleanup-stale-rate-limits",
+  tags: ["Cron"],
+  summary: "Delete stale rate-limit rows from D1",
+  security: [{ bearerAuth: [] }],
+  request: {
+    headers: z.object({
+      authorization: z
+        .string()
+        .openapi({ example: "Bearer <your-cron-secret>" }),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            success: z.boolean(),
+            deleted: z.object({
+              otpRateLimit: z.number(),
+              passwordChangeLimit: z.number(),
+              uploadDailyCount: z.number(),
+              readingDailyCount: z.number(),
+            }),
+          }),
+        },
+      },
+      description: "Stale rate-limit rows cleaned up",
+    },
+    401: {
+      content: {
+        "application/json": { schema: z.object({ error: z.string() }) },
+      },
+      description: "Unauthorized",
+    },
+  },
+});
+
+cronRouter.openapi(cleanupRateLimitsRoute, async (c) => {
+  const authHeader = c.req.header("Authorization");
+  const cronSecret = c.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const db = getDb(c.env.DB);
+  const now = new Date();
+
+  // OTP rows: delete if last_sent_at older than 30 days
+  const otpCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const otpResult = await db
+    .delete(otpRateLimit)
+    .where(lt(otpRateLimit.lastSentAt, otpCutoff))
+    .returning({ id: otpRateLimit.id });
+
+  // Password-change rows: delete if window_start older than 30 days
+  const pwCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const pwResult = await db
+    .delete(passwordChangeLimit)
+    .where(lt(passwordChangeLimit.windowStart, pwCutoff))
+    .returning({ id: passwordChangeLimit.id });
+
+  // Upload counters: delete if date_key older than 2 days
+  const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const uploadResult = await db
+    .delete(uploadDailyCount)
+    .where(lt(uploadDailyCount.dateKey, twoDaysAgo))
+    .returning({ id: uploadDailyCount.id });
+
+  // Reading counters: delete if date_key older than 2 days
+  const readingResult = await db
+    .delete(readingDailyCount)
+    .where(lt(readingDailyCount.dateKey, twoDaysAgo))
+    .returning({ id: readingDailyCount.id });
+
+  const deleted = {
+    otpRateLimit: otpResult.length,
+    passwordChangeLimit: pwResult.length,
+    uploadDailyCount: uploadResult.length,
+    readingDailyCount: readingResult.length,
+  };
+
+  logger.info(
+    { event: "cron.cleanup_rate_limits", deleted },
+    "rate-limit cleanup cron completed"
+  );
+
+  return c.json({ success: true as const, deleted }, 200);
 });
 
 export { cronRouter };

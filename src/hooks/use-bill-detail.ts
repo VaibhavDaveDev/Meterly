@@ -94,16 +94,30 @@ export interface ProposedValues {
   solarGenerationEnd?: number | null;
 }
 
-import { useAsyncResource } from "./use-async-resource";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../lib/query-keys";
 import { apiClient } from "../lib/api-client";
 
 export function useBillDetail(billId: string, tenancyId: string) {
+  const qc = useQueryClient();
+
   const {
-    data,
-    loading,
-    error,
-    refetch: fetchBillDetails,
-  } = useAsyncResource<BillDetailData>(`/bills/${billId}`);
+    data = null,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: queryKeys.billDetail(billId),
+    queryFn: () =>
+      apiClient.get<BillDetailData>(`/bills/${billId}`).then((r) => {
+        if (r.error) throw new Error(r.error.message);
+        return r.data!;
+      }),
+  });
+
+  const error = queryError ? (queryError as Error).message : null;
+
+  const fetchBillDetails = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.billDetail(billId) });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editReason, setEditReason] = useState("");
@@ -137,10 +151,19 @@ export function useBillDetail(billId: string, tenancyId: string) {
     }
   }, [isEditModalOpen, data?.reading]);
 
+  const markPaidMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await apiClient.patch(`/bills/${billId}/mark-paid`, {});
+      if (error) throw new Error(error.message || "Failed to mark bill paid");
+    },
+    onSuccess: () => {
+      fetchBillDetails();
+    },
+  });
+
   const handleMarkPaid = async () => {
     try {
-      const { error } = await apiClient.patch(`/bills/${billId}/mark-paid`, {});
-      if (!error) fetchBillDetails();
+      await markPaidMutation.mutateAsync();
     } catch (e) {
       console.error(e);
     }

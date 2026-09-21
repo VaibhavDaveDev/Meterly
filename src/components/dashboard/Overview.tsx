@@ -29,7 +29,6 @@ function DashboardOverviewInner() {
     error,
     activeView,
     setActiveView,
-    setOwnerStats,
   } = useDashboardData();
 
   if (loading) {
@@ -156,12 +155,7 @@ function DashboardOverviewInner() {
       )}
 
       {(!isBoth || activeView === "owner") && ownerStats && (
-        <OwnerDashboard
-          stats={ownerStats}
-          onUpdate={(updater) =>
-            setOwnerStats((prev) => (prev ? updater(prev) : null))
-          }
-        />
+        <OwnerDashboard stats={ownerStats} />
       )}
 
       {(!isBoth || activeView === "tenant") && tenantStats && (

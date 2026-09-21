@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
-import { getDb } from '../../db';
-import { passwordChangeLimit } from '../../db/schema';
+import { eq } from "drizzle-orm";
+import { getDb } from "../../db";
+import { passwordChangeLimit } from "../../db/schema";
 
 const MAX_CHANGES_PER_DAY = 3;
 const WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -19,12 +19,15 @@ export async function checkAndIncrementPasswordChangeLimit(
 
   if (!record) {
     // First change ever — insert and allow
-    await db.insert(passwordChangeLimit).values({
-      id: crypto.randomUUID(),
-      userId,
-      count: 1,
-      windowStart: now,
-    }).run();
+    await db
+      .insert(passwordChangeLimit)
+      .values({
+        id: crypto.randomUUID(),
+        userId,
+        count: 1,
+        windowStart: now,
+      })
+      .run();
     return { allowed: true, remainingSeconds: 0 };
   }
 
@@ -32,7 +35,8 @@ export async function checkAndIncrementPasswordChangeLimit(
 
   if (windowAge > WINDOW_MS) {
     // Window expired — reset and allow
-    await db.update(passwordChangeLimit)
+    await db
+      .update(passwordChangeLimit)
       .set({ count: 1, windowStart: now })
       .where(eq(passwordChangeLimit.userId, userId))
       .run();
@@ -47,7 +51,8 @@ export async function checkAndIncrementPasswordChangeLimit(
   }
 
   // Within window, under limit — increment and allow
-  await db.update(passwordChangeLimit)
+  await db
+    .update(passwordChangeLimit)
     .set({ count: record.count + 1 })
     .where(eq(passwordChangeLimit.userId, userId))
     .run();

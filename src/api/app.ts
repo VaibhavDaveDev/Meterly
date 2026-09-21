@@ -55,6 +55,8 @@ export type Bindings = {
   ATLAS_MAILER_SECRET?: string;
   // Cloudflare Turnstile — bot protection on auth routes
   TURNSTILE_SECRET_KEY?: string;
+  /** Comma-separated prod hostnames, e.g. "meterly.app,meterly.pages.dev". Must NOT include localhost. */
+  TURNSTILE_HOSTNAMES?: string;
   // Runtime environment flag — used by middleware to skip checks in tests
   ENVIRONMENT?: "development" | "production" | "test";
   MAX_SESSIONS_PER_USER?: string;

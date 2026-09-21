@@ -1,6 +1,6 @@
-import { eq, and } from 'drizzle-orm';
-import { properties, tenancies } from '../../db/schema';
-import type { Database } from '../../db';
+import { eq, and } from "drizzle-orm";
+import { properties, tenancies } from "../../db/schema";
+import type { Database } from "../../db";
 
 export async function requirePropertyAccess(
   db: Database,
@@ -16,7 +16,7 @@ export async function requirePropertyAccess(
   if (!property) return null;
 
   if (property.ownerId === userId) {
-    return { property, role: 'owner' as const };
+    return { property, role: "owner" as const };
   }
 
   const [tenancy] = await db
@@ -26,13 +26,13 @@ export async function requirePropertyAccess(
       and(
         eq(tenancies.propertyId, propertyId),
         eq(tenancies.tenantId, userId),
-        eq(tenancies.status, 'active')
+        eq(tenancies.status, "active")
       )
     )
     .limit(1);
 
   if (tenancy) {
-    return { property, role: 'tenant' as const, tenancy };
+    return { property, role: "tenant" as const, tenancy };
   }
 
   return null;

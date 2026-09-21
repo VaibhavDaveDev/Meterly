@@ -21,9 +21,10 @@ API and Backend developers.
 - Follow the standard API response envelope defined in `Plan.md`.
 - Ensure relevant routes (like reading submissions or edit approvals) trigger notifications via `createNotification`.
 - `invites.ts`: full invite lifecycle (pending/accept/decline/cancel). Token lookup resolves tenancy; status guards prevent double-use.
-- `uploads.ts`: POST /api/uploads/bill-photo — multipart WebP upload to R2 with D1 database rate-limiting (10/user/day). GET /api/uploads/bill-photo/\* — streams the object from R2; enforces userId prefix ownership. Never serve a key that does not start with the requesting user's ID.
+- `uploads.ts`: POST /api/uploads/bill-photo — multipart upload to R2 with D1 daily counter rate-limiting (`MAX_UPLOADS_PER_DAY` env, default 60/day). GET /api/uploads/bill-photo/\* — streams from R2; access controlled by DB row lookup, never by path prefix. Max 3 photos per billing period per user enforced in-route after upload.
 - `tenancies.ts`: owner-facing grouped view (active/invited/past) and soft-remove. Calls `reconcileSplitsAfterRemoval` after every removal.
 - `tenancy-actions.ts`: tenant-facing actions (accept invite, leave property, archive/unarchive visibility, and explicit permanent deletion `DELETE /{id}`).
 - `properties.ts`: solo mode toggle at `PATCH /:id/mode`; create with `soloMode: true` auto-creates owner tenancy. Archive/unarchive at `PATCH /:id/archive` and `PATCH /:id/unarchive`. Full cascade delete at `DELETE /:id`.
 - `edit-requests.ts`: implements tenant-facing reading correction request creation and owner-facing approval/rejection review flows, with a dedicated unit test suite at `edit-requests.test.ts`.
+- `cron.ts`: secured by `CRON_SECRET` bearer token. Two routes: `GET /api/cron/reading-reminders` (daily reminder notifications) and `GET /api/cron/cleanup-stale-rate-limits` (purges stale D1 rate-limit rows — OTP >30 days, password-change >30 days, daily counters >2 days).
 - **Health Checks**: Liveness checks (`/api/healthz`, `/api/ping`) perform a shallow check immediately returning `200 OK` (verifies the server runtime hasn't crashed). Readiness checks (`/api/readyz`, `/api/status`, and backward compatible `/api/health`) perform a deep check verifying connectivity to the D1 database.
