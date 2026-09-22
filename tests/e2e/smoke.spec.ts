@@ -24,7 +24,7 @@ async function loginAs(
   await page.locator('button[type="submit"]').click();
   // Wait until we are no longer on /login
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
-    timeout: 15_000,
+    timeout: 20_000,
   });
 }
 

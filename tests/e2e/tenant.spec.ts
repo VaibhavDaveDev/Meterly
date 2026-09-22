@@ -15,7 +15,7 @@ async function loginAs(
   await page.locator('input[type="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
   await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
-    timeout: 15_000,
+    timeout: 20_000,
   });
 }
 

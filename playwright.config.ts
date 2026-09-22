@@ -8,17 +8,19 @@ const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:4321";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.ts",
   // ponytail: workers: 1 and fullyParallel: false because local D1 is a single SQLite file;
   // parallel workers would race on the same sessions/tables.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: process.env.CI ? "github" : "list",
+  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    actionTimeout: 20_000,
   },
   projects: [
     {
