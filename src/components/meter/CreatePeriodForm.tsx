@@ -6,6 +6,7 @@ import { Label } from "../ui/label";
 import { MeterInput } from "./MeterInput";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface CreatePeriodFormProps {
   propertyId: string;
@@ -29,7 +30,7 @@ interface PeriodInfo {
   reading?: ReadingInfo;
 }
 
-export function CreatePeriodForm({
+function CreatePeriodFormInner({
   propertyId,
   isPastEntry,
 }: CreatePeriodFormProps) {
@@ -438,3 +439,5 @@ export function CreatePeriodForm({
     </form>
   );
 }
+
+export const CreatePeriodForm = withErrorBoundary(CreatePeriodFormInner);

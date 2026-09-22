@@ -14,7 +14,7 @@ if (!session?.user) {
   return Astro.redirect('/login');
 }
 
-const db = getDb((env as { DB: D1Database }).DB || (process.env.DB as unknown as D1Database));
+const db = getDb((env as { DB: D1Database }).DB);
 
 // Find the user's most recent active tenancy
 const [activeTenancy] = await db

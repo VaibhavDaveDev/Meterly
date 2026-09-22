@@ -13,8 +13,9 @@ import {
   Activity,
   AlertCircle,
 } from "lucide-react";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
-export function AddPropertyForm() {
+function AddPropertyFormInner() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -256,3 +257,5 @@ export function AddPropertyForm() {
     </div>
   );
 }
+
+export const AddPropertyForm = withErrorBoundary(AddPropertyFormInner);

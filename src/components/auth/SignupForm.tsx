@@ -3,6 +3,7 @@ import { authClient } from "../../lib/auth-client";
 import { useTurnstile } from "../../hooks/use-turnstile";
 import { AuthFormLayout } from "./AuthFormLayout";
 import { EmailInput, PasswordInput, TextInput } from "./AuthInputs";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 const GithubSVG = () => (
   <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
@@ -43,11 +44,7 @@ function getStrength(pwd: string) {
   return Math.min(4, score);
 }
 
-export function SignupForm({
-  turnstileSiteKey,
-}: {
-  turnstileSiteKey?: string;
-}) {
+function SignupFormInner({ turnstileSiteKey }: { turnstileSiteKey?: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -241,3 +238,5 @@ export function SignupForm({
     </AuthFormLayout>
   );
 }
+
+export const SignupForm = withErrorBoundary(SignupFormInner);

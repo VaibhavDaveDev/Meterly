@@ -20,10 +20,11 @@ import {
   OwnerExportCreditSection,
 } from "./BillDetailSections";
 import type { OwnerEditContext, TenantEditContext } from "./BillDetailSections";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 // --- Main Component ---
 
-export function BillDetail({ data }: BillDetailProps) {
+function BillDetailInner({ data }: BillDetailProps) {
   const {
     bill,
     period,
@@ -273,3 +274,5 @@ export function BillDetail({ data }: BillDetailProps) {
     </div>
   );
 }
+
+export const BillDetail = withErrorBoundary(BillDetailInner);

@@ -6,15 +6,17 @@ import '../styles/globals.css';
 import type { D1Database } from '@cloudflare/workers-types';
 import { properties } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { authClient } from '../lib/auth-client';
+import { getAuth } from '../api/lib/auth';
 import { env } from 'cloudflare:workers';
 
-const session = await authClient.getSession({ fetchOptions: { headers: Astro.request.headers } });
-if (!session?.data?.user?.id) {
+const currentEnv = (env || process.env) as unknown as Parameters<typeof getAuth>[0];
+const auth = getAuth(currentEnv);
+const session = await auth.api.getSession({ headers: Astro.request.headers });
+if (!session?.user?.id) {
   return Astro.redirect('/login');
 }
 
-const userId = session.data.user.id;
+const userId = session.user.id;
 const db = getDb((env as { DB: D1Database }).DB);
 
 // Only owners can see edit requests - fetch their properties

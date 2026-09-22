@@ -5,7 +5,7 @@ import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { PropertyDetails } from '../../components/properties/PropertyDetails';
 import { getDb } from '../../db';
 import { properties, tenancies } from '../../db/schema';
-import { authClient } from '../../lib/auth-client';
+import { getAuth } from '../../api/lib/auth';
 import { count, eq, and } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 
@@ -14,29 +14,31 @@ const { id } = Astro.params;
 let property, isOwner = false, isTenant = false, tenantCount = 0;
 
 if (id) {
-  const db = getDb((env as { DB: D1Database }).DB);
-  const session = await authClient.getSession({ fetchOptions: { headers: Astro.request.headers } });
+  const currentEnv = (env || process.env) as unknown as Parameters<typeof getAuth>[0];
+  const auth = getAuth(currentEnv);
+  const session = await auth.api.getSession({ headers: Astro.request.headers });
 
-  if (!session?.data?.user) {
+  if (!session?.user) {
     return Astro.redirect('/login');
   }
 
-  if (session?.data?.user) {
-    // Fetch property and tenancy details in parallel
-    const [propData, tenancyData] = await Promise.all([
-      db.select().from(properties).where(eq(properties.id, id)).limit(1),
-      db.select().from(tenancies).where(and(
-        eq(tenancies.propertyId, id),
-        eq(tenancies.tenantId, session.data.user.id),
-        eq(tenancies.status, 'active')
-      )).limit(1)
-    ]);
+  const db = getDb((env as { DB: D1Database }).DB);
 
-    property = propData[0];
-    const tenancy = tenancyData[0];
+  // Fetch property and tenancy details in parallel
+  const [propData, tenancyData] = await Promise.all([
+    db.select().from(properties).where(eq(properties.id, id)).limit(1),
+    db.select().from(tenancies).where(and(
+      eq(tenancies.propertyId, id),
+      eq(tenancies.tenantId, session.user.id),
+      eq(tenancies.status, 'active')
+    )).limit(1)
+  ]);
 
-    isOwner = property?.ownerId === session.data.user.id;
-    isTenant = !!tenancy;
+  property = propData[0];
+  const tenancy = tenancyData[0];
+
+  isOwner = property?.ownerId === session.user.id;
+  isTenant = !!tenancy;
 
     if (!isOwner && !isTenant) {
       return Astro.redirect('/dashboard');
@@ -46,7 +48,6 @@ if (id) {
       const [{ count: c }] = await db.select({ count: count() }).from(tenancies).where(and(eq(tenancies.propertyId, property.id), eq(tenancies.status, 'active')));
       tenantCount = c;
     }
-  }
 }
 
 ---

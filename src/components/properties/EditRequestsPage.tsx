@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useToast } from "../../hooks/use-toast";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -93,7 +94,7 @@ function ReadingComparison({
   );
 }
 
-export function EditRequestsPage({ propertyId }: EditRequestsPageProps) {
+function EditRequestsPageInner({ propertyId }: EditRequestsPageProps) {
   const { toast } = useToast();
   const [pending, setPending] = useState<EditRequest[]>([]);
   const [resolved, setResolved] = useState<EditRequest[]>([]);
@@ -528,3 +529,5 @@ export function EditRequestsPage({ propertyId }: EditRequestsPageProps) {
     </div>
   );
 }
+
+export const EditRequestsPage = withErrorBoundary(EditRequestsPageInner);

@@ -4,8 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/workflows/ci.yml"
       - "src/**"
       - "scripts/**"
+      - "tests/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "tsconfig.json"
@@ -14,11 +16,14 @@ on:
       - "astro.config.mjs"
       - "wrangler.jsonc"
       - "drizzle.config.ts"
+      - "playwright.config.ts"
   pull_request:
     branches: [main]
     paths:
+      - ".github/workflows/ci.yml"
       - "src/**"
       - "scripts/**"
+      - "tests/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "tsconfig.json"
@@ -27,6 +32,7 @@ on:
       - "astro.config.mjs"
       - "wrangler.jsonc"
       - "drizzle.config.ts"
+      - "playwright.config.ts"
 
 jobs:
   ci:
@@ -64,6 +70,51 @@ jobs:
 
       - name: Build (catch Astro + Wrangler errors)
         run: pnpm build:ci
+
+  e2e:
+    name: E2E Smoke Tests
+    runs-on: ubuntu-latest
+    needs: ci
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        # Only install chromium — avoids downloading Firefox/WebKit which we don't use
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Seed local D1 database
+        # seed:fresh = rm .wrangler/state + apply migrations + insert fixtures
+        # wrangler is in devDependencies (^4.136.1) so pnpm exec finds it
+        run: pnpm seed:fresh
+
+      - name: Run E2E smoke tests
+        run: pnpm test:e2e
+        env:
+          CI: "true"
+          NODE_ENV: test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
   security:
     name: Dependency Security Audit

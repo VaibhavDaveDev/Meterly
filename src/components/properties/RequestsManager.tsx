@@ -14,6 +14,7 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Building2 } from "lucide-react";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 type EditRequest = {
   id: string;
@@ -29,7 +30,7 @@ type EditRequest = {
   currentValues?: Record<string, number | null>;
 };
 
-export function RequestsManager() {
+function RequestsManagerInner() {
   const [requests, setRequests] = useState<EditRequest[]>([]);
   const [resolvedCount, setResolvedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -297,3 +298,5 @@ export function RequestsManager() {
     </div>
   );
 }
+
+export const RequestsManager = withErrorBoundary(RequestsManagerInner);
