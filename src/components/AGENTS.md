@@ -10,6 +10,7 @@ Frontend developers.
 
 - Components must be strictly presentational or handle localized state only.
 - Use Tailwind CSS for styling.
+- **Island Boundary Rule:** Every React component mounted via `client:load` or `client:only` in an Astro page must export its default name wrapped with `withErrorBoundary(InnerComponent)` (defined in `./common/withErrorBoundary.tsx`). This ensures `QueryClientProvider` and `AppErrorBoundary` are present at the island root. Unwrapped components will throw `"No QueryClient set"` or crash silently to a blank page.
 
 # Child DOX Index
 

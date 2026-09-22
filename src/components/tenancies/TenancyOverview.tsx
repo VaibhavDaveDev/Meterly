@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { formatCurrency, formatMonth } from "../../lib/format";
@@ -426,7 +427,7 @@ function TenancyQuickActions({
 // Main Component
 // ---------------------------
 
-export function TenancyOverview({ tenancyId }: TenancyOverviewProps) {
+function TenancyOverviewInner({ tenancyId }: TenancyOverviewProps) {
   const [data, setData] = useState<TenancyOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -550,6 +551,8 @@ export function TenancyOverview({ tenancyId }: TenancyOverviewProps) {
     </div>
   );
 }
+
+export const TenancyOverview = withErrorBoundary(TenancyOverviewInner);
 
 function useLeaveProperty(tenancyId: string, propertyName: string) {
   const [isLeaving, setIsLeaving] = useState(false);

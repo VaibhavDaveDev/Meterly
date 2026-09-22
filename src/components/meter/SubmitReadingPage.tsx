@@ -20,13 +20,14 @@ import { useReadingValidation } from "../../hooks/use-reading-validation";
 import { useOcrData } from "../../hooks/use-ocr-data";
 import { UploadedPhotos } from "./UploadedPhotos";
 import { SubmitConfirmDialog } from "./SubmitConfirmDialog";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface SubmitReadingPageProps {
   propertyId: string;
   periodId: string;
 }
 
-export function SubmitReadingPage({ periodId }: SubmitReadingPageProps) {
+function SubmitReadingPageInner({ periodId }: SubmitReadingPageProps) {
   // Unconditional hook execution at the top level to comply with React hook rules.
   // We use safe fallback defaults when data is loading or null.
   const {
@@ -798,3 +799,5 @@ export function SubmitReadingPage({ periodId }: SubmitReadingPageProps) {
     </>
   );
 }
+
+export const SubmitReadingPage = withErrorBoundary(SubmitReadingPageInner);

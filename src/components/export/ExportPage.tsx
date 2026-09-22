@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { DataTable } from "../ui/data-table";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface ExportDownload {
   type: "owner-property" | "tenant-tenancy";
@@ -22,7 +23,7 @@ interface PreviewRow {
   [key: string]: string;
 }
 
-export function ExportPage() {
+function ExportPageInner() {
   const [downloads, setDownloads] = useState<ExportDownload[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -250,3 +251,5 @@ export function ExportPage() {
     </div>
   );
 }
+
+export const ExportPage = withErrorBoundary(ExportPageInner);

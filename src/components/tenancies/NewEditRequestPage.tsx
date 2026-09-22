@@ -10,6 +10,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface PeriodDetails {
   property: {
@@ -60,7 +61,7 @@ interface ValidationErrors {
   form?: string;
 }
 
-export function NewEditRequestPage({
+function NewEditRequestPageInner({
   tenancyId,
   periodId: propPeriodId,
 }: NewEditRequestPageProps) {
@@ -654,3 +655,5 @@ export function NewEditRequestPage({
     </div>
   );
 }
+
+export const NewEditRequestPage = withErrorBoundary(NewEditRequestPageInner);

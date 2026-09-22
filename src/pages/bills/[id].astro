@@ -5,7 +5,7 @@ import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import { BillDetail } from '../../components/bills/BillDetail';
 import { getDb } from '../../db';
 import { bills, billingPeriods, properties, meterReadings, tenancies, user, meterReadingEdits, editRequests } from '../../db/schema';
-import { authClient } from '../../lib/auth-client';
+import { getAuth } from '../../api/lib/auth';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { env } from 'cloudflare:workers';
 import type { BillEditHistory } from '../../hooks/use-bill-detail';
@@ -14,13 +14,16 @@ const { id } = Astro.params;
 let billData = null;
 
 if (id) {
-  const db = getDb((env as { DB: D1Database }).DB);
-  const session = await authClient.getSession({ fetchOptions: { headers: Astro.request.headers } });
-  const userId = session?.data?.user?.id;
+  const currentEnv = (env || process.env) as unknown as Parameters<typeof getAuth>[0];
+  const auth = getAuth(currentEnv);
+  const session = await auth.api.getSession({ headers: Astro.request.headers });
+  const userId = session?.user?.id;
 
   if (!userId) {
     return Astro.redirect('/login');
   }
+
+  const db = getDb((env as { DB: D1Database }).DB);
 
   if (userId) {
     // 1. Fetch the core bill

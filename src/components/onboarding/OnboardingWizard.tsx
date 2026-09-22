@@ -1,10 +1,11 @@
 import { useState, useEffect, type SubmitEvent } from "react";
 import { Home, User, Sun, Zap, Check } from "lucide-react";
 import { apiClient } from "../../lib/api-client";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 type Role = "owner" | "tenant" | "both" | null;
 
-export function OnboardingWizard() {
+function OnboardingWizardInner() {
   const [step, setStep] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("onboarding_step");
@@ -502,3 +503,5 @@ export function OnboardingWizard() {
     </div>
   );
 }
+
+export const OnboardingWizard = withErrorBoundary(OnboardingWizardInner);

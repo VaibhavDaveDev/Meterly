@@ -15,6 +15,7 @@ import { apiClient } from "../../lib/api-client";
 import { Badge } from "../ui/badge";
 import { formatCurrency } from "../../lib/format";
 import { useToast } from "../../hooks/use-toast";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 type Property = {
   id: string;
@@ -43,7 +44,7 @@ type PropertiesResponse = {
   tenantPast: Property[];
 };
 
-export function PropertyList() {
+function PropertyListInner() {
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [archivedProperties, setArchivedProperties] = useState<Property[]>([]);
@@ -415,3 +416,5 @@ export function PropertyList() {
     </div>
   );
 }
+
+export const PropertyList = withErrorBoundary(PropertyListInner);

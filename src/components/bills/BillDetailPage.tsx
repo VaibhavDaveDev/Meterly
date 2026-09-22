@@ -24,13 +24,14 @@ import {
   type CustomCharge,
   type ProposedValues,
 } from "../../hooks/use-bill-detail";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface BillDetailPageProps {
   tenancyId: string;
   billId: string;
 }
 
-export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
+function BillDetailPageInner({ tenancyId, billId }: BillDetailPageProps) {
   const {
     data,
     loading,
@@ -467,6 +468,8 @@ export function BillDetailPage({ tenancyId, billId }: BillDetailPageProps) {
     </div>
   );
 }
+
+export const BillDetailPage = withErrorBoundary(BillDetailPageInner);
 
 function BillStatusBadge({ status }: { status: "paid" | "pending" }) {
   return (

@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import type { SubmitEvent } from "react";
 import { authClient } from "../../lib/auth-client";
 import { AuthFormLayout } from "./AuthFormLayout";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
-export function VerifyEmailForm() {
+function VerifyEmailFormInner() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -158,3 +159,5 @@ export function VerifyEmailForm() {
     </AuthFormLayout>
   );
 }
+
+export const VerifyEmailForm = withErrorBoundary(VerifyEmailFormInner);

@@ -26,6 +26,7 @@ import { PropertyDetailsTabOverview } from "./PropertyDetailsTabOverview";
 import { PropertyDetailsTabTenants } from "./PropertyDetailsTabTenants";
 import { PropertyDetailsTabBills } from "./PropertyDetailsTabBills";
 import { usePropertyDetails } from "../../hooks/use-property-details";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface PropertyDetailsProps {
   property: Property;
@@ -34,7 +35,7 @@ interface PropertyDetailsProps {
   isTenant: boolean;
 }
 
-export function PropertyDetails({
+function PropertyDetailsInner({
   property,
   tenantCount: initialTenantCount,
   isOwner,
@@ -251,3 +252,5 @@ export function PropertyDetails({
     </div>
   );
 }
+
+export const PropertyDetails = withErrorBoundary(PropertyDetailsInner);

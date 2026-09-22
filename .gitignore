@@ -93,3 +93,9 @@ otel-collector-config-local.yaml
 
 # Personal deployment guide
 Plan.md
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/blob-report/

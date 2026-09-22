@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "../../lib/api-client";
+import { withErrorBoundary } from "../common/withErrorBoundary";
 
 type InviteDetails = {
   propertyName: string;
@@ -11,7 +12,7 @@ type InviteDetails = {
   inviteEmail: string;
 };
 
-export function InviteAcceptForm({ token }: { token: string }) {
+function InviteAcceptFormInner({ token }: { token: string }) {
   const [invite, setInvite] = useState<InviteDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -159,3 +160,5 @@ export function InviteAcceptForm({ token }: { token: string }) {
     </div>
   );
 }
+
+export const InviteAcceptForm = withErrorBoundary(InviteAcceptFormInner);

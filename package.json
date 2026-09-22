@@ -14,6 +14,8 @@
     "format:check": "prettier --check .",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "typecheck": "astro check",
     "seed": "tsx scripts/seed.ts",
     "seed:fresh": "node -e \"require('fs').rmSync('.wrangler/state/v3/d1', {recursive:true,force:true})\" && pnpm exec wrangler d1 migrations apply DB --local && tsx scripts/seed.ts",
@@ -39,12 +41,12 @@
     "@radix-ui/react-toast": "^1.2.17",
     "@radix-ui/react-tooltip": "^1.2.10",
     "@tanstack/react-query": "^5.103.1",
-    "astro": "^7.1.6",
+    "astro": "^7.3.3",
     "better-auth": "^1.6.25",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.13.1",
+    "hono": "^4.13.8",
     "lucide-react": "^1.20.0",
     "pdfjs-dist": "^6.2.108",
     "piexifjs": "^1.0.6",
@@ -58,9 +60,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@astrojs/check": "^0.9.10",
-    "@astrojs/cloudflare": "^14.1.7",
-    "@astrojs/react": "^6.0.2",
+    "@astrojs/cloudflare": "^14.3.2",
+    "@astrojs/react": "^6.0.6",
     "@cloudflare/workers-types": "^4.20260617.1",
     "@eslint/js": "^10.0.1",
     "@napi-rs/canvas": "^1.0.7",
@@ -72,8 +75,8 @@
     "@types/piexifjs": "^1.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "better-sqlite3": "^12.11.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4",
@@ -90,14 +93,17 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1",
     "vite-plugin-static-copy": "^4.1.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11",
+    "wrangler": "^4.136.1"
   },
   "pnpm": {
     "overrides": {
       "postcss": "^8.5.25",
       "undici": "^7.29.0",
-      "js-yaml": "^4.3.1",
-      "nanoid": ">=3.3.17 <4"
+      "js-yaml": ">=4.3.2",
+      "smol-toml": ">=1.7.1",
+      "nanoid": ">=3.3.17 <4",
+      "devalue": ">=5.9.2"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"
