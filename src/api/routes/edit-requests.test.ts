@@ -34,7 +34,7 @@ import {
   propertyRates,
   editRequests,
 } from "../../db/schema";
-import { requestsRouter } from "./edit-requests";
+import { requestsRouter, propertyRequestsRouter } from "./edit-requests";
 
 interface SuccessResponse {
   success: boolean;
@@ -152,7 +152,7 @@ describe("Edit Requests API Routes", () => {
 
     app = new Hono();
     app.route("/api/edit-requests", requestsRouter);
-    app.route("/api", requestsRouter);
+    app.route("/api/properties", propertyRequestsRouter);
   });
 
   async function insertPendingEditRequest(

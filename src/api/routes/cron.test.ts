@@ -1,7 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-vi.mock("../middleware/auth", () => ({
-  authMiddleware: async (_c: unknown, next: () => unknown) => next(),
-}));
+import { describe, it, expect, beforeEach } from "vitest";
 import { testDb } from "../../test/setup";
 import {
   properties,
@@ -163,6 +160,76 @@ describe("Cron: reading-reminders", () => {
     const res = await app.request(
       "/api/cron/reading-reminders",
       { headers: { Authorization: "Bearer wrong-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("authenticates successfully via X-Cron-Secret header (GET)", async () => {
+    const today = new Date().getDate();
+    await seedCronFixtures(today);
+
+    const res = await app.request(
+      "/api/cron/reading-reminders",
+      { headers: { "X-Cron-Secret": "test-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { success: boolean; processed: number };
+    expect(json.success).toBe(true);
+    expect(json.processed).toBe(1);
+  });
+
+  it("authenticates successfully via X-Cron-Secret header (POST)", async () => {
+    const today = new Date().getDate();
+    await seedCronFixtures(today);
+
+    const res = await app.request(
+      "/api/cron/reading-reminders",
+      { method: "POST", headers: { "X-Cron-Secret": "test-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { success: boolean; processed: number };
+    expect(json.success).toBe(true);
+  });
+
+  it("authenticates successfully via Bearer token (POST)", async () => {
+    const today = new Date().getDate();
+    await seedCronFixtures(today);
+
+    const res = await app.request(
+      "/api/cron/reading-reminders",
+      { method: "POST", headers: { Authorization: "Bearer test-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 401 with wrong X-Cron-Secret", async () => {
+    const res = await app.request(
+      "/api/cron/reading-reminders",
+      { headers: { "X-Cron-Secret": "wrong-secret" } },
       {
         DB: testDb as unknown as Bindings["DB"],
         CRON_SECRET: "test-secret",
@@ -345,6 +412,82 @@ describe("Cron: cleanup-stale-rate-limits", () => {
     const remainingReadings = await testDb.select().from(readingDailyCount);
     expect(remainingReadings).toHaveLength(1);
     expect(remainingReadings[0].dateKey).toBe(todayKey);
+  });
+
+  it("returns 400 with no authorization or x-cron-secret header", async () => {
+    const res = await app.request(
+      "/api/cron/cleanup-stale-rate-limits",
+      {},
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("authenticates successfully via X-Cron-Secret header (GET)", async () => {
+    const res = await app.request(
+      "/api/cron/cleanup-stale-rate-limits",
+      { headers: { "X-Cron-Secret": "test-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { success: boolean };
+    expect(json.success).toBe(true);
+  });
+
+  it("authenticates successfully via X-Cron-Secret header (POST)", async () => {
+    const res = await app.request(
+      "/api/cron/cleanup-stale-rate-limits",
+      { method: "POST", headers: { "X-Cron-Secret": "test-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { success: boolean };
+    expect(json.success).toBe(true);
+  });
+
+  it("authenticates successfully via Bearer token (POST)", async () => {
+    const res = await app.request(
+      "/api/cron/cleanup-stale-rate-limits",
+      { method: "POST", headers: { Authorization: "Bearer test-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { success: boolean };
+    expect(json.success).toBe(true);
+  });
+
+  it("returns 401 with wrong X-Cron-Secret", async () => {
+    const res = await app.request(
+      "/api/cron/cleanup-stale-rate-limits",
+      { headers: { "X-Cron-Secret": "wrong-secret" } },
+      {
+        DB: testDb as unknown as Bindings["DB"],
+        CRON_SECRET: "test-secret",
+        ENVIRONMENT: "test",
+        BETTER_AUTH_URL: "http://localhost",
+      }
+    );
+    expect(res.status).toBe(401);
   });
 
   it("returns 401 with wrong token", async () => {

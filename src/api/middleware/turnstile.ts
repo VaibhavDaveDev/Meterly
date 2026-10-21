@@ -100,7 +100,7 @@ export const turnstileMiddleware = async (
   }
 
   let verifyResult: SiteverifyResult;
-  // ponytail: standard 64 KB guard prevents isolate memory exhaustion on unexpected large responses
+  // standard 64 KB guard prevents isolate memory exhaustion on unexpected large responses
   const MAX_SITEVERIFY_RESPONSE_BYTES = 64 * 1024;
 
   try {
