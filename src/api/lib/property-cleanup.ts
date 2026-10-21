@@ -58,7 +58,7 @@ async function drainR2Backlog(db: Database, env: Bindings): Promise<void> {
       } catch (e) {
         const nextCount = entry.attemptCount + 1;
         if (nextCount >= BACKLOG_MAX_ATTEMPTS) {
-          // ponytail: Final attempt failed — log as permanent orphan and purge immediately
+          // Final attempt failed — log as permanent orphan and purge immediately
           logger.error(
             {
               id: entry.id,

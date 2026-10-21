@@ -46,7 +46,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.13.8",
+    "hono": "^4.13.11",
     "lucide-react": "^1.20.0",
     "pdfjs-dist": "^6.2.108",
     "piexifjs": "^1.0.6",
@@ -99,11 +99,15 @@
   "pnpm": {
     "overrides": {
       "postcss": "^8.5.25",
-      "undici": "^7.29.0",
+      "undici": "^7.29.1",
       "js-yaml": ">=4.3.2",
-      "smol-toml": ">=1.7.1",
+      "smol-toml": ">=1.9.0",
       "nanoid": ">=3.3.17 <4",
-      "devalue": ">=5.9.2"
+      "devalue": ">=5.9.2",
+      "vite": ">=8.2.4",
+      "source-map-js": ">=1.2.2",
+      "sharp": ">=0.35.5",
+      "@vitest/mocker": ">=4.1.12"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"
@@ -116,7 +120,8 @@
         "GHSA-f88m-g3jw-g9cj",
         "GHSA-67mh-4wv8-2f99",
         "GHSA-8988-4f7v-96qf",
-        "GHSA-j3f2-48v5-ccww"
+        "GHSA-j3f2-48v5-ccww",
+        "GHSA-ch52-4w7c-c8xp"
       ]
     }
   }

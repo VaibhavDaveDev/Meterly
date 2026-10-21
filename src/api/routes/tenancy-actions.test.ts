@@ -740,7 +740,7 @@ describe("Tenancy Actions API", () => {
     expect(deleteMock).toHaveBeenCalledTimes(4);
   });
 
-  // ponytail: Regression test for owner bill access after tenant deletion
+  // Regression test for owner bill access after tenant deletion
   it("owner can view bills for a tenant-deleted tenancy (regression)", async () => {
     const prop = await setupProperty();
 

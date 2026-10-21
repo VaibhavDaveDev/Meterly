@@ -30,7 +30,7 @@ export function checkEmailRateLimit(userId: string): boolean {
   const now = Date.now();
   const lastSent = emailRateLimiter.get(userId) ?? 0;
   if (now - lastSent < EMAIL_RATE_LIMIT_MS) return false;
-  // ponytail: prune expired entries on write to prevent unbounded Map growth
+  // prune expired entries on write to prevent unbounded Map growth
   for (const [key, ts] of emailRateLimiter) {
     if (now - ts >= EMAIL_RATE_LIMIT_MS) {
       emailRateLimiter.delete(key);

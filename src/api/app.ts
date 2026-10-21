@@ -15,7 +15,7 @@ import { chargesRouter } from "./routes/custom-charges";
 import { periodsRouter } from "./routes/billing-periods";
 import { readingsRouter } from "./routes/meter-readings";
 import { billsRouter } from "./routes/bills";
-import { requestsRouter } from "./routes/edit-requests";
+import { requestsRouter, propertyRequestsRouter } from "./routes/edit-requests";
 import { notificationsRouter } from "./routes/notifications";
 import { exportRouter } from "./routes/export";
 import { dashboardRouter } from "./routes/dashboard";
@@ -169,6 +169,8 @@ app.use(
     allowHeaders: [
       "Content-Type",
       "Authorization",
+      "X-Cron-Secret",
+      "x-cron-secret",
       "X-Requested-With",
       "x-cf-turnstile-response",
       "x-better-auth-csrf-token",
@@ -472,23 +474,25 @@ app.doc("/api/docs/openapi.json", {
 // Swagger UI
 app.get("/api/docs", swaggerUI({ url: "/api/docs/openapi.json" }));
 
-// API routes
+// Cron routes (secured by CRON_SECRET token, placed above session routes to prevent middleware interception)
+app.route("/api/cron", cronRouter);
+
+// API routes (session-authenticated)
 app.route("/api/properties", propertiesRouter);
 app.route("/api/properties", tenanciesRouter);
 app.route("/api/properties", ratesRouter);
 app.route("/api/properties", chargesRouter);
 app.route("/api/properties", periodsRouter);
+app.route("/api/properties", propertyRequestsRouter);
 app.route("/api/periods", readingsRouter);
 app.route("/api/bills", billsRouter);
 app.route("/api/edit-requests", requestsRouter);
-app.route("/api", requestsRouter);
 app.route("/api/notifications", notificationsRouter);
 app.route("/api/dashboard", dashboardRouter);
 app.route("/api/tenancies", tenancyActionsRouter);
 app.route("/api/invites", invitesRouter);
 app.route("/api/export", exportRouter);
 app.route("/api/users", usersRouter);
-app.route("/api/cron", cronRouter);
 app.route("/api/uploads", uploadsRouter);
 
 const handler = {

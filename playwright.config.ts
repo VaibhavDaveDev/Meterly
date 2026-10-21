@@ -9,7 +9,7 @@ const BASE_URL = process.env.E2E_BASE_URL ?? "http://localhost:4321";
 export default defineConfig({
   testDir: "./tests/e2e",
   globalSetup: "./tests/e2e/global-setup.ts",
-  // ponytail: workers: 1 and fullyParallel: false because local D1 is a single SQLite file;
+  // workers: 1 and fullyParallel: false because local D1 is a single SQLite file;
   // parallel workers would race on the same sessions/tables.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -32,7 +32,7 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        // ponytail: --ignore-lock and ASTRO_DEV_BACKGROUND="false" ensure Astro runs in the foreground
+        // --ignore-lock and ASTRO_DEV_BACKGROUND="false" ensure Astro runs in the foreground
         // even in agent environments (Astro 7+ auto-backgrounds when am-i-vibing detects an agent).
         command: "pnpm dev --ignore-lock",
         url: BASE_URL,

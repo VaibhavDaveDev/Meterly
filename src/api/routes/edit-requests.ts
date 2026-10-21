@@ -139,6 +139,14 @@ const requestsRouter = new OpenAPIHono<{
 
 requestsRouter.use("*", authMiddleware);
 
+// scoped router for /api/properties/:id/edit-requests* to avoid /api wildcard route pollution
+const propertyRequestsRouter = new OpenAPIHono<{
+  Bindings: Bindings;
+  Variables: Variables;
+}>();
+
+propertyRequestsRouter.use("*", authMiddleware);
+
 const CreateEditRequestSchema = z.object({
   billingPeriodId: z.string().openapi({ example: "uuid-1234" }),
   reason: z
@@ -524,7 +532,7 @@ requestsRouter.openapi(getEditRequestsRoute, async (c) => {
 
 const getPropertyEditRequestsRoute = createRoute({
   method: "get",
-  path: "/properties/{id}/edit-requests",
+  path: "/{id}/edit-requests",
   tags: ["Edit Requests"],
   summary: "Owner views pending requests",
   security: [{ cookieAuth: [] }],
@@ -547,7 +555,7 @@ const getPropertyEditRequestsRoute = createRoute({
   },
 });
 
-requestsRouter.openapi(getPropertyEditRequestsRoute, async (c) => {
+propertyRequestsRouter.openapi(getPropertyEditRequestsRoute, async (c) => {
   const { id: propertyId } = c.req.valid("param");
   const user = c.get("user");
   const db = getDb(c.env.DB);
@@ -623,7 +631,7 @@ requestsRouter.openapi(getPropertyEditRequestsRoute, async (c) => {
 // Count-only query via billingPeriods join to avoid loading full request context
 const getPropertyPendingCountRoute = createRoute({
   method: "get",
-  path: "/properties/{id}/edit-requests/count",
+  path: "/{id}/edit-requests/count",
   tags: ["Edit Requests"],
   summary: "Count pending edit requests for a property",
   security: [{ cookieAuth: [] }],
@@ -642,7 +650,7 @@ const getPropertyPendingCountRoute = createRoute({
   },
 });
 
-requestsRouter.openapi(getPropertyPendingCountRoute, async (c) => {
+propertyRequestsRouter.openapi(getPropertyPendingCountRoute, async (c) => {
   const { id: propertyId } = c.req.valid("param");
   const user = c.get("user");
   const db = getDb(c.env.DB);
@@ -1090,4 +1098,4 @@ requestsRouter.openapi(cancelRequestRoute, async (c) => {
   return c.json({ success: true as const, message: "Request cancelled" }, 200);
 });
 
-export { requestsRouter };
+export { requestsRouter, propertyRequestsRouter };

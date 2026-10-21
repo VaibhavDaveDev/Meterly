@@ -125,7 +125,7 @@ When the user requests a durable behavior change, record it here or in the relev
 ### CI / Developer Tooling
 
 - **GitHub Actions:** `.github/workflows/ci.yml` runs lint + typecheck + test on every PR and push that touches `src/`, `scripts/`, or key config files. Pure markdown changes skip CI. Runs on Node.js 24. pnpm version is read from the `packageManager` field in `package.json` — do not add an explicit `version:` in the workflow.
-- **E2E job:** Runs on every PR/push that touches `src/**`, `scripts/**`, `tests/**`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts`, `astro.config.mjs`, `wrangler.jsonc`, `drizzle.config.ts`, `playwright.config.ts`, or `.github/workflows/ci.yml`. Needs `ci` job to pass first. Seeds local D1 with `pnpm seed:fresh`, then runs `pnpm test:e2e`. Uploads `playwright-report/` as an artifact on failure (7-day retention).
+- **E2E job:** Runs on every PR/push that touches `src/**`, `scripts/**`, `tests/**`, `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts`, `astro.config.mjs`, `wrangler.jsonc`, `drizzle.config.ts`, `playwright.config.ts`, or `.github/workflows/ci.yml`. Needs `ci` job to pass first. Seeds local D1 with `pnpm seed:fresh`, then runs `pnpm test:e2e`. Env vars set: `CI=true`, `NODE_ENV=test`, `ENVIRONMENT=test` (required — `auth.ts` checks `ENVIRONMENT`, not `NODE_ENV`, for the fallback secret). Uploads `playwright-report/` as an artifact on failure (7-day retention).
 - **Husky:** Pre-commit runs `lint-staged` (ESLint + Prettier on staged files). Pre-push runs `pnpm typecheck`, `pnpm lint`, and `pnpm test --run`. Both hooks run automatically after `pnpm install` via the `prepare` script.
 - **Dependency security:** CI runs `pnpm audit --prod` on pushes to main. Remediation policy: upgrade direct dep → `pnpm.overrides` for transitive → `ignoreGhsas` only when no compatible fix exists. Per-GHSA rationale for current `ignoreGhsas` entries:
   - `GHSA-7p8r-x3mc-p8w7` (fast-uri): dev-only, via `@astrojs/check > yaml-language-server > ajv`; no compatible upgrade path without breaking check toolchain.
@@ -135,6 +135,7 @@ When the user requests a durable behavior change, record it here or in the relev
   - `GHSA-67mh-4wv8-2f99` (esbuild): prod transitive via `better-auth > drizzle-kit > @esbuild-kit`; bumping esbuild risks the Drizzle ORM bundling rule (`Class extends value undefined`); safe to ignore as this path is dev-server only (esbuild dev server CORS issue, not runtime).
   - `GHSA-8988-4f7v-96qf` (@opentelemetry/core): prod transitive via pinned `@microlabs/otel-cf-workers@1.0.0-rc.52`; cannot bump without breaking observability; low exploitability (baggage header parsing).
   - `GHSA-j3f2-48v5-ccww` (protobufjs): prod transitive via pinned `@microlabs/otel-cf-workers`; same constraint as above.
+  - `GHSA-ch52-4w7c-c8xp` (http-cache-semantics): prod transitive via `astro > http-cache-semantics`; no upstream patch released (`<0.0.0`); low exploitability in server-only HTTP caching path.
 
 ### Drizzle ORM Bundling Rule
 

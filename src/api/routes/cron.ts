@@ -1,4 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import type { RouteHandler } from "@hono/zod-openapi";
 import { getDb } from "../../db";
 import {
   properties,
@@ -16,46 +17,98 @@ import { logger } from "../lib/logger";
 
 const cronRouter = new OpenAPIHono<{ Bindings: Bindings }>();
 
-const readingRemindersRoute = createRoute({
+// clean helper to validate bearer token or X-Cron-Secret header
+function checkCronAuth(
+  authHeader: string | undefined,
+  xCronSecret: string | undefined,
+  cronSecret: string | undefined
+): { ok: true } | { ok: false; status: 400 | 401; error: string } {
+  if (!authHeader && !xCronSecret) {
+    return { ok: false, status: 400, error: "Missing authorization header" };
+  }
+  if (!cronSecret) {
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+  const isMatch =
+    authHeader === `Bearer ${cronSecret}` || xCronSecret === cronSecret;
+  if (!isMatch) {
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+  return { ok: true };
+}
+
+const CronHeadersSchema = z.object({
+  authorization: z
+    .string()
+    .optional()
+    .openapi({ example: "Bearer <your-cron-secret>" }),
+  "x-cron-secret": z
+    .string()
+    .optional()
+    .openapi({ example: "<your-cron-secret>" }),
+});
+
+const readingRemindersResponses = {
+  200: {
+    content: {
+      "application/json": {
+        schema: z.object({
+          success: z.boolean(),
+          processed: z.number(),
+          notificationsSent: z.number(),
+        }),
+      },
+    },
+    description: "Reading reminders processed",
+  },
+  400: {
+    content: {
+      "application/json": { schema: z.object({ error: z.string() }) },
+    },
+    description: "Missing authorization header",
+  },
+  401: {
+    content: {
+      "application/json": { schema: z.object({ error: z.string() }) },
+    },
+    description: "Unauthorized",
+  },
+} as const;
+
+const readingRemindersGetRoute = createRoute({
   method: "get",
   path: "/reading-reminders",
   tags: ["Cron"],
   summary: "Send reading reminders",
   security: [{ bearerAuth: [] }],
   request: {
-    headers: z.object({
-      authorization: z
-        .string()
-        .openapi({ example: "Bearer <your-cron-secret>" }),
-    }),
+    headers: CronHeadersSchema,
   },
-  responses: {
-    200: {
-      content: {
-        "application/json": {
-          schema: z.object({
-            success: z.boolean(),
-            processed: z.number(),
-            notificationsSent: z.number(),
-          }),
-        },
-      },
-      description: "Reading reminders processed",
-    },
-    401: {
-      content: {
-        "application/json": { schema: z.object({ error: z.string() }) },
-      },
-      description: "Unauthorized",
-    },
-  },
+  responses: readingRemindersResponses,
 });
 
-cronRouter.openapi(readingRemindersRoute, async (c) => {
-  const authHeader = c.req.header("Authorization");
+const readingRemindersPostRoute = createRoute({
+  method: "post",
+  path: "/reading-reminders",
+  tags: ["Cron"],
+  summary: "Send reading reminders (POST)",
+  security: [{ bearerAuth: [] }],
+  request: {
+    headers: CronHeadersSchema,
+  },
+  responses: readingRemindersResponses,
+});
+
+const handleReadingReminders: RouteHandler<
+  typeof readingRemindersGetRoute,
+  { Bindings: Bindings }
+> = async (c) => {
+  const authHeader = c.req.header("authorization");
+  const xCronSecret = c.req.header("x-cron-secret");
   const cronSecret = c.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return c.json({ error: "Unauthorized" }, 401);
+  const authCheck = checkCronAuth(authHeader, xCronSecret, cronSecret);
+  if (!authCheck.ok) {
+    return c.json({ error: authCheck.error }, authCheck.status);
   }
 
   const db = getDb(c.env.DB);
@@ -153,52 +206,82 @@ cronRouter.openapi(readingRemindersRoute, async (c) => {
     },
     200
   );
-});
+};
 
-const cleanupRateLimitsRoute = createRoute({
+cronRouter.openapi(readingRemindersGetRoute, handleReadingReminders);
+cronRouter.openapi(
+  readingRemindersPostRoute,
+  handleReadingReminders as RouteHandler<
+    typeof readingRemindersPostRoute,
+    { Bindings: Bindings }
+  >
+);
+
+const cleanupRateLimitsResponses = {
+  200: {
+    content: {
+      "application/json": {
+        schema: z.object({
+          success: z.boolean(),
+          deleted: z.object({
+            otpRateLimit: z.number(),
+            passwordChangeLimit: z.number(),
+            uploadDailyCount: z.number(),
+            readingDailyCount: z.number(),
+          }),
+        }),
+      },
+    },
+    description: "Stale rate-limit rows cleaned up",
+  },
+  400: {
+    content: {
+      "application/json": { schema: z.object({ error: z.string() }) },
+    },
+    description: "Missing authorization header",
+  },
+  401: {
+    content: {
+      "application/json": { schema: z.object({ error: z.string() }) },
+    },
+    description: "Unauthorized",
+  },
+} as const;
+
+const cleanupRateLimitsGetRoute = createRoute({
   method: "get",
   path: "/cleanup-stale-rate-limits",
   tags: ["Cron"],
   summary: "Delete stale rate-limit rows from D1",
   security: [{ bearerAuth: [] }],
   request: {
-    headers: z.object({
-      authorization: z
-        .string()
-        .openapi({ example: "Bearer <your-cron-secret>" }),
-    }),
+    headers: CronHeadersSchema,
   },
-  responses: {
-    200: {
-      content: {
-        "application/json": {
-          schema: z.object({
-            success: z.boolean(),
-            deleted: z.object({
-              otpRateLimit: z.number(),
-              passwordChangeLimit: z.number(),
-              uploadDailyCount: z.number(),
-              readingDailyCount: z.number(),
-            }),
-          }),
-        },
-      },
-      description: "Stale rate-limit rows cleaned up",
-    },
-    401: {
-      content: {
-        "application/json": { schema: z.object({ error: z.string() }) },
-      },
-      description: "Unauthorized",
-    },
-  },
+  responses: cleanupRateLimitsResponses,
 });
 
-cronRouter.openapi(cleanupRateLimitsRoute, async (c) => {
-  const authHeader = c.req.header("Authorization");
+const cleanupRateLimitsPostRoute = createRoute({
+  method: "post",
+  path: "/cleanup-stale-rate-limits",
+  tags: ["Cron"],
+  summary: "Delete stale rate-limit rows from D1 (POST)",
+  security: [{ bearerAuth: [] }],
+  request: {
+    headers: CronHeadersSchema,
+  },
+  responses: cleanupRateLimitsResponses,
+});
+
+const handleCleanupRateLimits: RouteHandler<
+  typeof cleanupRateLimitsGetRoute,
+  { Bindings: Bindings }
+> = async (c) => {
+  const authHeader = c.req.header("authorization");
+  const xCronSecret = c.req.header("x-cron-secret");
   const cronSecret = c.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return c.json({ error: "Unauthorized" }, 401);
+  const authCheck = checkCronAuth(authHeader, xCronSecret, cronSecret);
+  if (!authCheck.ok) {
+    return c.json({ error: authCheck.error }, authCheck.status);
   }
 
   const db = getDb(c.env.DB);
@@ -246,6 +329,15 @@ cronRouter.openapi(cleanupRateLimitsRoute, async (c) => {
   );
 
   return c.json({ success: true as const, deleted }, 200);
-});
+};
+
+cronRouter.openapi(cleanupRateLimitsGetRoute, handleCleanupRateLimits);
+cronRouter.openapi(
+  cleanupRateLimitsPostRoute,
+  handleCleanupRateLimits as RouteHandler<
+    typeof cleanupRateLimitsPostRoute,
+    { Bindings: Bindings }
+  >
+);
 
 export { cronRouter };

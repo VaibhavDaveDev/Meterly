@@ -15,7 +15,7 @@ Hono-based API implementation. Owns all server-side route handlers, middleware, 
 - All responses must use the `SuccessResponse` and `ErrorResponse` wrappers from `lib/openapi-schemas.ts`. Every `ErrorResponse` must include a string `code` and `message`.
 - `authMiddleware` must be applied to every router that requires an authenticated user (`router.use('*', authMiddleware)`).
 - Authorization is always inline `isOwner`/`isTenant` checks — never external ABAC libraries.
-- Cron routes are secured by `CRON_SECRET` bearer token, not session cookies.
+- Cron routes are secured by `CRON_SECRET` bearer token or `X-Cron-Secret` header, not session cookies.
 - `Bindings` and `Variables` types live in `app.ts` and must be imported from there — never redefined locally.
 - All env vars accessed by routes must be declared in the `Bindings` type in `app.ts`.
 - The Cloudflare execution context is `c.executionCtx` (Hono) — do not use `context.locals.cfContext` in Hono handlers.
