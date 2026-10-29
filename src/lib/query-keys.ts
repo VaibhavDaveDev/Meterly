@@ -1,4 +1,7 @@
 export const queryKeys = {
+  // Auth / session
+  session: () => ["auth", "session"] as const,
+
   // Dashboard
   dashboardOwner: () => ["dashboard", "owner"] as const,
   dashboardTenant: () => ["dashboard", "tenant"] as const,

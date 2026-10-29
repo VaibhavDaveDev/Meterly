@@ -1,30 +1,39 @@
-# Purpose
+# API Business Logic DOX
 
-Core business logic and utility functions for the Meterly API.
+## Purpose
 
-# Ownership
+- Core business logic, rate limiters, auth configuration, and background maintenance functions for the Meterly API.
 
-API and Backend developers.
+## Ownership
 
-# Local Contracts
+- `billing-engine.ts` owns the source of truth for all meter-to-currency calculations, prior reading resolution (via `innerJoin` on `billingPeriods`), and rate-tier splitting.
+- `auth.ts` owns the Better Auth instance, authentication plugins (email OTP, OAuth), session policy (rolling sessions: 7-day expiry, 1-day roll), and lifecycle hooks (`onPasswordUpdate`, `after[/sign-up/email]`).
+- `session-limit.ts` owns FIFO session cleanup executed on user login.
+- `email.ts` owns the provider-agnostic email dispatch abstraction (Resend primary, Atlas Mailer fallback) and in-memory rate limiting.
+- `avatar.ts` owns Gravatar URL generation (SHA-256 Web Crypto) and DiceBear fallback.
+- `solo-mode.ts` owns owner-tenancy lifecycle helpers (`ensureOwnerTenancy`, `deactivateOwnerTenancy`, `reconcileSplitsAfterRemoval`).
+- `otp-limiter.ts` owns exponential backoff rate limiting for OTP sending (5m, 15m, 30m, 60m cooldowns; 2h inactivity reset or on-verify reset).
+- `password-change-limiter.ts` owns per-user rate limit enforcement for password changes (3 per 24h rolling window via D1).
+- `property-cleanup.ts` owns `sweepOrphanedPropertyData` for deferred permanent sweeping of deleted properties, tenancy records, historical readings, and R2 photo backlog draining.
+
+## Local Contracts
 
 - All files in this directory must be pure functions or stateless helpers where possible.
-- Complex logic (like billing) must be accompanied by comprehensive unit tests.
+- Complex calculations (such as billing engine) require 100% unit test coverage.
+- All email dispatch is gated by `EMAIL_PROVIDER` env var — no hardcoded providers.
+- R2 cleanup retries up to 3 times before enqueuing to `r2_cleanup_backlog`; items reaching 10 attempts are logged as permanent orphans and purged from backlog.
 
-# Work Guidance
+## Work Guidance
 
-- `billing-engine.ts`: The source of truth for all meter-to-currency calculations. 100% unit test coverage required. Start-value resolution resolves prior period readings using an `innerJoin` on `billingPeriods` (skipping periods with no submitted meter readings).
-- `auth.ts`: Better Auth instance — email+password primary, Google and GitHub OAuth secondary, emailOTP for password reset. Rolling sessions enabled (7-day expiry, 1-day roll window). Hooks: `onPasswordUpdate` sends security email; `after[/sign-up/email]` resolves avatar via `resolveAvatarAtSignup`.
-- `session-limit.ts`: FIFO session cleanup logic executed on login.
-- `email.ts`: Provider-agnostic email abstraction. Supports Resend (primary, `EMAIL_PROVIDER=resend`) and [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git) (fallback, `EMAIL_PROVIDER=atlas`). In-memory `emailRateLimiter` Map limits one email per `userId` per 60 seconds; expired entries are pruned on each write to prevent unbounded growth in long-lived isolates. All logic gated by `EMAIL_PROVIDER` env var — no hardcoded provider. See `MAILER.md`.
-- `avatar.ts`: Gravatar URL generation (SHA-256, Web Crypto) and DiceBear fallback.
-- `solo-mode.ts`: Helpers for the owner-tenancy pattern — `ensureOwnerTenancy`, `deactivateOwnerTenancy`, `reconcileSplitsAfterRemoval`. All are idempotent.
-- `otp-limiter.ts`: Exponential backoff rate limiting for OTP sending (5m, 15m, 30m, 60m cooldowns). Resets after 2 hours of inactivity or upon successful verification.
-- `password-change-limiter.ts`: Per-user rate limit for change-password (3 per 24h rolling window). Uses D1 table `password_change_limit`. Enforced in app.ts before delegating to Better Auth handler.
-- `property-cleanup.ts`: `sweepOrphanedPropertyData(db, env, propertyId)` — permanently deletes all historical data (R2 photos, bill_photos, meter_reading_edits, meter_readings, bills, billing_periods, tenancies) once a property is owner-deleted AND every real tenant (`isOwnerTenancy = false`) has explicitly deleted their record (`deletedByTenantAt IS NOT NULL`). Called speculatively via `waitUntil` in owner `DELETE /properties/:id` and tenant `DELETE /tenancies/:id`. Solo-mode properties (no real tenants) sweep immediately on owner delete. Safe to call before either condition is met — returns false without modifying the target property's data, but the global R2 backlog-draining step may still delete queued objects or mutate backlog rows.
-  - **R2 retry strategy:** Each R2 key gets up to 3 attempts with 200 ms exponential backoff inside `waitUntil`. Keys exhausting all retries are written to `r2_cleanup_backlog` (attempt_count starts at 3) and DB cleanup proceeds unconditionally. At the top of every future sweep call, up to 50 backlog entries are drained (1 attempt each); successes remove the row, failures increment `attempt_count`. Entries reaching 10 total attempts are logged as permanent orphans and purged from the backlog.
-  - Rate limits: `MAX_READINGS_PER_DAY` (default 20) and `MAX_UPLOADS_PER_DAY` (default 60) are read from env vars; max 3 photos per reading period per user.
+- Keep modules decoupled; pass required database handles and env bindings as explicit arguments.
+- Refer to `MAILER.md` for email provider configuration and integration details.
 
-# Child DOX Index
+## Verification
 
-- [MAILER.md](./MAILER.md): Email provider integration contract (Resend + [Atlas Mailer](https://github.com/VaibhavDaveDev/atlas-mailer.git)).
+```bash
+pnpm test --run src/api/lib
+```
+
+## Child DOX Index
+
+- [MAILER.md](./MAILER.md): Email provider integration contract (Resend + Atlas Mailer).

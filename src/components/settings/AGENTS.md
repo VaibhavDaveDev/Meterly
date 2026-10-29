@@ -1,18 +1,28 @@
-# Purpose
+# Settings Components DOX
 
-User settings and account management components.
+## Purpose
 
-# Ownership
+- User account settings, profile customization, password changes, and account lifecycle management.
 
-Frontend developers.
+## Ownership
 
-# Local Contracts
+- `SettingsPage.tsx` owns user profile editing (name, avatar), password update forms, session management, and account deletion controls.
 
-- SettingsPage.tsx: Main settings page component with profile information (editing name/avatar, changing password) and account actions
-- Future: Notification preferences
+## Local Contracts
 
-# Work Guidance
+- Fetch user data from Better Auth session.
+- Account deletion requires zero owned active properties before proceeding.
 
-- Use DashboardLayout for consistent header navigation
-- Fetch user data from Better Auth session
-- Follow Meterly design system (no gradients, minimal aesthetic)
+## Work Guidance
+
+- Follow Meterly design system (no gradients, minimal aesthetic, Work Sans body, Manrope headings).
+
+## Verification
+
+```bash
+pnpm test --run src/components/settings
+```
+
+## Child DOX Index
+
+No child DOX files.

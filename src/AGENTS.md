@@ -1,8 +1,10 @@
-# Purpose
+# Source Code DOX
+
+## Purpose
 
 Core application source code: API, database schema, frontend pages, server-side utilities, and shared client libraries. All code that ships to Cloudflare Workers or the browser lives here.
 
-# Ownership
+## Ownership
 
 - `api/` owns all Hono route handlers, middleware, and server-side business logic.
 - `db/` owns the Drizzle ORM schema, migrations, and `getDb` factory.
@@ -15,7 +17,7 @@ Core application source code: API, database schema, frontend pages, server-side 
 - `test/` owns shared test setup, fixtures, and the in-memory SQLite database.
 - `utils/` owns stateless pure utility functions.
 
-# Local Contracts
+## Local Contracts
 
 - TypeScript is mandatory for all files in this directory.
 - No `any` types — use proper TypeScript types.
@@ -23,13 +25,13 @@ Core application source code: API, database schema, frontend pages, server-side 
 - All client-side data fetching must use TanStack Query v5 (`useQuery` / `useMutation` / `useInfiniteQuery`). Do not use raw `useEffect` + `useState` for server data.
 - Cloudflare bindings are accessed via `import { env } from "cloudflare:workers"` in Astro routes. Use `context.locals.cfContext` for `waitUntil`.
 
-# Work Guidance
+## Work Guidance
 
 - Put route handler orchestration in `api/routes/`. Move pure business logic to `api/lib/`.
 - Add a new Drizzle schema table in `db/schema/` and re-export from `db/schema/index.ts`. Generate a migration with `pnpm db:generate`.
 - New React islands go in `components/<domain>/`. Register with `withErrorBoundary` at the Astro page level.
 
-# Verification
+## Verification
 
 ```bash
 pnpm typecheck   # 0 errors expected across all files
@@ -37,7 +39,7 @@ pnpm lint        # 0 warnings expected (ESLint + Prettier)
 pnpm test --run  # all tests green
 ```
 
-# Child DOX Index
+## Child DOX Index
 
 | Child                                          | Scope                                                        |
 | ---------------------------------------------- | ------------------------------------------------------------ |

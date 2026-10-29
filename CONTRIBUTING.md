@@ -277,7 +277,7 @@ pnpm test --ui
 - Use the helpers in `src/test/setup.ts` for database setup — they apply the schema and run in isolation.
 - Test the billing engine logic (`src/api/lib/billing.ts`) with pure input/output cases. No HTTP needed.
 - For route-level tests, use Hono's `app.request()` helper.
-- Foreign key enforcement is off in tests (matching D1 production behaviour). Do not remove `PRAGMA foreign_keys = OFF` from `src/test/setup.ts`.
+- Foreign key enforcement is disabled in tests (`PRAGMA foreign_keys = OFF` in `src/test/setup.ts`) so test fixtures can be inserted and torn down in any order. Production D1 enforces foreign keys by default; this pragma is an intentional test-only divergence. Do not remove it.
 
 New features should include tests. Bug fixes should include a test that reproduces the bug before the fix.
 

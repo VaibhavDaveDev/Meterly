@@ -275,7 +275,7 @@ Future deploys are just: `pnpm run deploy`
 
 ## Step 8 — Set Up the Daily Cron Jobs
 
-Meterly has two cron endpoints that should be triggered on a daily schedule by an external scheduler. Both endpoints are protected by `Authorization: Bearer CRON_SECRET` (the secret configured in Step 6f). Any request without a valid header returns `401 Unauthorized`.
+Meterly has three cron endpoints that should be triggered on a daily schedule by an external scheduler. All endpoints are protected by `Authorization: Bearer CRON_SECRET` (or `X-Cron-Secret`). Requests with missing authentication headers return `400 Bad Request`; invalid credentials return `401 Unauthorized`.
 
 1. **Reading Reminders (`GET /api/cron/reading-reminders`)**
    - Runs daily (e.g. at 08:00 user local time or 03:00 UTC).
@@ -288,6 +288,11 @@ Meterly has two cron endpoints that should be triggered on a daily schedule by a
      - `otp_rate_limit` rows older than 30 days.
      - `password_change_limit` rows older than 30 days.
      - `upload_daily_count` and `reading_daily_count` records older than 2 days.
+
+3. **Purge Unverified Accounts (`GET /api/cron/purge-unverified-accounts`)**
+   - Runs nightly (e.g. at 02:30 UTC).
+   - Purges stale unverified user accounts (`email_verified = 0`) created older than `UNVERIFIED_ACCOUNT_TTL_HOURS` (default: 48 hours).
+   - Automatically cleans up associated Better Auth OTP verification records and unverified tenancy records before deleting the user row.
 
 ---
 
@@ -302,6 +307,10 @@ Meterly has two cron endpoints that should be triggered on a daily schedule by a
    - **URL:** `https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits`
    - **Schedule:** Daily at 02:00
    - **Headers:** `Authorization: Bearer YOUR-CRON-SECRET-VALUE`
+4. Create **Job 3: Purge Unverified Accounts**
+   - **URL:** `https://YOUR-PROJECT-NAME.pages.dev/api/cron/purge-unverified-accounts`
+   - **Schedule:** Daily at 02:30
+   - **Headers:** `Authorization: Bearer YOUR-CRON-SECRET-VALUE`
 
 ---
 
@@ -315,6 +324,8 @@ on:
   schedule:
     # 02:00 UTC: Rate limit DB cleanup
     - cron: "0 2 * * *"
+    # 02:30 UTC: Purge stale unverified user accounts
+    - cron: "30 2 * * *"
     # 03:00 UTC (08:30 IST): Reading reminders
     - cron: "0 3 * * *"
   workflow_dispatch: # allows manual trigger
@@ -330,6 +341,17 @@ jobs:
             -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits
+
+  purge-unverified-accounts:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 2 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Purge Unverified Accounts Cron (02:30 UTC)
+        run: |
+          curl --fail --silent --show-error \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://YOUR-PROJECT-NAME.pages.dev/api/cron/purge-unverified-accounts
 
   reading-reminders:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 3 * * *'
@@ -359,6 +381,7 @@ Test both endpoints locally or against your deployed URL:
 read -s -p "Enter CRON_SECRET: " CRON_SECRET; echo
 curl -X GET -H "Authorization: Bearer $CRON_SECRET" https://YOUR-PROJECT-NAME.pages.dev/api/cron/reading-reminders
 curl -X GET -H "Authorization: Bearer $CRON_SECRET" https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits
+curl -X GET -H "Authorization: Bearer $CRON_SECRET" https://YOUR-PROJECT-NAME.pages.dev/api/cron/purge-unverified-accounts
 unset CRON_SECRET
 
 # Or in PowerShell:
@@ -367,13 +390,15 @@ $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
 $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 curl.exe -X GET -H "Authorization: Bearer $plain" https://YOUR-PROJECT-NAME.pages.dev/api/cron/reading-reminders
 curl.exe -X GET -H "Authorization: Bearer $plain" https://YOUR-PROJECT-NAME.pages.dev/api/cron/cleanup-stale-rate-limits
+curl.exe -X GET -H "Authorization: Bearer $plain" https://YOUR-PROJECT-NAME.pages.dev/api/cron/purge-unverified-accounts
 ```
 
 Expected responses:
 
 ```json
-{ "success": true, "processed": 0, "notificationsSent": 0 }
-{ "success": true, "deleted": { "otpRateLimit": 0, "passwordChangeLimit": 0, "uploadDailyCount": 0, "readingDailyCount": 0 } }
+{ "success": true, "data": { "processed": 0, "notificationsSent": 0 } }
+{ "success": true, "data": { "deleted": { "otpRateLimit": 0, "passwordChangeLimit": 0, "uploadDailyCount": 0, "readingDailyCount": 0 } } }
+{ "success": true, "data": { "deleted": { "users": 0, "otpVerifications": 0, "softDeletedTenancies": 0 } } }
 ```
 
 ---
@@ -533,31 +558,32 @@ Always run migrations before deploying new code that depends on them.
 
 ## Environment Variables Reference
 
-| Variable                      | How to Set            | Description                                                        |
-| ----------------------------- | --------------------- | ------------------------------------------------------------------ |
-| `BETTER_AUTH_SECRET`          | `wrangler secret put` | Master signing secret — generate with `openssl rand -hex 32`       |
-| `TURNSTILE_SECRET_KEY`        | `wrangler secret put` | From Cloudflare Turnstile dashboard → your site → Secret Key       |
-| `RESEND_API_KEY`              | `wrangler secret put` | From https://resend.com/api-keys — only if `EMAIL_PROVIDER=resend` |
-| `ATLAS_MAILER_SECRET`         | `wrangler secret put` | Bearer token for your Atlas Mailer Worker                          |
-| `GOOGLE_CLIENT_SECRET`        | `wrangler secret put` | From Google Cloud Console OAuth credentials                        |
-| `GITHUB_CLIENT_SECRET`        | `wrangler secret put` | From GitHub Developer Settings OAuth Apps                          |
-| `CRON_SECRET`                 | `wrangler secret put` | Random secret — you use this in your cron scheduler header         |
-| `RESEND_FROM`                 | `wrangler.jsonc` vars | Sender address, e.g. `Meterly <noreply@yourdomain.com>`            |
-| `ENVIRONMENT`                 | `wrangler.jsonc` vars | Set to `production`                                                |
-| `BETTER_AUTH_URL`             | `wrangler.jsonc` vars | Your app's public URL (no trailing slash)                          |
-| `PUBLIC_BETTER_AUTH_URL`      | `wrangler.jsonc` vars | Same as `BETTER_AUTH_URL`                                          |
-| `ATLAS_MAILER_URL`            | `wrangler.jsonc` vars | Your Atlas Mailer Worker URL                                       |
-| `GOOGLE_CLIENT_ID`            | `wrangler.jsonc` vars | From Google Cloud Console OAuth credentials                        |
-| `GITHUB_CLIENT_ID`            | `wrangler.jsonc` vars | From GitHub Developer Settings OAuth Apps                          |
-| `PUBLIC_TURNSTILE_SITE_KEY`   | `wrangler.jsonc` vars | From Cloudflare Turnstile dashboard → your site → Site Key         |
-| `MAX_SESSIONS_PER_USER`       | `wrangler.jsonc` vars | Max concurrent sessions (default: `3`)                             |
-| `MAX_READINGS_PER_DAY`        | `wrangler.jsonc` vars | Max meter reading submissions per user per day (default: `20`)     |
-| `MAX_UPLOADS_PER_DAY`         | `wrangler.jsonc` vars | Max bill photo uploads per user per day (default: `60`)            |
-| `OBSERVABILITY_ENABLED`       | `wrangler.jsonc` vars | Set to `true` to enable OpenTelemetry telemetry (default: `false`) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `wrangler.jsonc` vars | OTLP HTTP collector endpoint (e.g. Grafana Cloud / local OTel)     |
-| `GRAFANA_CLOUD_INSTANCE_ID`   | `wrangler.jsonc` vars | Instance ID for Grafana Cloud OTLP ingestion                       |
-| `LOG_LEVEL`                   | `wrangler.jsonc` vars | Structured log verbosity: `debug`, `info`, `warn`, `error`         |
-| `GRAFANA_CLOUD_API_KEY`       | `wrangler secret put` | Ingestion token for Grafana Cloud — store as encrypted secret      |
+| Variable                       | How to Set            | Description                                                        |
+| ------------------------------ | --------------------- | ------------------------------------------------------------------ |
+| `BETTER_AUTH_SECRET`           | `wrangler secret put` | Master signing secret — generate with `openssl rand -hex 32`       |
+| `TURNSTILE_SECRET_KEY`         | `wrangler secret put` | From Cloudflare Turnstile dashboard → your site → Secret Key       |
+| `RESEND_API_KEY`               | `wrangler secret put` | From https://resend.com/api-keys — only if `EMAIL_PROVIDER=resend` |
+| `ATLAS_MAILER_SECRET`          | `wrangler secret put` | Bearer token for your Atlas Mailer Worker                          |
+| `GOOGLE_CLIENT_SECRET`         | `wrangler secret put` | From Google Cloud Console OAuth credentials                        |
+| `GITHUB_CLIENT_SECRET`         | `wrangler secret put` | From GitHub Developer Settings OAuth Apps                          |
+| `CRON_SECRET`                  | `wrangler secret put` | Random secret — you use this in your cron scheduler header         |
+| `RESEND_FROM`                  | `wrangler.jsonc` vars | Sender address, e.g. `Meterly <noreply@yourdomain.com>`            |
+| `ENVIRONMENT`                  | `wrangler.jsonc` vars | Set to `production`                                                |
+| `BETTER_AUTH_URL`              | `wrangler.jsonc` vars | Your app's public URL (no trailing slash)                          |
+| `PUBLIC_BETTER_AUTH_URL`       | `wrangler.jsonc` vars | Same as `BETTER_AUTH_URL`                                          |
+| `ATLAS_MAILER_URL`             | `wrangler.jsonc` vars | Your Atlas Mailer Worker URL                                       |
+| `GOOGLE_CLIENT_ID`             | `wrangler.jsonc` vars | From Google Cloud Console OAuth credentials                        |
+| `GITHUB_CLIENT_ID`             | `wrangler.jsonc` vars | From GitHub Developer Settings OAuth Apps                          |
+| `PUBLIC_TURNSTILE_SITE_KEY`    | `wrangler.jsonc` vars | From Cloudflare Turnstile dashboard → your site → Site Key         |
+| `MAX_SESSIONS_PER_USER`        | `wrangler.jsonc` vars | Max concurrent sessions (default: `3`)                             |
+| `MAX_READINGS_PER_DAY`         | `wrangler.jsonc` vars | Max meter reading submissions per user per day (default: `20`)     |
+| `MAX_UPLOADS_PER_DAY`          | `wrangler.jsonc` vars | Max bill photo uploads per user per day (default: `60`)            |
+| `UNVERIFIED_ACCOUNT_TTL_HOURS` | `wrangler.jsonc` vars | TTL in hours before unverified accounts are purged (default: `48`) |
+| `OBSERVABILITY_ENABLED`        | `wrangler.jsonc` vars | Set to `true` to enable OpenTelemetry telemetry (default: `false`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`  | `wrangler.jsonc` vars | OTLP HTTP collector endpoint (e.g. Grafana Cloud / local OTel)     |
+| `GRAFANA_CLOUD_INSTANCE_ID`    | `wrangler.jsonc` vars | Instance ID for Grafana Cloud OTLP ingestion                       |
+| `LOG_LEVEL`                    | `wrangler.jsonc` vars | Structured log verbosity: `debug`, `info`, `warn`, `error`         |
+| `GRAFANA_CLOUD_API_KEY`        | `wrangler secret put` | Ingestion token for Grafana Cloud — store as encrypted secret      |
 
 ---
 

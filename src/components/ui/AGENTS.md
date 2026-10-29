@@ -1,33 +1,36 @@
-# Purpose
+# UI Primitives DOX
 
-Reusable, accessible UI primitives. Radix UI for complex interactions, CVA for variant styling.
+## Purpose
 
-# Ownership
+- Reusable, accessible UI primitives built with Radix UI, CVA styling, and Tailwind CSS.
 
-Frontend developers / UI designers.
+## Ownership
 
-# Local Contracts
+- `button.tsx` owns primary action button primitives and variants (`default`, `outline`, `ghost`, `destructive`, `secondary`, `link`).
+- `badge.tsx` owns status and role chips with semantic variants.
+- `dialog.tsx` owns accessible modal dialog overlays and containers (Radix Dialog).
+- `tooltip.tsx` owns hover tooltip popovers and `TooltipIcon` helpers.
+- `data-table.tsx` owns generic typed data tables with skeleton loading, empty states, and row actions.
+- `input.tsx`, `label.tsx`, `switch.tsx`, `select.tsx`, `dropdown-menu.tsx`, `card.tsx`, `tabs.tsx` own form and layout primitives.
+- `toast.tsx`, `toaster.tsx` own the app notification toast primitive.
 
-- Components MUST NOT contain complex business logic or data fetching.
-- Styling via Tailwind CSS using `cn` utility for class merging.
-- All variants defined with CVA (`class-variance-authority`).
+## Local Contracts
 
-# Work Guidance
+- Components MUST NOT contain business logic or remote data fetching.
+- Styling via Tailwind CSS using the `cn` utility for class merging.
+- All variants defined with `class-variance-authority` (CVA).
+- WCAG compliance: preserve all `aria-*` and `role` attributes.
 
-- Use these as building blocks for all domain components.
-- WCAG compliance: do not remove `aria-*` or `role` attributes.
-- New primitives follow the same CVA + `cn` pattern as `button.tsx` and `badge.tsx`.
+## Work Guidance
 
-# Components
+- Follow the CVA + `cn` pattern when introducing new primitives.
 
-- `button.tsx` — Primary action button with variants (default/outline/ghost/destructive/secondary/link)
-- `badge.tsx` — Status/role chip with semantic variants (success/warning/destructive/info/muted/owner/tenant + aliases paid/unpaid/pending/active/invited)
-- `tooltip.tsx` — Hover tooltip (React state, no Radix dep). `TooltipIcon` for metric labels.
-- `data-table.tsx` — Generic typed table with hover-reveal row actions, skeleton loading, empty state, right-aligned number columns.
-- `dialog.tsx` — Modal dialog (Radix)
-- `input.tsx`, `label.tsx`, `switch.tsx` — Form primitives (Radix)
-- `toast.tsx`, `toaster.tsx` — Notification system (Radix)
+## Verification
 
-# Child DOX Index
+```bash
+pnpm typecheck
+```
 
-(None — leaf directory for UI primitives)
+## Child DOX Index
+
+No child DOX files.

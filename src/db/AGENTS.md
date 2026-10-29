@@ -1,27 +1,32 @@
-# Purpose
+# Database Layer DOX
 
-Database layer for Meterly, using Drizzle ORM and Cloudflare D1.
+## Purpose
 
-# Ownership
+- Database schema, migrations, connection factory, and query abstractions using Drizzle ORM and Cloudflare D1.
 
-Database and Backend developers.
+## Ownership
 
-# Local Contracts
+- `index.ts` owns the D1 database client factory (`getDb`).
+- `schema/` owns Drizzle table definitions, relations, and TypeScript models.
+- `migrations/` owns SQL schema migrations and journal snapshots.
+- `queries/` owns reusable complex database query functions and multi-table transactions.
 
-- Use Drizzle ORM for schema definition and queries.
-- Schema files reside in `src/db/schema`.
-- Query functions reside in `src/db/queries`.
+## Local Contracts
 
-# Work Guidance
+- Use Drizzle ORM for schema definitions and queries.
+- Cloudflare D1 enforces foreign-key constraints by default (equivalent to `PRAGMA foreign_keys = ON`). Application-level cascade ordering in route handlers is still required for tables whose FK definitions use `NO ACTION` or lack an `ON DELETE` clause.
+- Never write raw SQL unless Drizzle cannot express the query.
 
-- Never write raw SQL unless Drizzle can't express it.
-- Use soft-delete patterns where history matters.
+## Work Guidance
 
-# Verification
+- Add new tables in `schema/`, re-export in `schema/index.ts`, and run `pnpm db:generate`.
 
-- Validate migrations before deployment.
-- Note: Migration 0002 addresses data integrity (removing duplicates, adding unique indexes). Do not apply it on production if duplicates are not resolved, as it will DELETE them (keeping the latest).
+## Verification
 
-# Child DOX Index
+```bash
+pnpm test --run src/db
+```
 
-- [queries](./queries/AGENTS.md): Reusable complex database queries.
+## Child DOX Index
+
+- [queries/AGENTS.md](./queries/AGENTS.md): Reusable complex database query functions.

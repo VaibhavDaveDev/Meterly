@@ -69,9 +69,10 @@ import "@testing-library/jest-dom";
 // Create an in-memory database
 const sqlite = new Database(":memory:");
 
-// Cloudflare D1 does NOT enforce FK constraints (PRAGMA foreign_keys = OFF is the default).
-// Disable FK enforcement here to match production behavior. Our application code manually
-// manages cascade order, so FK enforcement at the DB engine level is not needed in tests.
+// Production Cloudflare D1 enforces FK constraints by default (FK ON).
+// We deliberately disable FK enforcement in the test in-memory database so that
+// test fixtures can be inserted and torn down in any order without triggering FK errors.
+// Application code manages cascade order explicitly, so this divergence is safe.
 sqlite.pragma("foreign_keys = OFF");
 
 // Wrap it with Drizzle using the better-sqlite3 driver

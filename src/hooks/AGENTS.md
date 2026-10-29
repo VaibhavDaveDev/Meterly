@@ -1,32 +1,36 @@
-# Purpose
+# React Hooks DOX
 
-Custom React hooks for managing state and side effects.
+## Purpose
 
-# Ownership
+- Custom React hooks for client state, form lifecycles, and TanStack Query server-data fetching.
 
-Frontend developers.
+## Ownership
 
-# Local Contracts
+- `use-dashboard-data.ts` owns overview metrics, property lists, and pending invite queries.
+- `use-property-data.ts` owns billing period, tenancy, bill, and edit request queries for properties.
+- `use-bill-detail.ts` owns bill breakdown data fetching and mark-paid / edit-request mutation hooks.
+- `use-property-settings.ts` owns property setting queries and toggle mutations.
+- `use-submit-reading.ts`, `use-reading-validation.ts`, `use-reading-submit.ts`, `use-ocr-data.ts` own meter reading submission form state, validations, and preview math.
+- `use-forgot-password.ts` owns password reset form state and Turnstile validation.
+- `use-turnstile.ts` owns Turnstile widget lifecycle (render, reset, cleanup).
 
-- Hooks must follow React's rules of hooks.
-- Hooks should be pure or manage encapsulated side effects.
+## Local Contracts
 
-# Work Guidance
+- All client-side server-data fetching MUST use TanStack Query (`useQuery` / `useMutation` / `useInfiniteQuery`).
+- Query keys must come from `src/lib/query-keys.ts`.
+- Do not use raw `useEffect` + `useState` for server data fetching.
 
-- **Data Fetching Pattern**: All client-side server-data fetching MUST use TanStack Query (`useQuery` / `useMutation` / `useInfiniteQuery`).
-  - Query keys must come from `src/lib/query-keys.ts`.
-  - Do not use raw `useEffect` + `useState` or bespoke generation counters for server data fetching.
-- **Form/Mutation Hooks**: Hooks that contain multi-step form logic, client validations, or file processing manage encapsulated client-side state:
-  - `use-forgot-password.ts`: Handles password reset state, Turnstile verification, and API calls.
-  - `use-submit-reading.ts`: Manages meter reading submission form state, validations, calculations, and API calls.
-  - `use-reading-validation.ts`, `use-reading-submit.ts`, `use-ocr-data.ts`: Contain form/mutation logic, progress states, and image processing.
-  - `use-turnstile.ts`: Manages Turnstile widget lifecycle, rendering, reset, and unmount cleanup.
-- **Data-Fetching Query Hooks**:
-  - `use-dashboard-data.ts`: Fetches user profile, pending invites, and dashboard stats via `useQuery`.
-  - `use-property-data.ts`: Fetches billing periods, tenancies, bills, and edit request counts via `useQuery`.
-  - `use-bill-detail.ts`: Fetches bill details and provides mark-paid/edit-request mutations via TanStack Query.
-  - `use-property-settings.ts`: Uses `useQuery` for active tenancies and unpaid bill counts.
+## Work Guidance
 
-# Child DOX Index
+- Encapsulate complex form validation and state transitions in dedicated mutation hooks.
 
-(None)
+## Verification
+
+```bash
+pnpm test --run src/hooks
+pnpm typecheck
+```
+
+## Child DOX Index
+
+No child DOX files.

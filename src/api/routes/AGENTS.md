@@ -1,30 +1,42 @@
-# Purpose
+# API Routes DOX
 
-API route handlers for the Meterly application, organized by resource.
+## Purpose
 
-# Ownership
+- API route handlers for the Meterly application, organized by resource domain.
 
-API and Backend developers.
+## Ownership
 
-# Local Contracts
+- `properties.ts` owns property CRUD, solo-mode toggle (`PATCH /:id/mode`), archive/unarchive, and owner deletion cascade orchestration (`DELETE /:id`).
+- `tenancies.ts` owns owner-facing tenancy queries (active/invited/past) and soft-removal with split reconciliation.
+- `tenancy-actions.ts` owns tenant-facing actions (accept invite, leave property, archive/restore visibility, and tenant-side permanent delete).
+- `invites.ts` owns tenant invitation token lifecycle (creation, validation, one-time acceptance, decline, cancellation).
+- `uploads.ts` owns bill photo uploads to R2 with daily upload rate limiting and authorized photo streaming.
+- `edit-requests.ts` owns reading correction request submissions, throttle checks, and owner approval/rejection review flows.
+- `cron.ts` owns external cron job endpoints secured by `CRON_SECRET` (`reading-reminders`, `cleanup-stale-rate-limits`, `purge-unverified-accounts`).
+- `health.ts` owns liveness (`/healthz`, `/ping`) and readiness (`/readyz`, `/status`, `/health`) probes.
+- `bills.ts`, `meter-readings.ts`, `rates.ts`, `notifications.ts`, `users.ts` own domain-specific resource endpoints.
 
-- Route handlers must use Hono.
+## Local Contracts
+
+- Route handlers must use Hono and register endpoints via `router.openapi()`.
 - Input validation via Zod is mandatory.
-- Middleware (like `authMiddleware`) must be used for protected routes.
-- Tenancy records must NEVER be hard-deleted by route handlers — always soft-delete via `status='inactive'`, `status='property_deleted'`, or `deletedByTenantAt`. The only exception is `sweepOrphanedPropertyData`, which purges tenancy rows after the owner deleted the property AND every real tenant deleted their record.
+- Middleware (`authMiddleware`) must be applied to all protected routes.
+- Tenancy records must NEVER be hard-deleted directly by route handlers — soft-delete via `status='inactive'`, `status='property_deleted'`, or `deletedByTenantAt`. Permanent deletion is handled only by `sweepOrphanedPropertyData`.
 - Invite tokens are one-time-use; nulled on accept/decline/cancel.
-- **Property delete cascade (DELETE /:id):** On owner delete, immediately hard-delete: `edit_requests` → `custom_charges` → `property_rates` → `notifications`, then soft-delete tenancies to `status='property_deleted'`, then delete the property row. Do NOT immediately delete `bills`, `billing_periods`, `meter_readings`, `meter_reading_edits`, or `bill_photos` — these form permanent tenant billing history and are purged only by `sweepOrphanedPropertyData`. After the immediate cascade, call `sweepOrphanedPropertyData` via `waitUntil` (non-blocking); it purges R2 objects and hard-deletes all retained history only once every real tenant has a non-null `deletedByTenantAt`. Never call `db.delete(properties)` alone — SQLite FKs are disabled at the Drizzle level.
+- Property delete cascade: On owner delete, immediately hard-delete `meter_reading_edits` -> `edit_requests` -> `custom_charges` -> `property_rates` -> `notifications`, soft-delete tenancies, and delete property row. Retain billing history (`billing_periods`, `meter_readings`, `bills`, `bill_photos`) and delegate full sweep to `sweepOrphanedPropertyData` via `waitUntil`.
+- `sweepOrphanedPropertyData` may permanently delete retained billing history only after the property row is gone AND every real tenant (`isOwnerTenancy = false`) has a non-null `deletedByTenantAt`. Solo-mode properties sweep immediately on owner delete.
 
-# Work Guidance
+## Work Guidance
 
-- Keep route handlers focused on orchestration; move heavy logic to `src/api/lib`.
-- Follow the standard API response envelope defined in `Plan.md`.
-- Ensure relevant routes (like reading submissions or edit approvals) trigger notifications via `createNotification`.
-- `invites.ts`: full invite lifecycle (pending/accept/decline/cancel). Token lookup resolves tenancy; status guards prevent double-use.
-- `uploads.ts`: POST /api/uploads/bill-photo — multipart upload to R2 with D1 daily counter rate-limiting (`MAX_UPLOADS_PER_DAY` env, default 60/day). GET /api/uploads/bill-photo/\* — streams from R2; access controlled by DB row lookup, never by path prefix. Max 3 photos per billing period per user enforced in-route after upload.
-- `tenancies.ts`: owner-facing grouped view (active/invited/past) and soft-remove. Calls `reconcileSplitsAfterRemoval` after every removal.
-- `tenancy-actions.ts`: tenant-facing actions (accept invite, leave property, archive/unarchive visibility, and explicit permanent deletion `DELETE /{id}`).
-- `properties.ts`: solo mode toggle at `PATCH /:id/mode`; create with `soloMode: true` auto-creates owner tenancy. Archive/unarchive at `PATCH /:id/archive` and `PATCH /:id/unarchive`. Full cascade delete at `DELETE /:id`.
-- `edit-requests.ts`: implements tenant-facing reading correction request creation and owner-facing approval/rejection review flows, with a dedicated unit test suite at `edit-requests.test.ts`. Exports `requestsRouter` (mounted at `/api/edit-requests`) and `propertyRequestsRouter` (mounted at `/api/properties`).
-- `cron.ts`: secured by `CRON_SECRET` (via `Authorization: Bearer <secret>` or `X-Cron-Secret: <secret>`, supporting both GET and POST). Two endpoints: `/api/cron/reading-reminders` (daily reminder notifications) and `/api/cron/cleanup-stale-rate-limits` (purges stale D1 rate-limit rows — OTP >30 days, password-change >30 days, daily counters >2 days).
-- **Health Checks**: Liveness checks (`/api/healthz`, `/api/ping`) perform a shallow check immediately returning `200 OK` (verifies the server runtime hasn't crashed). Readiness checks (`/api/readyz`, `/api/status`, and backward compatible `/api/health`) perform a deep check verifying connectivity to the D1 database.
+- Keep route handlers focused on orchestration (validate -> authorize -> call lib -> return envelope).
+- Ensure relevant mutations trigger notifications via `createNotification`.
+
+## Verification
+
+```bash
+pnpm test --run src/api/routes
+```
+
+## Child DOX Index
+
+No child DOX files.

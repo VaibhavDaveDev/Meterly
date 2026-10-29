@@ -1,30 +1,33 @@
-# Purpose
+# Layouts DOX
 
-Astro layouts and common page structures. Provides reusable layout components with consistent branding, navigation, and styling.
+## Purpose
 
-# Ownership
+- Astro layouts and common page structures.
+- Provide reusable layout components with consistent branding, navigation, and styling.
 
-Frontend developers.
+## Ownership
 
-# Local Contracts
+- `DashboardLayout.astro` owns the authenticated app shell, top navigation bar, sticky header, `NotificationBell`, and `UserNav` mounting.
+- `AuthLayout.astro` owns public authentication page shells (`login`, `signup`, `verify-email`, `forgot-password`), branding sidebar, and client-side Turnstile script injection.
 
-- Define Astro layouts to wrap pages
-- Handle common `<head>` elements, navigation, and footers here
-- **DashboardLayout.astro**: Wraps authenticated dashboard pages with sticky header navigation (horizontal layout with logo, Overview/Notifications links, NotificationBell, and UserNav dropdown)
-- **AuthLayout.astro**: Wraps authentication pages (login, signup, forgot-password) with animated branding sidebar
+## Local Contracts
 
-# Work Guidance
+- Define Astro layouts to wrap pages.
+- Handle common `<head>` elements, navigation, and footers here.
+- TypeScript `Props` interface is mandatory for layout configuration.
+- Turnstile is loaded in `AuthLayout` for bot protection; site key is injected from `PUBLIC_TURNSTILE_SITE_KEY` (undefined in dev skips validation).
 
-- Use TypeScript Props interfaces for layout configuration
-- Include Turnstile script loading in AuthLayout for bot protection
-- Responsive design: branding sidebar hidden on mobile, shown on desktop (lg breakpoint)
-- Dark mode support via CSS variables and Tailwind's dark: prefix
+## Work Guidance
 
-# Verification
+- Responsive design: branding sidebar is hidden on mobile, visible on desktop (`lg` breakpoint).
+- Dark mode support via CSS variables and Tailwind `dark:` prefix.
 
-- Run `pnpm run typecheck` to validate Astro component types
-- Test layouts on mobile and desktop viewports
+## Verification
 
-# Child DOX Index
+```bash
+pnpm typecheck   # validate Astro component types
+```
 
-(None)
+## Child DOX Index
+
+No child DOX files.

@@ -1,26 +1,34 @@
-# Purpose
+# Pages DOX
 
-Astro frontend pages and UI components for Meterly.
+## Purpose
 
-# Ownership
+- Astro frontend pages, SSR entry points, and the API gateway route for Meterly.
 
-Frontend and Fullstack developers.
+## Ownership
 
-# Local Contracts
+- `api/[...path].ts` owns the SSR catch-all route delegating `/api/*` HTTP requests to the Hono application with Cloudflare execution context.
+- `index.astro` owns the public marketing landing page.
+- `login.astro`, `signup.astro`, `verify-email.astro`, `forgot-password.astro` own public authentication page shells.
+- `dashboard.astro`, `notifications.astro`, `settings.astro` own top-level authenticated dashboard pages.
+- `properties/` owns property management pages (`index.astro`, `new.astro`, `[id].astro`).
+- `bills/` owns bill detail pages (`[id].astro`).
 
-- Use Astro for SSR.
-- UI components use React with shadcn/ui and Tailwind CSS.
-- `api/[...path].ts` is the catch-all that delegates all `/api/*` requests to the Hono app.
+## Local Contracts
 
-# Work Guidance
+- All interactive components on Astro pages must be mounted as Astro islands (`client:load` or `client:only`).
+- Cloudflare bindings in `[...path].ts`: import `env` from `"cloudflare:workers"`; access execution context via `context.locals.cfContext`.
+- Top-level React island components must export wrapped with `withErrorBoundary`.
 
-- Follow the UI/UX blueprint in `Plan.md`.
-- Use Astro islands for interactive components.
-- **Astro v7 / Cloudflare adapter v14 API in `[...path].ts`:**
-  - Env bindings: `import { env } from "cloudflare:workers"` — `locals.runtime.env` was removed in v6.
-  - Execution context: `context.locals.cfContext` — `locals.runtime.ctx` was removed in v6.
-  - Do NOT import `ctx` from `cloudflare:workers`; only `env` is exported by that module.
+## Work Guidance
 
-# Verification
+- Maintain responsive design on mobile and desktop viewports.
 
-- Verify responsive design on mobile and desktop.
+## Verification
+
+```bash
+pnpm typecheck
+```
+
+## Child DOX Index
+
+No child DOX files.

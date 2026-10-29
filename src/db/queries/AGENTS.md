@@ -1,20 +1,28 @@
-# Purpose
+# Database Queries DOX
 
-Reusable, complex database query functions.
+## Purpose
 
-# Ownership
+- Reusable, complex database query functions and multi-step transactions.
 
-Database and Backend developers.
+## Ownership
 
-# Local Contracts
+- Query helper modules in this directory own reusable, cross-route Drizzle query builders and joins.
 
-- Functions here should abstract complex joins or multi-step Drizzle operations that don't belong in a route handler.
+## Local Contracts
 
-# Work Guidance
+- Abstract complex joins and multi-step operations that do not belong directly in route handlers.
+- Strongly typed return values matching schema definitions.
+
+## Work Guidance
 
 - Use Drizzle ORM query builder syntax.
-- Ensure all exported functions are strongly typed.
 
-# Child DOX Index
+## Verification
 
-(None)
+```bash
+pnpm test --run src/db
+```
+
+## Child DOX Index
+
+No child DOX files.
