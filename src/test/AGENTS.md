@@ -1,28 +1,29 @@
-# Purpose
+# Test Utilities DOX
 
-Test configuration and setup files for the application. Contains the in-memory SQLite setup for testing D1 operations and test utilities.
+## Purpose
 
-# Ownership
+- Shared test configuration, setup files, in-memory SQLite database, and mock providers for Vitest.
 
-Quality Assurance and Backend Developers.
+## Ownership
 
-# Local Contracts
+- `setup.ts` owns global Vitest environment setup, in-memory SQLite database lifecycle, canvas/DOM polyfills, and D1 simulation (`PRAGMA foreign_keys = OFF`).
+- `mocks/` owns environment and external module mocks (such as `cloudflare:workers`).
 
-- Setup files must be used for all integration tests to ensure a consistent test environment.
-- The `better-sqlite3` database mimics the production D1 environment.
+## Local Contracts
 
-# Work Guidance
+- `src/test/setup.ts` sets `PRAGMA foreign_keys = OFF` deliberately so fixtures can be torn down in any order without FK constraint errors. This is an intentional divergence from production D1, which enforces FK constraints by default. Do NOT remove this pragma — removing it would cause FK errors during test teardown.
+- External Cloudflare bindings must be mocked through `src/test/mocks/`.
 
-- Tests should cover all edge cases, especially floating point math and zero-values in `billing-engine.ts`.
-- Use shallow rendering tests for UI components with `@testing-library/react`.
-- Cloudflare-specific modules (like `cloudflare:workers`) must be mocked in Vitest via `src/test/mocks/` (e.g. `cloudflare-workers.ts` mock).
-- Note: `src/api/lib/auth-config.test.ts` was added for rate limit config smoke testing.
-- `src/test/setup.ts` provides `DOMMatrix`, `Path2D`, and `@napi-rs/canvas` polyfills to support in-process `pdfjs-dist` smoke tests in jsdom.
+## Work Guidance
 
-# Verification
+- Keep mock implementations lightweight and isolated.
 
-- Run `pnpm test` to verify logic. Tests must pass locally.
+## Verification
 
-# Child DOX Index
+```bash
+pnpm test --run
+```
 
-- None.
+## Child DOX Index
+
+No child DOX files.

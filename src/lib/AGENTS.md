@@ -1,33 +1,36 @@
-# Purpose
+# Client Libraries DOX
 
-Provides client-side utilities for interacting with Better Auth and the custom Meterly API.
+## Purpose
 
-# Ownership
+- Client-side utilities, API wrappers, auth client, query keys, image compression, and OCR extractors.
 
-Frontend and Fullstack developers.
+## Ownership
 
-# Local Contracts
+- `auth-client.ts` owns the Better Auth client instance.
+- `api-client.ts` owns the custom `apiClient` fetch wrapper, handling 401 redirect to `/login` and 403 redirect to `/verify-email`.
+- `query-client.ts` owns the singleton `QueryClient` factory for TanStack Query.
+- `query-keys.ts` owns centralized TanStack Query key factories.
+- `format.ts` owns date and currency formatting utilities (`parseDateInput`, currency formatters).
+- `image-compress.ts` owns browser Canvas-based image compression to WebP.
+- `image-cache.ts` and `cache.ts` own IndexedDB caching for meter photos.
+- `ocr-worker.ts`, `pdf-extract.ts`, `ocr-extraction.ts` own client-side bill and meter OCR / PDF text parsing.
+- `utils.ts` owns generic frontend utility functions (such as `cn`).
 
-- `query-client.ts`: Singleton `QueryClient` factory for TanStack Query across React islands.
-- `query-keys.ts`: Centralized TanStack Query key factory. All query keys must be defined here.
-- `auth-client.ts`: Better Auth client instance.
-- `api-client.ts`: Generic wrapper for Meterly API calls. Handles 401 (redirect to login) and 403 Forbidden (redirect to `/verify-email` for unverified users).
-- `format.ts`: Date and currency formatting. `parseDateInput` explicitly rejects out-of-range calendar dates by validating parsed date components.
-- `utils.ts`: General-purpose frontend utility functions.
-- `cache.ts`: Generic IndexedDB TTL cache factory. Used by `image-cache.ts`.
-- `image-compress.ts`: Browser Canvas-based image compression to WebP.
-- `image-cache.ts`: IndexedDB cache for meter bill photos.
-- `ocr-worker.ts`: Web Worker for running Tesseract.js OCR without blocking the main thread.
-- `pdf-extract.ts`: PDF text extraction via pdfjs-dist with OCR fallback. Exports `extractFromPdf` (browser-only, requires canvas + Web Worker), `extractFromText` (pure regex, Node-safe), and `getPdfPageAsBlob`.
-- `ocr-extraction.ts`: Higher-level orchestrator for processing bill uploads (PDF + image paths).
+## Local Contracts
 
-# Work Guidance
+- All query keys must be registered in `query-keys.ts`.
+- `pdf-extract.ts` uses dynamic `import('pdfjs-dist')` to prevent bundle bloat; do not convert to static import.
 
-- Use `apiClient` for all data fetching to ensure consistent error handling and response parsing.
-- Extend `apiClient` with specific, type-safe wrappers as API surface grows.
-- `pdf-extract.ts` uses a lazy `import('pdfjs-dist')` to avoid bloating the main bundle. Do not convert this to a static import.
-- `extractFromText` is Node-safe (pure regex) and fully covered by `pdf-extract.test.ts` and `pdf-extract-smoke.test.ts`. `extractFromPdf` requires canvas and DOMMatrix support, which are polyfilled via `@napi-rs/canvas` in `src/test/setup.ts` so smoke tests run un-skipped in in-process fake-worker mode.
+## Work Guidance
 
-# Child DOX Index
+- `extractFromText` is Node-safe (pure regex); `extractFromPdf` requires canvas / DOMMatrix polyfills in non-browser environments.
 
-(None)
+## Verification
+
+```bash
+pnpm test --run src/lib
+```
+
+## Child DOX Index
+
+No child DOX files.

@@ -185,9 +185,12 @@ describe("Cron: reading-reminders", () => {
       }
     );
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { success: boolean; processed: number };
+    const json = (await res.json()) as {
+      success: boolean;
+      data: { processed: number };
+    };
     expect(json.success).toBe(true);
-    expect(json.processed).toBe(1);
+    expect(json.data.processed).toBe(1);
   });
 
   it("authenticates successfully via X-Cron-Secret header (POST)", async () => {
@@ -205,7 +208,10 @@ describe("Cron: reading-reminders", () => {
       }
     );
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { success: boolean; processed: number };
+    const json = (await res.json()) as {
+      success: boolean;
+      data: { processed: number };
+    };
     expect(json.success).toBe(true);
   });
 
@@ -293,10 +299,10 @@ describe("Cron: cleanup-stale-rate-limits", () => {
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       success: boolean;
-      deleted: Record<string, number>;
+      data: { deleted: Record<string, number> };
     };
     expect(json.success).toBe(true);
-    expect(json.deleted.otpRateLimit).toBe(1);
+    expect(json.data.deleted.otpRateLimit).toBe(1);
 
     const remaining = await testDb.select().from(otpRateLimit);
     expect(remaining).toHaveLength(1);
@@ -333,9 +339,9 @@ describe("Cron: cleanup-stale-rate-limits", () => {
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       success: boolean;
-      deleted: Record<string, number>;
+      data: { deleted: Record<string, number> };
     };
-    expect(json.deleted.passwordChangeLimit).toBe(1);
+    expect(json.data.deleted.passwordChangeLimit).toBe(1);
 
     const remaining = await testDb.select().from(passwordChangeLimit);
     expect(remaining).toHaveLength(1);
@@ -400,10 +406,10 @@ describe("Cron: cleanup-stale-rate-limits", () => {
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       success: boolean;
-      deleted: Record<string, number>;
+      data: { deleted: Record<string, number> };
     };
-    expect(json.deleted.uploadDailyCount).toBe(1);
-    expect(json.deleted.readingDailyCount).toBe(1);
+    expect(json.data.deleted.uploadDailyCount).toBe(1);
+    expect(json.data.deleted.readingDailyCount).toBe(1);
 
     const remainingUploads = await testDb.select().from(uploadDailyCount);
     expect(remainingUploads).toHaveLength(1);

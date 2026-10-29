@@ -1,29 +1,32 @@
-# Purpose
+# Meter Components DOX
 
-Meter reading submission UI components, including the photo upload feature.
+## Purpose
 
-# Ownership
+- Meter reading submission UI components, photo upload dropzones, and reading preview dialogs.
 
-Frontend developers.
+## Ownership
 
-# Local Contracts
+- `BillPhotoUpload.tsx` owns photo upload handling, canvas-based image compression, and optional OCR triggering.
+- `SubmitConfirmDialog.tsx` owns confirmation dialogs when submitting readings with attached photos.
+- `UploadedPhotos.tsx` owns thumbnail rendering, fullscreen photo preview modals, and photo deletion triggers.
+- `CreatePeriodForm.tsx` owns billing period creation forms and initial/final reading inputs.
 
-- `BillPhotoUpload.tsx` handles photo compression (Canvas) and delegates OCR to `src/lib/ocr-worker.ts`.
-- `SubmitConfirmDialog.tsx` handles confirming submission of meter readings when photo attachments are present.
-- `UploadedPhotos.tsx` renders WebP thumbnail list, fullscreen viewing overlays, and handles photo deletions.
-- `CreatePeriodForm.tsx` supports creating a new current or historical billing period and saving initial/final readings.
-- Meter readings are validated locally before submission.
+## Local Contracts
 
-# Work Guidance
+- Meter readings must be validated locally before submission.
+- Photo uploads must compress images client-side before sending to backend.
+- OCR is opt-in, default OFF (`enableOcr` gates `runOcrOnImage`).
 
-- Use the standard `shadcn/ui` components for inputs and buttons.
-- Photo uploads must compress images client-side before sending to the backend to save bandwidth.
-- OCR is opt-in, default OFF. The `enableOcr` state in `BillPhotoUpload.tsx` gates `runOcrOnImage`. Toggle only renders for meter purposes, not `bill_document`.
+## Work Guidance
 
-# Verification
+- Use standard `shadcn/ui` components for inputs and buttons.
 
-- Ensure that the reading preview updates dynamically when readings are entered manually or via photo upload.
+## Verification
 
-# Child DOX Index
+```bash
+pnpm test --run src/components/meter
+```
 
-- None.
+## Child DOX Index
+
+No child DOX files.

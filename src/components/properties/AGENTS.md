@@ -1,25 +1,30 @@
-# Purpose
+# Properties Components DOX
 
-React components specific to property views (e.g., details, forms).
+## Purpose
 
-# Ownership
+- React components for property management, tenant leasing, rate settings, and reading submissions.
 
-Frontend developers.
+## Ownership
 
-# Local Contracts
+- `PropertyDetails.tsx` owns the property management dashboard tabs (Overview, Tenants, Billing History, Rates, Charges, Settings).
+- `PropertySettings.tsx` owns property configuration (solar toggle, solo mode toggle, reading approval toggle).
+- `SubmitReadingForm.tsx` owns meter reading input forms and live preview calculations (delegated to `useSubmitReading`).
 
-- Components should be mobile-responsive and follow WCAG guidelines.
-- Use shadcn/ui components for consistency.
+## Local Contracts
 
-# Work Guidance
+- Mobile-responsive and WCAG compliant.
+- All calculations must display full transparency (showing base rates, split percentages, solar credit, and formulas).
 
-- Use `apiClient` for data fetching.
-- Utilize `useToast` for user feedback instead of native alerts.
-- `PropertyDetails.tsx`: Main orchestrator — contains all tabs (Overview, Tenants, Billing History, Rates, Charges, Settings).
-- `PropertySettings.tsx`: Settings tab — solar toggle (with initial readings dialog), solo mode toggle, approval toggle.
-- `SubmitReadingForm.tsx`: Delegation hook `useSubmitReading` encapsulates all form logic and live preview math. Presentational rendering is structured into `MeterDeltasTable` and `BillPreviewBreakdown` to keep cognitive complexity low. Accepts `startValues`, `rates`, and `splitPercentage` props for live preview. Always pass these from `PropertyDetails` which fetches them when the modal opens.
-- `BillDetail` transparency: All calculations must show the source numbers and formula, per Plan.md Section 6.
+## Work Guidance
 
-# Child DOX Index
+- `SubmitReadingForm` decomposes rendering into `MeterDeltasTable` and `BillPreviewBreakdown` to maintain low cognitive complexity.
 
-(None)
+## Verification
+
+```bash
+pnpm test --run src/components/properties
+```
+
+## Child DOX Index
+
+No child DOX files.

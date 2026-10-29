@@ -1,5 +1,10 @@
 import { type Context } from "hono";
-import { OpenAPIHono, z } from "@hono/zod-openapi";
+import {
+  OpenAPIHono,
+  createRoute,
+  z,
+  type RouteHandler,
+} from "@hono/zod-openapi";
 import { cors } from "hono/cors";
 import { instrument } from "@microlabs/otel-cf-workers";
 import { resolveOtelConfig } from "./lib/otel-config";
@@ -61,6 +66,7 @@ export type Bindings = {
   ENVIRONMENT?: "development" | "production" | "test";
   MAX_SESSIONS_PER_USER?: string;
   CRON_SECRET?: string;
+  UNVERIFIED_ACCOUNT_TTL_HOURS?: string;
   OBSERVABILITY_ENABLED?: string;
   OTEL_EXPORTER_OTLP_ENDPOINT?: string;
   GRAFANA_CLOUD_INSTANCE_ID?: string;
@@ -251,8 +257,9 @@ app.post(
     }
     const { email, type } = parsedBody.data;
 
-    // 1. If forgot password, check if the user is registered in the database
-    if (type === "forget-password") {
+    // 1. If forgot password or email-verification, check if the user is registered in the database
+    // avoid sending OTP or leaking existence for unregistered emails
+    if (type === "forget-password" || type === "email-verification") {
       const userExists = await db
         .select()
         .from(schema.user)
@@ -261,6 +268,11 @@ app.post(
 
       if (!userExists) {
         // Security: fake success response, DO NOT contact Better Auth, DO NOT send email
+        return c.json({ success: true });
+      }
+
+      if (type === "email-verification" && userExists.emailVerified) {
+        // already verified; mock success without consuming rate limits or email quota
         return c.json({ success: true });
       }
     }
@@ -285,20 +297,92 @@ app.post(
   }
 );
 
-// Intercept Better Auth OTP check/verification route to reset attempts on success
-app.post("/api/auth/email-otp/check-verification-otp", async (c) => {
-  const auth = getAuth(c.env);
-  const response = await auth.handler(c.req.raw);
+// ── OpenAPI route definitions for the two OTP interceptor endpoints ─────────
+// OpenAPI registration for Better Auth proxy interceptors
+const otpCheckBodySchema = z.object({
+  email: z.email().openapi({ example: "user@example.com" }),
+  otp: z.string().length(6).openapi({ example: "123456" }),
+});
 
-  if (response.status === 200) {
+const otpVerifyEmailBodySchema = z.object({
+  email: z.email().openapi({ example: "user@example.com" }),
+  otp: z.string().length(6).openapi({ example: "123456" }),
+});
+
+// Better Auth controls the response shape; document as passthrough.
+const otpPassthroughResponse = {
+  200: {
+    content: { "application/json": { schema: z.any() } },
+    description: "Better Auth response — OTP verified successfully",
+  },
+  400: {
+    content: {
+      "application/json": {
+        schema: z.object({
+          success: z.literal(false),
+          error: z.object({ code: z.string(), message: z.string() }),
+        }),
+      },
+    },
+    description: "Invalid OTP or request",
+  },
+} as const;
+
+const checkVerificationOtpRoute = createRoute({
+  method: "post",
+  path: "/api/auth/email-otp/check-verification-otp",
+  tags: ["Auth"],
+  summary:
+    "Verify OTP code (check-verification-otp) — resets rate-limit on success",
+  request: {
+    body: { content: { "application/json": { schema: otpCheckBodySchema } } },
+  },
+  responses: otpPassthroughResponse,
+});
+
+const verifyEmailOtpRoute = createRoute({
+  method: "post",
+  path: "/api/auth/email-otp/verify-email",
+  tags: ["Auth"],
+  summary: "Verify email via OTP — resets rate-limit on success",
+  request: {
+    body: {
+      content: { "application/json": { schema: otpVerifyEmailBodySchema } },
+    },
+  },
+  responses: otpPassthroughResponse,
+});
+
+// Intercept Better Auth OTP check/verification routes to reset attempts on success
+const handleOtpSuccessReset = async (
+  c: Context<{ Bindings: Bindings; Variables: Variables }>
+) => {
+  let email: string | undefined;
+  // reconstruct request with fresh body since OpenAPI validator consumed c.req.raw stream
+  let authRequest: Request = c.req.raw;
+  try {
+    const data = c.req.valid("json" as never) as {
+      email?: string;
+      otp?: string;
+    };
+    email = data?.email;
+    if (data) {
+      authRequest = new Request(c.req.raw, {
+        body: JSON.stringify(data),
+        duplex: "half",
+      } as RequestInit);
+    }
+  } catch {
+    /* ignore parse errors and fallback to raw */
+  }
+
+  const auth = getAuth(c.env);
+  const response = await auth.handler(authRequest);
+
+  if (response.status === 200 && email) {
     try {
-      const cloned = c.req.raw.clone();
-      const body = (await cloned.json()) as { email?: string };
-      const email = body.email;
-      if (email) {
-        const db = getDb(c.env.DB);
-        await resetOtpRateLimit(db, email);
-      }
+      const db = getDb(c.env.DB);
+      await resetOtpRateLimit(db, email);
     } catch (err) {
       console.error(
         "[Auth] Failed to reset OTP rate limit after verification:",
@@ -308,7 +392,22 @@ app.post("/api/auth/email-otp/check-verification-otp", async (c) => {
   }
 
   return response;
-});
+};
+
+app.openapi(
+  checkVerificationOtpRoute,
+  handleOtpSuccessReset as unknown as RouteHandler<
+    typeof checkVerificationOtpRoute,
+    { Bindings: Bindings; Variables: Variables }
+  >
+);
+app.openapi(
+  verifyEmailOtpRoute,
+  handleOtpSuccessReset as unknown as RouteHandler<
+    typeof verifyEmailOtpRoute,
+    { Bindings: Bindings; Variables: Variables }
+  >
+);
 
 // Intercept Better Auth change-password route to send a confirmation email on success
 app.post("/api/auth/change-password", async (c) => {

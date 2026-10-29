@@ -10,15 +10,55 @@ function VerifyEmailFormInner() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0); // seconds remaining
+  const [isResending, setIsResending] = useState(false);
+  const [fromLogin, setFromLogin] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const emailParam = params.get("email");
+    const reason = params.get("reason");
+    setFromLogin(reason === "login");
     if (emailParam) {
       setEmail(emailParam);
-      setMessage("Check your email for the 6-digit verification code");
+      if (reason !== "login") {
+        setMessage("Check your email for the 6-digit verification code");
+      }
     }
   }, []);
+
+  // Countdown tick for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  const handleResend = async () => {
+    if (!email || resendCooldown > 0 || isResending) return;
+    setIsResending(true);
+    setMessage("");
+    setIsError(false);
+
+    const { error } = await authClient.emailOtp.sendVerificationOtp({
+      email,
+      type: "email-verification",
+    });
+
+    if (error) {
+      const minutes = error.message?.match(/(\d+) minutes?/)?.[1];
+      if (minutes) {
+        setResendCooldown(parseInt(minutes, 10) * 60);
+      }
+      setMessage(error.message || "Could not resend code. Try again later.");
+      setIsError(true);
+    } else {
+      setMessage("New code sent! Check your inbox.");
+      setIsError(false);
+      setResendCooldown(300); // 5-minute optimistic cooldown matching API tier
+    }
+    setIsResending(false);
+  };
 
   const handleVerify = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -68,6 +108,23 @@ function VerifyEmailFormInner() {
         method="post"
         style={{ display: "flex", flexDirection: "column", gap: "20px" }}
       >
+        {fromLogin && (
+          <div
+            style={{
+              padding: "12px 14px",
+              backgroundColor: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "6px",
+              fontSize: "0.875rem",
+              color: "var(--color-text-muted)",
+              lineHeight: 1.4,
+            }}
+          >
+            Your email isn&apos;t verified yet. Enter the code we sent when you
+            signed up, or request a new one below.
+          </div>
+        )}
+
         {!email && (
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label
@@ -155,6 +212,38 @@ function VerifyEmailFormInner() {
         >
           {isLoading ? "Verifying..." : "Verify email"}
         </button>
+
+        <div style={{ textAlign: "center", marginTop: "-4px" }}>
+          {resendCooldown > 0 ? (
+            <p
+              style={{
+                fontSize: "0.8125rem",
+                color: "var(--color-text-muted)",
+                margin: 0,
+              }}
+            >
+              Resend available in {Math.floor(resendCooldown / 60)}m{" "}
+              {resendCooldown % 60}s
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isResending || !email}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--color-primary)",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                padding: "4px 8px",
+                opacity: isResending || !email ? 0.6 : 1,
+              }}
+            >
+              {isResending ? "Sending..." : "Resend code"}
+            </button>
+          )}
+        </div>
       </form>
     </AuthFormLayout>
   );

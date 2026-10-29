@@ -10,10 +10,13 @@ import {
   passwordChangeLimit,
   uploadDailyCount,
   readingDailyCount,
+  user,
+  verification,
 } from "../../db/schema";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, inArray, lt, ne } from "drizzle-orm";
 import type { Bindings } from "../app";
 import { logger } from "../lib/logger";
+import { ErrorResponse, createSuccessResponse } from "../lib/openapi-schemas";
 
 const cronRouter = new OpenAPIHono<{ Bindings: Bindings }>();
 
@@ -22,17 +25,34 @@ function checkCronAuth(
   authHeader: string | undefined,
   xCronSecret: string | undefined,
   cronSecret: string | undefined
-): { ok: true } | { ok: false; status: 400 | 401; error: string } {
+):
+  | { ok: true }
+  | { ok: false; status: 400 | 401; code: string; error: string } {
   if (!authHeader && !xCronSecret) {
-    return { ok: false, status: 400, error: "Missing authorization header" };
+    return {
+      ok: false,
+      status: 400,
+      code: "BAD_REQUEST",
+      error: "Missing authorization header",
+    };
   }
   if (!cronSecret) {
-    return { ok: false, status: 401, error: "Unauthorized" };
+    return {
+      ok: false,
+      status: 401,
+      code: "UNAUTHORIZED",
+      error: "Unauthorized",
+    };
   }
   const isMatch =
     authHeader === `Bearer ${cronSecret}` || xCronSecret === cronSecret;
   if (!isMatch) {
-    return { ok: false, status: 401, error: "Unauthorized" };
+    return {
+      ok: false,
+      status: 401,
+      code: "UNAUTHORIZED",
+      error: "Unauthorized",
+    };
   }
   return { ok: true };
 }
@@ -52,24 +72,25 @@ const readingRemindersResponses = {
   200: {
     content: {
       "application/json": {
-        schema: z.object({
-          success: z.boolean(),
-          processed: z.number(),
-          notificationsSent: z.number(),
-        }),
+        schema: createSuccessResponse(
+          z.object({
+            processed: z.number().openapi({ example: 3 }),
+            notificationsSent: z.number().openapi({ example: 6 }),
+          })
+        ),
       },
     },
     description: "Reading reminders processed",
   },
   400: {
     content: {
-      "application/json": { schema: z.object({ error: z.string() }) },
+      "application/json": { schema: ErrorResponse },
     },
     description: "Missing authorization header",
   },
   401: {
     content: {
-      "application/json": { schema: z.object({ error: z.string() }) },
+      "application/json": { schema: ErrorResponse },
     },
     description: "Unauthorized",
   },
@@ -108,7 +129,13 @@ const handleReadingReminders: RouteHandler<
   const cronSecret = c.env.CRON_SECRET;
   const authCheck = checkCronAuth(authHeader, xCronSecret, cronSecret);
   if (!authCheck.ok) {
-    return c.json({ error: authCheck.error }, authCheck.status);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: authCheck.code, message: authCheck.error },
+      },
+      authCheck.status
+    );
   }
 
   const db = getDb(c.env.DB);
@@ -201,8 +228,10 @@ const handleReadingReminders: RouteHandler<
   return c.json(
     {
       success: true as const,
-      processed: matchingProperties.length,
-      notificationsSent: notificationsToInsert.length,
+      data: {
+        processed: matchingProperties.length,
+        notificationsSent: notificationsToInsert.length,
+      },
     },
     200
   );
@@ -221,28 +250,29 @@ const cleanupRateLimitsResponses = {
   200: {
     content: {
       "application/json": {
-        schema: z.object({
-          success: z.boolean(),
-          deleted: z.object({
-            otpRateLimit: z.number(),
-            passwordChangeLimit: z.number(),
-            uploadDailyCount: z.number(),
-            readingDailyCount: z.number(),
-          }),
-        }),
+        schema: createSuccessResponse(
+          z.object({
+            deleted: z.object({
+              otpRateLimit: z.number().openapi({ example: 5 }),
+              passwordChangeLimit: z.number().openapi({ example: 2 }),
+              uploadDailyCount: z.number().openapi({ example: 10 }),
+              readingDailyCount: z.number().openapi({ example: 3 }),
+            }),
+          })
+        ),
       },
     },
     description: "Stale rate-limit rows cleaned up",
   },
   400: {
     content: {
-      "application/json": { schema: z.object({ error: z.string() }) },
+      "application/json": { schema: ErrorResponse },
     },
     description: "Missing authorization header",
   },
   401: {
     content: {
-      "application/json": { schema: z.object({ error: z.string() }) },
+      "application/json": { schema: ErrorResponse },
     },
     description: "Unauthorized",
   },
@@ -281,7 +311,13 @@ const handleCleanupRateLimits: RouteHandler<
   const cronSecret = c.env.CRON_SECRET;
   const authCheck = checkCronAuth(authHeader, xCronSecret, cronSecret);
   if (!authCheck.ok) {
-    return c.json({ error: authCheck.error }, authCheck.status);
+    return c.json(
+      {
+        success: false as const,
+        error: { code: authCheck.code, message: authCheck.error },
+      },
+      authCheck.status
+    );
   }
 
   const db = getDb(c.env.DB);
@@ -328,7 +364,7 @@ const handleCleanupRateLimits: RouteHandler<
     "rate-limit cleanup cron completed"
   );
 
-  return c.json({ success: true as const, deleted }, 200);
+  return c.json({ success: true as const, data: { deleted } }, 200);
 };
 
 cronRouter.openapi(cleanupRateLimitsGetRoute, handleCleanupRateLimits);
@@ -336,6 +372,160 @@ cronRouter.openapi(
   cleanupRateLimitsPostRoute,
   handleCleanupRateLimits as RouteHandler<
     typeof cleanupRateLimitsPostRoute,
+    { Bindings: Bindings }
+  >
+);
+
+// ─── Purge Unverified Accounts ───────────────────────────────────────────────
+
+const purgeUnverifiedResponses = {
+  200: {
+    content: {
+      "application/json": {
+        schema: createSuccessResponse(
+          z.object({
+            deleted: z.object({
+              users: z.number().openapi({ example: 3 }),
+              otpVerifications: z.number().openapi({ example: 3 }),
+              softDeletedTenancies: z.number().openapi({ example: 1 }),
+            }),
+          })
+        ),
+      },
+    },
+    description: "Stale unverified accounts purged",
+  },
+  400: {
+    content: {
+      "application/json": { schema: ErrorResponse },
+    },
+    description: "Invalid configuration or missing authorization header",
+  },
+  401: {
+    content: {
+      "application/json": { schema: ErrorResponse },
+    },
+    description: "Unauthorized",
+  },
+} as const;
+
+const purgeUnverifiedGetRoute = createRoute({
+  method: "get",
+  path: "/purge-unverified-accounts",
+  tags: ["Cron"],
+  summary:
+    "Delete stale unverified user accounts (no email verification after TTL)",
+  security: [{ bearerAuth: [] }],
+  request: { headers: CronHeadersSchema },
+  responses: purgeUnverifiedResponses,
+});
+
+const purgeUnverifiedPostRoute = createRoute({
+  method: "post",
+  path: "/purge-unverified-accounts",
+  tags: ["Cron"],
+  summary: "Delete stale unverified user accounts (POST)",
+  security: [{ bearerAuth: [] }],
+  request: { headers: CronHeadersSchema },
+  responses: purgeUnverifiedResponses,
+});
+
+const handlePurgeUnverified: RouteHandler<
+  typeof purgeUnverifiedGetRoute,
+  { Bindings: Bindings }
+> = async (c) => {
+  const authHeader = c.req.header("authorization");
+  const xCronSecret = c.req.header("x-cron-secret");
+  const cronSecret = c.env.CRON_SECRET;
+  const authCheck = checkCronAuth(authHeader, xCronSecret, cronSecret);
+  if (!authCheck.ok) {
+    return c.json(
+      {
+        success: false as const,
+        error: { code: authCheck.code, message: authCheck.error },
+      },
+      authCheck.status
+    );
+  }
+
+  const db = getDb(c.env.DB);
+
+  // TTL: default 48 hours, configurable via env
+  // finite positive integer check prevents negative cutoff or partial parse ("2oops")
+  const rawTtl = c.env.UNVERIFIED_ACCOUNT_TTL_HOURS;
+  let ttlHours = 48; // default
+  if (rawTtl !== undefined && rawTtl !== "") {
+    const parsed = Number(rawTtl);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+      return c.json(
+        {
+          success: false as const,
+          error: {
+            code: "INVALID_CONFIG",
+            message: `UNVERIFIED_ACCOUNT_TTL_HOURS must be a positive integer, got: "${rawTtl}"`,
+          },
+        },
+        400
+      );
+    }
+    ttlHours = parsed;
+  }
+  const cutoff = new Date(Date.now() - ttlHours * 60 * 60 * 1000);
+
+  // ponytail: Atomic purge via D1 batch with subqueries.
+  // 1. Rechecks eligibility (emailVerified != true AND createdAt < cutoff) across all queries concurrently.
+  // 2. Subqueries eliminate client-side array chunking and stay well under D1's 100-parameter limit (7 total params).
+  // 3. Execution order (verifications -> tenancies soft-delete -> users delete) resolves the NO ACTION FK
+  //    before user deletion, while db.batch guarantees all-or-nothing rollback if any step fails.
+  const eligibleUserIds = db
+    .select({ id: user.id })
+    .from(user)
+    .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)));
+
+  const eligibleUserEmails = db
+    .select({ email: user.email })
+    .from(user)
+    .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)));
+
+  const [verResult, tenResult, userResult] = await db.batch([
+    db
+      .delete(verification)
+      .where(inArray(verification.identifier, eligibleUserEmails))
+      .returning({ id: verification.id }),
+    db
+      .update(tenancies)
+      .set({ tenantId: null, deletedByTenantAt: new Date() })
+      .where(inArray(tenancies.tenantId, eligibleUserIds))
+      .returning({ id: tenancies.id }),
+    db
+      .delete(user)
+      .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)))
+      .returning({ id: user.id, email: user.email }),
+  ]);
+
+  const deleted = {
+    users: (userResult as { id: string }[]).length,
+    otpVerifications: (verResult as { id: string }[]).length,
+    softDeletedTenancies: (tenResult as { id: string }[]).length,
+  };
+
+  logger.info(
+    {
+      event: "cron.purge_unverified_accounts",
+      deleted,
+      ttlHours,
+    },
+    "purge unverified accounts cron completed"
+  );
+
+  return c.json({ success: true as const, data: { deleted } }, 200);
+};
+
+cronRouter.openapi(purgeUnverifiedGetRoute, handlePurgeUnverified);
+cronRouter.openapi(
+  purgeUnverifiedPostRoute,
+  handlePurgeUnverified as RouteHandler<
+    typeof purgeUnverifiedPostRoute,
     { Bindings: Bindings }
   >
 );

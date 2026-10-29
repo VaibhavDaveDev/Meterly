@@ -1,16 +1,28 @@
-# Purpose
+# Utilities DOX
 
-General utility functions and helpers used across the application.
+## Purpose
 
-# Ownership
+- Pure, stateless helper functions shared across the application.
 
-All developers.
+## Ownership
 
-# Local Contracts
+- Modules in this directory own stateless shared utility functions (date parsing, string manipulation, formatting).
 
-- Must be pure, stateless functions.
-- E.g., formatting dates, parsing common strings, etc.
+## Local Contracts
 
-# Child DOX Index
+- Functions must be pure, stateless, and free of side effects.
+- No direct database or network dependencies.
 
-(None)
+## Work Guidance
+
+- If a helper needs network access or React state, place it in `src/lib/` or `src/hooks/`.
+
+## Verification
+
+```bash
+pnpm test --run src/utils
+```
+
+## Child DOX Index
+
+No child DOX files.

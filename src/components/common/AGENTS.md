@@ -1,33 +1,35 @@
-# Purpose
+# Common Components DOX
 
-Common, reusable React components (e.g., navigation, avatars).
+## Purpose
 
-# Ownership
+- Shared, reusable React components, layout helpers, error boundaries, and island providers.
 
-Frontend developers.
+## Ownership
 
-# Local Contracts
+- `UserNav.tsx` owns user session display, profile link, and sign-out action.
+- `NotificationBell.tsx` owns the header notification bell trigger, popover unread feed, and mark-as-read actions.
+- `NotificationHelpers.tsx` owns notification display formatting (`timeAgo`, `iconColorClass`) and icon rendering (`NotificationIcon`).
+- `TopLoader.tsx` owns the global page progress bar during active network requests.
+- `LoadingStates.tsx` owns unified asynchronous feedback primitives (`SkeletonCard`, `ErrorCard`, `EmptyState`).
+- `AppErrorBoundary.tsx` owns React error containment and fallback UI rendering.
+- `QueryProvider.tsx` owns TanStack Query singleton `QueryClientProvider` injection across Astro islands.
+- `withErrorBoundary.tsx` owns the HOC uniting `QueryProvider` and `AppErrorBoundary` for island exports.
 
-- Components should be mobile-responsive and follow WCAG guidelines.
-- Use shadcn/ui components for consistency where appropriate.
+## Local Contracts
 
-# Work Guidance
+- Mobile-responsive and WCAG accessible.
+- Top-level `client:load` or `client:only` island exports must be wrapped with `withErrorBoundary`. Do not wrap internal sub-components.
 
-- `UserNav.tsx`: Handles user session display and logout functionality.
-- `NotificationBell.tsx`: Bell icon in the dashboard header. Fetches the 4 most recent notifications on click, shows unread badge, mark-as-read per item or all-at-once. Links to `/notifications` for the full list.
-- `NotificationHelpers.tsx`: Contains shared types (`Notification`), helpers (`timeAgo`, `iconColorClass`), and components (`NotificationIcon`) for notifications. Tested by `NotificationHelpers.test.tsx`.
-- `TopLoader.tsx`: Custom top-loader component using Radix Progress primitive to show progress on active API calls.
-- `LoadingStates.tsx`: Premium reusable state components (`SkeletonCard`, `ErrorCard`, `EmptyState`) for unified asynchronous content feedback.
-- `AppErrorBoundary.tsx`: React class error boundary. Shows a friendly fallback UI on render errors instead of a blank crash screen. In dev mode, shows the full stack trace. In production, shows a minimal recovery message with a dashboard link.
-- `QueryProvider.tsx`: Wrapper that provides the singleton `QueryClient` to React component trees across Astro islands.
-- `withErrorBoundary.tsx`: Higher-order component that wraps any React component in `QueryProvider` and `AppErrorBoundary`. Used at the export boundary of Astro `client:load` island components so each island has error containment and TanStack Query access.
+## Work Guidance
 
-# Work Guidance for Error Boundaries
+- Export pattern: rename inner function to `<ComponentName>Inner`, export `const <ComponentName> = withErrorBoundary(<ComponentName>Inner)`.
 
-- **Pattern:** Rename the internal function to `<ComponentName>Inner`, then export `const <ComponentName> = withErrorBoundary(<ComponentName>Inner)` at the module bottom.
-- **Adoption:** `DashboardOverview`, `NotificationsPage`, `SettingsPage`, `TenantBillsPage` are wrapped. Apply this pattern to remaining page-level `client:load` islands as they are edited.
-- **Do not** wrap sub-components (Badges, Inputs, etc.) — only top-level island components that are the sole React root on a page.
+## Verification
 
-# Child DOX Index
+```bash
+pnpm test --run src/components/common
+```
 
-(None)
+## Child DOX Index
+
+No child DOX files.

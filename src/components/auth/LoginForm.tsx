@@ -74,6 +74,16 @@ function LoginFormInner({ turnstileSiteKey }: { turnstileSiteKey?: string }) {
     });
 
     if (error) {
+      // detect unverified email and redirect cleanly without auto-sending OTP
+      const isUnverified =
+        error.message?.toLowerCase().includes("not verified") ||
+        (error as { code?: string }).code === "EMAIL_NOT_VERIFIED";
+
+      if (isUnverified) {
+        window.location.href = `/verify-email?email=${encodeURIComponent(email)}&reason=login`;
+        return;
+      }
+
       setMessage(error.message || "Failed to sign in. Check your credentials.");
       setIsError(true);
       resetTurnstile();

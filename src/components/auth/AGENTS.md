@@ -1,21 +1,37 @@
-# Purpose
+# Auth Components DOX
 
-React components for authentication-related UI (e.g., login, signup forms).
+## Purpose
 
-# Ownership
+- React island components for authentication flows: login, signup, email verification, and password reset.
 
-Frontend developers.
+## Ownership
 
-# Local Contracts
+- `LoginForm.tsx` owns email+password sign-in, Google/GitHub OAuth, and unverified error redirection to `/verify-email?reason=login`.
+- `SignupForm.tsx` owns account registration, password strength metering, and redirect to `/verify-email`.
+- `VerifyEmailForm.tsx` owns 6-digit OTP entry, verification context banner (`reason=login`), and resend OTP button with client-side cooldown countdown.
+- `ForgotPasswordForm.tsx` owns email OTP-based password reset submission.
+- `AuthFormLayout.tsx` owns the shared auth card layout, social buttons, inline feedback messages, and footer links.
+- `AuthInputs.tsx` owns styled authentication input primitives (`EmailInput`, `PasswordInput`, `TextInput`).
 
-- Components should be mobile-responsive and follow WCAG guidelines.
-- Use shadcn/ui components for consistency.
+## Local Contracts
 
-# Work Guidance
+- All components must export via `withErrorBoundary(InnerComponent)`.
+- Use `authClient` (from `../../lib/auth-client`) for all Better Auth actions — never call API routes directly.
+- Feedback is rendered inline via `message` / `isError` props passed to `AuthFormLayout` — not via toast.
+- Mobile-responsive; dark-mode via CSS variables.
 
-- Interact with `authClient` for all authentication actions.
-- Use `useToast` for user feedback.
+## Work Guidance
 
-# Child DOX Index
+- Preserve error redirection on unverified credentials so unverified users are routed directly to verification.
+- Ensure the resend button enforces client-side countdown before allowing another request.
 
-(None)
+## Verification
+
+```bash
+pnpm test --run src/components/auth
+pnpm typecheck
+```
+
+## Child DOX Index
+
+No child DOX files.

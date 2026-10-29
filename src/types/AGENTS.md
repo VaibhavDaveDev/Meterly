@@ -1,15 +1,29 @@
-# Purpose
+# Type Definitions DOX
 
-Global TypeScript type definitions and interfaces.
+## Purpose
 
-# Ownership
+- Global TypeScript type definitions, domain models, and database interface declarations.
 
-All developers.
+## Ownership
 
-# Local Contracts
+- `db.ts` owns database inferred types and domain entity models derived from the Drizzle schema.
+- Global declarations in this directory own cross-cutting types shared between frontend and backend.
 
-- Store shared types here that don't logically belong to a specific feature module.
+## Local Contracts
 
-# Child DOX Index
+- Prefer `type` or `interface` over classes.
+- No `any` types — define explicit strict types.
 
-(None)
+## Work Guidance
+
+- Place domain-specific component prop types in their component directories; place shared data contract types here.
+
+## Verification
+
+```bash
+pnpm typecheck
+```
+
+## Child DOX Index
+
+No child DOX files.

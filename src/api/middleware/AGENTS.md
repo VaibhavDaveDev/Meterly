@@ -1,21 +1,29 @@
-# Purpose
+# API Middleware DOX
 
-Hono middleware functions that intercept requests before they reach the route handlers.
+## Purpose
 
-# Ownership
+- Hono middleware functions that intercept requests before reaching route handlers.
 
-API and Backend developers.
+## Ownership
 
-# Local Contracts
+- `auth.ts` owns session extraction from headers via Better Auth and injection of user and session objects into Hono context (`c.set('user', ...)`).
+- `turnstile.ts` owns Cloudflare Turnstile token verification (Layer 1 bot defense) before auth logic runs, supporting secret key validation and hostname allowlists.
 
-- Middleware must only mutate the Hono Context (`c.set()`) or return early HTTP responses (e.g., 401 Unauthorized).
-- Do not place heavy business logic here.
+## Local Contracts
 
-# Work Guidance
+- Middleware must only mutate the Hono Context (`c.set()`) or return early HTTP responses (e.g., 401 Unauthorized, 403 Forbidden).
+- Do not place heavy business logic in middleware.
 
-- `auth.ts`: Responsible for extracting the session from headers via Better Auth and injecting the user object into the context.
-- `turnstile.ts`: Implements Layer 1 of the three-layer defense model (Turnstile + Better Auth IP limit + OTP limiter) by blocking automated bots before auth logic runs. Requires `TURNSTILE_SECRET_KEY` in production and supports `TURNSTILE_HOSTNAMES` (comma-separated allowlist of production hostnames) for domain verification. Token verification uses form-encoded requests to Cloudflare's siteverify endpoint with timeout and size guards.
+## Work Guidance
 
-# Child DOX Index
+- `turnstile.ts` uses form-encoded requests to Cloudflare's siteverify endpoint with timeout and size guards. Requires `TURNSTILE_SECRET_KEY` in production.
 
-(None)
+## Verification
+
+```bash
+pnpm test --run src/api/middleware
+```
+
+## Child DOX Index
+
+No child DOX files.
