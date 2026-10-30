@@ -14,7 +14,7 @@ export const SuccessResponse = z
     },
   });
 
-export function createSuccessResponse<T extends z.ZodTypeAny>(
+export function createSuccessResponse<T extends z.ZodType>(
   dataSchema: T,
   exampleData?: z.infer<T>
 ) {

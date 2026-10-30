@@ -108,7 +108,7 @@ async function run() {
   );
   insertAccount.run(
     "acc-owner",
-    "owner@demo.meterly.app",
+    "owner-001",
     "credential",
     "owner-001",
     ownerHash,
@@ -117,7 +117,7 @@ async function run() {
   );
   insertAccount.run(
     "acc-tenant",
-    "tenant@demo.meterly.app",
+    "tenant-001",
     "credential",
     "tenant-001",
     tenantHash,
