@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Input } from "../ui/input";
-import { Switch } from "../ui/switch";
-import { Label } from "../ui/label";
 import { MeterInput } from "./MeterInput";
 import { LiveCalculationPreview } from "./LiveCalculationPreview";
 import {
@@ -20,6 +17,7 @@ import { useReadingValidation } from "../../hooks/use-reading-validation";
 import { useOcrData } from "../../hooks/use-ocr-data";
 import { UploadedPhotos } from "./UploadedPhotos";
 import { SubmitConfirmDialog } from "./SubmitConfirmDialog";
+import { OneOffChargesSection } from "./OneOffChargesSection";
 import { withErrorBoundary } from "../common/withErrorBoundary";
 
 interface SubmitReadingPageProps {
@@ -47,33 +45,8 @@ function SubmitReadingPageInner({ periodId }: SubmitReadingPageProps) {
     setAcknowledgedWarning,
     oneOffCharges,
     setOneOffCharges,
-    newChargeName,
-    setNewChargeName,
-    newChargeAmount,
-    setNewChargeAmount,
-    newChargeToTenant,
-    setNewChargeToTenant,
     toast,
   } = useReadingSubmit(periodId);
-
-  const handleAddCharge = () => {
-    if (!newChargeName || !newChargeAmount) return;
-    setOneOffCharges([
-      ...oneOffCharges,
-      {
-        name: newChargeName,
-        amount: parseFloat(newChargeAmount),
-        chargedToTenant: newChargeToTenant,
-      },
-    ]);
-    setNewChargeName("");
-    setNewChargeAmount("");
-    setNewChargeToTenant(true);
-  };
-
-  const handleRemoveCharge = (index: number) => {
-    setOneOffCharges(oneOffCharges.filter((_, i) => i !== index));
-  };
 
   const [allowRollover, setAllowRollover] = useState(false);
   const [editRates, setEditRates] = useState(false);
@@ -618,79 +591,10 @@ function SubmitReadingPageInner({ periodId }: SubmitReadingPageProps) {
                     <h4 className="text-sm font-medium text-foreground">
                       One-off Custom Charges
                     </h4>
-                    <div className="space-y-2 max-w-lg">
-                      {oneOffCharges.map((c, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between bg-muted/50 p-2 rounded-md border text-sm"
-                        >
-                          <div className="flex flex-col">
-                            <span>{c.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {c.chargedToTenant
-                                ? "Charged to Tenant"
-                                : "Paid by Owner"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono">₹{c.amount}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-red-500"
-                              onClick={() => handleRemoveCharge(i)}
-                            >
-                              ×
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="flex gap-2 items-end mt-2">
-                        <div className="flex-1 space-y-1">
-                          <Input
-                            placeholder="Charge name"
-                            value={newChargeName}
-                            onChange={(e) => setNewChargeName(e.target.value)}
-                            className="h-9 text-sm"
-                          />
-                        </div>
-                        <div className="w-24 space-y-1">
-                          <Input
-                            type="number"
-                            placeholder="Amt"
-                            value={newChargeAmount}
-                            onChange={(e) => setNewChargeAmount(e.target.value)}
-                            className="h-9 text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-                        <Label
-                          className="text-xs text-muted-foreground cursor-pointer"
-                          htmlFor="charge-tenant-switch"
-                        >
-                          Charge to Tenant
-                        </Label>
-                        <div className="flex items-center gap-3">
-                          <Switch
-                            id="charge-tenant-switch"
-                            checked={newChargeToTenant}
-                            onCheckedChange={setNewChargeToTenant}
-                            className="scale-75"
-                          />
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="h-8 text-xs px-3"
-                            onClick={handleAddCharge}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                    <OneOffChargesSection
+                      charges={oneOffCharges}
+                      onChange={setOneOffCharges}
+                    />
                   </div>
                 )}
 

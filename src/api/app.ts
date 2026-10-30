@@ -299,14 +299,16 @@ app.post(
 
 // ── OpenAPI route definitions for the two OTP interceptor endpoints ─────────
 // OpenAPI registration for Better Auth proxy interceptors
-const otpCheckBodySchema = z.object({
+const otpCheckBodySchema = z.looseObject({
   email: z.email().openapi({ example: "user@example.com" }),
   otp: z.string().length(6).openapi({ example: "123456" }),
+  type: z.string().optional().openapi({ example: "email-verification" }),
 });
 
-const otpVerifyEmailBodySchema = z.object({
+const otpVerifyEmailBodySchema = z.looseObject({
   email: z.email().openapi({ example: "user@example.com" }),
   otp: z.string().length(6).openapi({ example: "123456" }),
+  type: z.string().optional().openapi({ example: "email-verification" }),
 });
 
 // Better Auth controls the response shape; document as passthrough.
@@ -364,6 +366,7 @@ const handleOtpSuccessReset = async (
     const data = c.req.valid("json" as never) as {
       email?: string;
       otp?: string;
+      [key: string]: unknown;
     };
     email = data?.email;
     if (data) {

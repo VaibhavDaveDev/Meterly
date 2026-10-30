@@ -13,7 +13,7 @@ import {
   user,
   verification,
 } from "../../db/schema";
-import { and, eq, inArray, lt, ne } from "drizzle-orm";
+import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import type { Bindings } from "../app";
 import { logger } from "../lib/logger";
 import { ErrorResponse, createSuccessResponse } from "../lib/openapi-schemas";
@@ -472,25 +472,51 @@ const handlePurgeUnverified: RouteHandler<
   }
   const cutoff = new Date(Date.now() - ttlHours * 60 * 60 * 1000);
 
-  // ponytail: Atomic purge via D1 batch with subqueries.
+  // Atomic purge via D1 batch with subqueries.
   // 1. Rechecks eligibility (emailVerified != true AND createdAt < cutoff) across all queries concurrently.
-  // 2. Subqueries eliminate client-side array chunking and stay well under D1's 100-parameter limit (7 total params).
-  // 3. Execution order (verifications -> tenancies soft-delete -> users delete) resolves the NO ACTION FK
+  // 2. Subqueries eliminate client-side array chunking and stay well under D1's 100-parameter limit.
+  // 3. Better Auth emailOTP plugin formats identifiers as `${type}-otp-${email}`.
+  //    Match all potential verification identifier prefixes + bare email for unverified accounts.
+  // 4. Execution order (verifications -> tenancies soft-delete -> users delete) resolves the NO ACTION FK
   //    before user deletion, while db.batch guarantees all-or-nothing rollback if any step fails.
   const eligibleUserIds = db
     .select({ id: user.id })
     .from(user)
     .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)));
 
-  const eligibleUserEmails = db
-    .select({ email: user.email })
+  const eligibleOtpIdentifiers = db
+    .select({
+      identifier: sql<string>`'email-verification-otp-' || ${user.email}`,
+    })
     .from(user)
-    .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)));
+    .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)))
+    .union(
+      db
+        .select({ identifier: user.email })
+        .from(user)
+        .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)))
+    )
+    .union(
+      db
+        .select({
+          identifier: sql<string>`'forget-password-otp-' || ${user.email}`,
+        })
+        .from(user)
+        .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)))
+    )
+    .union(
+      db
+        .select({
+          identifier: sql<string>`'sign-in-otp-' || ${user.email}`,
+        })
+        .from(user)
+        .where(and(ne(user.emailVerified, true), lt(user.createdAt, cutoff)))
+    );
 
   const [verResult, tenResult, userResult] = await db.batch([
     db
       .delete(verification)
-      .where(inArray(verification.identifier, eligibleUserEmails))
+      .where(inArray(verification.identifier, eligibleOtpIdentifiers))
       .returning({ id: verification.id }),
     db
       .update(tenancies)

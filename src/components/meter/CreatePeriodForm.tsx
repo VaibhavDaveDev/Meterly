@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Switch } from "../ui/switch";
-import { Label } from "../ui/label";
 import { MeterInput } from "./MeterInput";
+import {
+  OneOffChargesSection,
+  type OneOffCharge,
+} from "./OneOffChargesSection";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import { withErrorBoundary } from "../common/withErrorBoundary";
@@ -47,31 +48,7 @@ function CreatePeriodFormInner({
   const [exportStart, setExportStart] = useState("");
   const [exportEnd, setExportEnd] = useState("");
 
-  const [oneOffCharges, setOneOffCharges] = useState<
-    Array<{ name: string; amount: number; chargedToTenant: boolean }>
-  >([]);
-  const [newChargeName, setNewChargeName] = useState("");
-  const [newChargeAmount, setNewChargeAmount] = useState("");
-  const [newChargeToTenant, setNewChargeToTenant] = useState(true);
-
-  const handleAddCharge = () => {
-    if (!newChargeName || !newChargeAmount) return;
-    setOneOffCharges([
-      ...oneOffCharges,
-      {
-        name: newChargeName,
-        amount: parseFloat(newChargeAmount),
-        chargedToTenant: newChargeToTenant,
-      },
-    ]);
-    setNewChargeName("");
-    setNewChargeAmount("");
-    setNewChargeToTenant(true);
-  };
-
-  const handleRemoveCharge = (index: number) => {
-    setOneOffCharges(oneOffCharges.filter((_, i) => i !== index));
-  };
+  const [oneOffCharges, setOneOffCharges] = useState<OneOffCharge[]>([]);
 
   useEffect(() => {
     // Fetch property and last period to prefill start values
@@ -350,77 +327,10 @@ function CreatePeriodFormInner({
           discounts).
         </p>
 
-        <div className="space-y-2 max-w-lg">
-          {oneOffCharges.map((c, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between bg-muted/50 p-2 rounded-md border text-sm"
-            >
-              <div className="flex flex-col">
-                <span>{c.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {c.chargedToTenant ? "Charged to Tenant" : "Paid by Owner"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="font-mono">₹{c.amount}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-red-500"
-                  onClick={() => handleRemoveCharge(i)}
-                >
-                  ×
-                </Button>
-              </div>
-            </div>
-          ))}
-          <div className="flex gap-2 items-end mt-2">
-            <div className="flex-1 space-y-1">
-              <Input
-                placeholder="Charge name"
-                value={newChargeName}
-                onChange={(e) => setNewChargeName(e.target.value)}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="w-24 space-y-1">
-              <Input
-                type="number"
-                placeholder="Amt"
-                value={newChargeAmount}
-                onChange={(e) => setNewChargeAmount(e.target.value)}
-                className="h-9 text-sm"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-            <Label
-              className="text-xs text-muted-foreground cursor-pointer"
-              htmlFor="charge-tenant-switch"
-            >
-              Charge to Tenant
-            </Label>
-            <div className="flex items-center gap-3">
-              <Switch
-                id="charge-tenant-switch"
-                checked={newChargeToTenant}
-                onCheckedChange={setNewChargeToTenant}
-                className="scale-75"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="h-8 text-xs px-3"
-                onClick={handleAddCharge}
-              >
-                Add
-              </Button>
-            </div>
-          </div>
-        </div>
+        <OneOffChargesSection
+          charges={oneOffCharges}
+          onChange={setOneOffCharges}
+        />
       </div>
 
       <div className="flex justify-end gap-3">

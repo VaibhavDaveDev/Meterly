@@ -53,7 +53,9 @@ function VerifyEmailFormInner() {
       setMessage(error.message || "Could not resend code. Try again later.");
       setIsError(true);
     } else {
-      setMessage("New code sent! Check your inbox.");
+      setMessage(
+        "If an account exists, a verification code has been sent. Check your inbox."
+      );
       setIsError(false);
       setResendCooldown(300); // 5-minute optimistic cooldown matching API tier
     }
@@ -97,7 +99,13 @@ function VerifyEmailFormInner() {
   return (
     <AuthFormLayout
       title="Verify your email"
-      description={`We sent a 6-digit code to ${email || "your email"}`}
+      description={
+        fromLogin
+          ? email
+            ? `Enter the 6-digit code for ${email}, or request a new one below`
+            : "Enter your 6-digit code, or request a new one below"
+          : `We sent a 6-digit code to ${email || "your email"}`
+      }
       backToLink={{ href: "/login", label: "Back to sign in" }}
       message={message}
       isError={isError}

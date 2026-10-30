@@ -71,7 +71,7 @@ function fmtCurrency(n: number | string | undefined | null) {
   return formatCurrency(n);
 }
 
-export function CalcStep({
+function CalcStep({
   number,
   title,
   formula,
