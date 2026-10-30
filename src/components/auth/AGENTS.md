@@ -15,7 +15,7 @@
 
 ## Local Contracts
 
-- All components must export via `withErrorBoundary(InnerComponent)`.
+- Page-mounted auth form islands (`LoginForm`, `SignupForm`, `VerifyEmailForm`, `ForgotPasswordForm`) must export wrapped with `withErrorBoundary(InnerComponent)`. Internal subcomponents (`AuthFormLayout`, `AuthInputs`) are not Astro islands and must NOT be wrapped with `withErrorBoundary` to prevent redundant nested providers.
 - Use `authClient` (from `../../lib/auth-client`) for all Better Auth actions — never call API routes directly.
 - Feedback is rendered inline via `message` / `isError` props passed to `AuthFormLayout` — not via toast.
 - Mobile-responsive; dark-mode via CSS variables.

@@ -160,14 +160,32 @@ describe("Cron: purge-unverified-accounts", () => {
       updatedAt: fiftyHoursAgo,
     });
 
-    await testDb.insert(verification).values({
-      id: "ver-1",
-      identifier: "stale@example.com",
-      value: "123456",
-      expiresAt: new Date(Date.now() + 600000),
-      createdAt: fiftyHoursAgo,
-      updatedAt: fiftyHoursAgo,
-    });
+    await testDb.insert(verification).values([
+      {
+        id: "ver-1",
+        identifier: "email-verification-otp-stale@example.com",
+        value: "123456",
+        expiresAt: new Date(Date.now() + 600000),
+        createdAt: fiftyHoursAgo,
+        updatedAt: fiftyHoursAgo,
+      },
+      {
+        id: "ver-2",
+        identifier: "forget-password-otp-stale@example.com",
+        value: "654321",
+        expiresAt: new Date(Date.now() + 600000),
+        createdAt: fiftyHoursAgo,
+        updatedAt: fiftyHoursAgo,
+      },
+      {
+        id: "ver-3",
+        identifier: "stale@example.com",
+        value: "112233",
+        expiresAt: new Date(Date.now() + 600000),
+        createdAt: fiftyHoursAgo,
+        updatedAt: fiftyHoursAgo,
+      },
+    ]);
 
     await testDb.insert(properties).values({
       id: "prop-1",
@@ -201,7 +219,7 @@ describe("Cron: purge-unverified-accounts", () => {
     };
     expect(json.success).toBe(true);
     expect(json.data.deleted.users).toBe(1);
-    expect(json.data.deleted.otpVerifications).toBe(1);
+    expect(json.data.deleted.otpVerifications).toBe(3);
     expect(json.data.deleted.softDeletedTenancies).toBe(1);
 
     const remainingVerifications = await testDb.select().from(verification);
@@ -242,7 +260,7 @@ describe("Cron: purge-unverified-accounts", () => {
           const num = i + idx;
           return {
             id: `batch-ver-${num}`,
-            identifier: `batch${num}@example.com`,
+            identifier: `email-verification-otp-batch${num}@example.com`,
             value: "123456",
             expiresAt: new Date(Date.now() + 600000),
             createdAt: fiftyHoursAgo,
@@ -286,7 +304,7 @@ describe("Cron: purge-unverified-accounts", () => {
 
     await testDb.insert(verification).values({
       id: "ver-late",
-      identifier: "late@example.com",
+      identifier: "email-verification-otp-late@example.com",
       value: "123456",
       expiresAt: new Date(Date.now() + 600000),
       createdAt: fiftyHoursAgo,

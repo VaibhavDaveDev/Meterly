@@ -40,7 +40,7 @@ describe("VerifyEmailForm", () => {
     vi.unstubAllGlobals();
   });
 
-  it("displays context banner when reason=login is present in query params", () => {
+  it("displays context banner and adjusted description when reason=login is present in query params", () => {
     window.location.search = "?email=test%40example.com&reason=login";
 
     render(<VerifyEmailForm />);
@@ -48,6 +48,12 @@ describe("VerifyEmailForm", () => {
     expect(
       screen.getByText(/your email isn't verified yet/i)
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/enter the 6-digit code for test@example.com/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/we sent a 6-digit code to/i)
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText(/check your email for the 6-digit verification code/i)
     ).not.toBeInTheDocument();
@@ -85,6 +91,11 @@ describe("VerifyEmailForm", () => {
         email: "test@example.com",
         type: "email-verification",
       });
+      expect(
+        screen.getByText(
+          /if an account exists, a verification code has been sent/i
+        )
+      ).toBeInTheDocument();
       expect(screen.getByText(/resend available in 5m/i)).toBeInTheDocument();
     });
 
